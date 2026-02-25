@@ -168,9 +168,9 @@ const NewAppointmentModal = ({ isOpen, onClose, onSave, userId }) => {
     const fetchDropdownData = async () => {
         try {
             const [doctorsRes, patientsRes, typesRes] = await Promise.all([
-                supabase.from("doctors").select("id, name, weekly_availability, off_days"),
-                supabase.from("patients").select("id, name, email, phone"),
-                supabase.from("appointment_types").select("id, name"),
+                supabase.from("doctors").select("id, name, weekly_availability, off_days").eq('user_id', userId),
+                supabase.from("patients").select("id, name, email, phone").eq('user_id', userId),
+                supabase.from("appointment_types").select("id, name").eq('user_id', userId),
             ]);
 
             if (doctorsRes.error) throw doctorsRes.error;

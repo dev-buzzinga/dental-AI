@@ -69,7 +69,7 @@ const DoctorDetails = () => {
         try {
             const { data, error } = await supabase
                 .from('appointment_types')
-                .select('*');
+                .select('*').eq('user_id', user.id);
             if (error) throw error;
             setAppointmentTypes(data || []);
         } catch (error) {

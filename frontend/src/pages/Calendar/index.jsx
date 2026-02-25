@@ -45,11 +45,13 @@ const CalendarPage = () => {
             if (apptsRes.error) throw apptsRes.error;
             setAppointments(apptsRes.data || []);
 
+            if (doctorsRes.error) throw doctorsRes.error;
             const docList = doctorsRes.data || [];
             setDoctors(docList);
             // Select all doctors by default
             setSelectedDoctors(new Set(docList.map(d => d.id)));
 
+            if (typesRes.error) throw typesRes.error;
             setAppointmentTypes(typesRes.data || []);
         } catch (error) {
             console.error("Error fetching calendar data:", error);
