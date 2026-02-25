@@ -35,6 +35,14 @@ const isSameDay = (d1, d2) =>
     d1.getMonth() === d2.getMonth() &&
     d1.getDate() === d2.getDate();
 
+const getYYYYMMDD = (date) => {
+    if (!date) return '';
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+};
+
 const getWeekDays = (date) => {
     const start = new Date(date);
     const day = start.getDay();
@@ -74,6 +82,68 @@ const getDoctorColor = (doctorId, doctorMap) => {
     return DOCTOR_COLORS[idx >= 0 ? idx % DOCTOR_COLORS.length : 0];
 };
 
+const getApptsWithLayout = (dayAppts) => {
+    if (!dayAppts.length) return [];
+
+    // Sort by start time, then duration
+    const sorted = [...dayAppts].sort((a, b) => {
+        const startA = parseTimeToMinutes(a.from);
+        const startB = parseTimeToMinutes(b.from);
+        if (startA !== startB) return startA - startB;
+        return (parseTimeToMinutes(b.to) - startB) - (parseTimeToMinutes(a.to) - startA);
+    });
+
+    const clusters = [];
+    let currentCluster = [];
+    let clusterEnd = 0;
+
+    sorted.forEach(appt => {
+        const start = parseTimeToMinutes(appt.from);
+        const end = parseTimeToMinutes(appt.to);
+
+        if (currentCluster.length > 0 && start < clusterEnd) {
+            currentCluster.push(appt);
+            clusterEnd = Math.max(clusterEnd, end);
+        } else {
+            if (currentCluster.length > 0) clusters.push(currentCluster);
+            currentCluster = [appt];
+            clusterEnd = end;
+        }
+    });
+    if (currentCluster.length > 0) clusters.push(currentCluster);
+
+    const results = [];
+    clusters.forEach(cluster => {
+        const columns = [];
+        cluster.forEach(appt => {
+            const start = parseTimeToMinutes(appt.from);
+            let placed = false;
+            for (let i = 0; i < columns.length; i++) {
+                const lastInCol = columns[i][columns[i].length - 1];
+                if (start >= parseTimeToMinutes(lastInCol.to)) {
+                    columns[i].push(appt);
+                    placed = true;
+                    break;
+                }
+            }
+            if (!placed) columns.push([appt]);
+        });
+
+        const colCount = columns.length;
+        columns.forEach((col, colIdx) => {
+            col.forEach(appt => {
+                results.push({
+                    ...appt,
+                    colIdx,
+                    colCount
+                });
+            });
+        });
+    });
+
+    return results;
+};
+
 const formatHourLabel = (h) => {
     if (h === 0) return '12 AM';
     if (h < 12) return `${h} AM`;
@@ -98,10 +168,10 @@ const AppointmentCard = ({ appt, doctorName, color, onClick, style }) => {
 };
 
 const DayView = ({ date, appointments, doctorMap, onAppointmentClick }) => {
-    const dayAppts = appointments.filter(a => {
-        const d = new Date(a.meeting_date + 'T00:00:00');
-        return isSameDay(d, date);
-    });
+    const dateKey = getYYYYMMDD(date);
+    const dayAppts = useMemo(() => {
+        return getApptsWithLayout(appointments.filter(a => a.meeting_date === dateKey));
+    }, [appointments, dateKey]);
 
     return (
         <div className="cal-day-view">
@@ -134,6 +204,10 @@ const DayView = ({ date, appointments, doctorMap, onAppointmentClick }) => {
                             const height = Math.max(((toMin - fromMin) / 60) * HOUR_HEIGHT, 28);
                             const doctorName = doctorMap[appt.doctor_id] || 'Doctor';
                             const color = getDoctorColor(appt.doctor_id, doctorMap);
+
+                            const width = (100 / appt.colCount);
+                            const left = (appt.colIdx * width);
+
                             return (
                                 <AppointmentCard
                                     key={appt.id}
@@ -141,7 +215,14 @@ const DayView = ({ date, appointments, doctorMap, onAppointmentClick }) => {
                                     doctorName={doctorName}
                                     color={color}
                                     onClick={onAppointmentClick}
-                                    style={{ position: 'absolute', top, height, left: 4, right: 4 }}
+                                    style={{
+                                        position: 'absolute',
+                                        top,
+                                        height,
+                                        left: `${left}%`,
+                                        width: `${width}%`,
+                                        paddingRight: '4px'
+                                    }}
                                 />
                             );
                         })}
@@ -180,10 +261,8 @@ const WeekView = ({ date, appointments, doctorMap, onAppointmentClick }) => {
                     </div>
                     <div className="cal-week-columns">
                         {weekDays.map((day, colIdx) => {
-                            const dayAppts = appointments.filter(a => {
-                                const d = new Date(a.meeting_date + 'T00:00:00');
-                                return isSameDay(d, day);
-                            });
+                            const dateKey = getYYYYMMDD(day);
+                            const dayAppts = getApptsWithLayout(appointments.filter(a => a.meeting_date === dateKey));
                             return (
                                 <div key={colIdx} className="cal-week-column">
                                     {HOURS.map(h => (
@@ -196,6 +275,10 @@ const WeekView = ({ date, appointments, doctorMap, onAppointmentClick }) => {
                                         const height = Math.max(((toMin - fromMin) / 60) * HOUR_HEIGHT, 24);
                                         const doctorName = doctorMap[appt.doctor_id] || 'Doctor';
                                         const color = getDoctorColor(appt.doctor_id, doctorMap);
+
+                                        const width = (100 / appt.colCount);
+                                        const left = (appt.colIdx * width);
+
                                         return (
                                             <AppointmentCard
                                                 key={appt.id}
@@ -203,7 +286,14 @@ const WeekView = ({ date, appointments, doctorMap, onAppointmentClick }) => {
                                                 doctorName={doctorName}
                                                 color={color}
                                                 onClick={onAppointmentClick}
-                                                style={{ position: 'absolute', top, height, left: 2, right: 2 }}
+                                                style={{
+                                                    position: 'absolute',
+                                                    top,
+                                                    height,
+                                                    left: `${left}%`,
+                                                    width: `${width}%`,
+                                                    paddingRight: '2px'
+                                                }}
                                             />
                                         );
                                     })}

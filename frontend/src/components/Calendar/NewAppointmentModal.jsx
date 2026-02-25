@@ -21,21 +21,6 @@ const TIMEZONES = [
     { value: "Australia/Sydney", label: "AEST (Sydney)" },
 ];
 
-const generateTimeSlots = () => {
-    const slots = [];
-    for (let h = 0; h < 24; h++) {
-        for (let m = 0; m < 60; m += 30) {
-            const hour12 = h === 0 ? 12 : h > 12 ? h - 12 : h;
-            const period = h < 12 ? "AM" : "PM";
-            const minutes = m.toString().padStart(2, "0");
-            slots.push(`${hour12}:${minutes} ${period}`);
-        }
-    }
-    return slots;
-};
-
-const TIME_SLOTS = generateTimeSlots();
-
 const timeToMinutes = (timeStr) => {
     if (!timeStr) return 0;
 
@@ -229,6 +214,7 @@ const NewAppointmentModal = ({ isOpen, onClose, onSave, userId }) => {
 
         // 1. Check Off Days
         const offDays = selectedDoctor.off_days || [];
+
         const isOffDay = offDays.some(odStr => {
             try {
                 const od = JSON.parse(odStr);
