@@ -801,13 +801,10 @@
 }
 
 .cal-view-btn-active {
-    background: var(--primary);
-    color: #fff;
+    background: var(--primary-light);
+    color: var(--primary);
 }
 
-.cal-view-btn-active:hover {
-    background: var(--primary-dark);
-}
 
 /* View Area */
 .cal-view-area {
