@@ -7,8 +7,8 @@ const END_HOUR = 24;
 const HOURS = Array.from({ length: END_HOUR - START_HOUR }, (_, i) => START_HOUR + i);
 
 const DOCTOR_COLORS = [
-    '#6f2ac3', '#2563EB', '#059669', '#D97706', '#DC2626',
-    '#7C3AED', '#0891B2', '#BE185D', '#4F46E5', '#15803D',
+    '#0960c4ef', '#25ebbaff', '#12a172ff', '#e63c99ff', '#c95151ff',
+    '#7C3AED', '#0891B2', '#BE185D', '#9b6f1dff', '#612407ff',
 ];
 
 // ─── Helpers ───────────────────────────────────
