@@ -15,18 +15,11 @@ import DoctorDetails from './pages/Doctors/DoctorDetails';
 import PatientDetail from './pages/Patients/PatientDetail';
 import AddNumberPage from './pages/Settings/AddNumberPage';
 import AppointmentTypes from './pages/Settings/AppointmentTypes';
+import CalendarPage from './pages/Calendar/index';
 import Login from './pages/auth/login';
 import Signup from './pages/auth/signup';
 
-const CalendarPlaceholder = () => (
-  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-secondary)' }}>
-    <div style={{ textAlign: 'center' }}>
-      <i className="fas fa-calendar-days" style={{ fontSize: 48, color: '#D1D5DB', marginBottom: 16 }} />
-      <h2 style={{ fontWeight: 700, fontSize: 20, color: 'var(--text-primary)', marginBottom: 8 }}>Calendar</h2>
-      <p style={{ fontSize: 14 }}>Calendar view coming soon</p>
-    </div>
-  </div>
-);
+
 
 
 const AppContent = () => {
@@ -54,7 +47,7 @@ const AppContent = () => {
                 <Route path="/" element={<Navigate to="/calls" replace />} />
                 <Route path="/calls" element={<CallsPage />} />
                 <Route path="/sms" element={<SMSPage />} />
-                <Route path="/calendar" element={<CalendarPlaceholder />} />
+                <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/patients/:id" element={<PatientDetail />} />
                 <Route path="/patients" element={<PatientsPage />} />
                 <Route path="/settings/doctors/:id" element={<DoctorDetails />} />
