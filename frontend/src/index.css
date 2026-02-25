@@ -1,0 +1,91 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&display=swap');
+
+/* === DESIGN TOKENS === */
+:root {
+  --primary: #6f2ac3;
+  --primary-light: #EDE9FE;
+  --primary-dark: #5B21B6;
+  --success: #10B981;
+  --danger: #EF4444;
+  --warning: #F59E0B;
+  --background: #F9FAFB;
+  --card: #FFFFFF;
+  --text-primary: #1F2937;
+  --text-secondary: #6B7280;
+  --border: #E5E7EB;
+  --radius-card: 12px;
+  --radius-btn: 8px;
+  --shadow-widget: 0 4px 24px rgba(0,0,0,0.12);
+  --shadow-panel: 0 4px 16px rgba(0,0,0,0.1);
+  --font-sans: 'Noto Sans', sans-serif;
+}
+
+/* === RESET & BASE === */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root { height: 100%; overflow: hidden; }
+body {
+  font-family: var(--font-sans);
+  background: var(--background);
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+button, [role="button"], .cursor-pointer { cursor: pointer !important; }
+button { border: none; background: none; font-family: inherit; }
+input, textarea, select { font-family: inherit; }
+
+/* === ANIMATIONS === */
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.05); }
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes toastIn {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+@keyframes wave {
+  0%, 100% { transform: scaleY(1); }
+  50% { transform: scaleY(1.8); }
+}
+
+.animate-pulse-custom { animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+.fade-in { animation: fadeIn 150ms ease-in-out; }
+.toast-in { animation: toastIn 0.3s ease-out forwards; }
+.wave-bar { animation: wave 0.8s infinite; transform-origin: bottom; }
+
+/* === SCROLLBAR === */
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+
+/* === COMMON UTILITIES === */
+.highlight-blue { background-color: #DBEAFE; border-radius: 4px; padding: 0 3px; }
+
+.btn-hover:hover { filter: brightness(0.95); transition: all 150ms ease-in-out; }
+
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.4);
+  backdrop-filter: blur(2px);
+  z-index: 999;
+}
+
+/* === WAVEFORM === */
+.waveform-bar {
+  width: 4px;
+  border-radius: 2px;
+  transition: height 0.3s ease;
+}
+
+/* === LAYOUT === */
+.app-layout {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+.app-content {
+  flex: 1;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+}

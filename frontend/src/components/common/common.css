@@ -1,0 +1,98 @@
+/* === SEARCH INPUT === */
+.search-input-wrapper {
+    position: relative;
+}
+
+.search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-secondary);
+    font-size: 13px;
+}
+
+.search-input {
+    width: 100%;
+    padding: 8px 12px 8px 36px;
+    background: var(--background);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-btn);
+    font-size: 13px;
+    outline: none;
+    transition: box-shadow 0.15s;
+}
+
+.search-input:focus {
+    box-shadow: 0 0 0 1px var(--primary);
+}
+
+/* === TOGGLE === */
+.toggle {
+    border-radius: 999px;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.toggle-md {
+    width: 40px;
+    height: 20px;
+}
+
+.toggle-sm {
+    width: 32px;
+    height: 16px;
+}
+
+.toggle-on {
+    background: var(--primary);
+}
+
+.toggle-off {
+    background: #D1D5DB;
+}
+
+.toggle-knob {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    background: #fff;
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+
+.toggle-md .toggle-knob {
+    width: 16px;
+    height: 16px;
+}
+
+.toggle-sm .toggle-knob {
+    width: 12px;
+    height: 12px;
+}
+
+.toggle-knob.active {
+    left: auto;
+    right: 2px;
+}
+
+/* === MODAL === */
+.modal-container {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-content {
+    background: #fff;
+    border-radius: 16px;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    z-index: 10;
+    position: relative;
+}

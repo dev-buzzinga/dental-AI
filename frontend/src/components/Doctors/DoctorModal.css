@@ -1,0 +1,334 @@
+.doctor-modal-stepper {
+    display: flex;
+    justify-content: space-between;
+    padding: 1.5rem 2rem;
+    background-color: #F9FAFB;
+    border-bottom: 1px solid var(--border);
+}
+
+.step-circle {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.step-circle-pending {
+    background: white;
+    border: 2px solid #D1D5DB;
+    color: #6B7280;
+}
+
+.step-circle-active {
+    background: var(--primary);
+    border: 2px solid var(--primary);
+    color: white;
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+
+.step-circle-done {
+    background: #10B981;
+    border: 2px solid #10B981;
+    color: white;
+}
+
+.step-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin-top: 0.5rem;
+}
+
+.step-label-pending {
+    color: #9CA3AF;
+}
+
+.step-label-active {
+    color: var(--primary);
+}
+
+.step-label-done {
+    color: #10B981;
+}
+
+.step-line {
+    height: 2px;
+    background: #E5E7EB;
+    flex: 1;
+    margin: 0 8px;
+    margin-top: 14px;
+}
+
+.step-line-done {
+    background: #10B981;
+}
+
+.doctor-form-label {
+    display: block;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 0.5rem;
+    margin-top: 1.25rem;
+}
+
+.doctor-form-label:first-child {
+    margin-top: 0;
+}
+
+.doctor-form-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    background-color: white;
+    transition: border-color 0.2s;
+}
+
+.doctor-form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+}
+
+.doctor-radio-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.doctor-radio-pill {
+    padding: 0.5rem 1rem;
+    border-radius: 2rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    background: white;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.doctor-radio-pill:hover {
+    background: #F3F4F6;
+}
+
+.doctor-radio-pill.selected {
+    background: var(--primary-light);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+/* Availability Grid in Modal */
+.avail-editor-row {
+    display: grid;
+    grid-template-columns: 80px 1fr auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem;
+    border-bottom: 1px solid #F3F4F6;
+}
+
+.avail-editor-row:last-child {
+    border-bottom: none;
+}
+
+.day-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+.day-toggle input {
+    cursor: pointer;
+}
+
+.time-range-picker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.time-input {
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    font-size: 0.8125rem;
+}
+
+.status-off {
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+/* Assigned Services Grid */
+.services-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 24px;
+    padding: 8px 0;
+}
+
+.service-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    padding: 4px 0;
+}
+
+.service-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--primary);
+}
+
+.service-label {
+    font-size: 0.875rem;
+    color: #374151;
+    font-weight: 500;
+}
+
+.field-error-text {
+    color: #DC2626;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.error-input {
+    border-color: #DC2626 !important;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-10px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.doctor-image-upload-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 0;
+}
+
+.doctor-image-preview-wrapper {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    border: 2px dashed #D1D5DB;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background-color: #F9FAFB;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.doctor-image-preview-wrapper:hover {
+    border-color: var(--primary);
+    background-color: #F3F4F6;
+}
+
+.doctor-image-preview {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.doctor-image-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    color: #9CA3AF;
+}
+
+.doctor-image-placeholder i {
+    font-size: 1.5rem;
+}
+
+.doctor-image-placeholder span {
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.remove-image-btn {
+    position: absolute;
+    top: 0;
+    right: 0;
+    background: #EF4444;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.upload-image-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--primary);
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.upload-image-label:hover {
+    text-decoration: underline;
+}
+
+/* Custom Scrollbar Styling */
+.custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary-light) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: var(--primary);
+    border-radius: 20px;
+    border: 3px solid transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background-color: var(--primary);
+}
+
+.off-days-step .add-off-day-btn {
+    padding: 6px 12px;
+    font-size: 13px;
+    background-color: var(--primary-light);
+    color: var(--primary);
+    border: 1px solid var(--primary);
+}

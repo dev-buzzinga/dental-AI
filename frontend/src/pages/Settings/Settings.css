@@ -1,0 +1,480 @@
+/* === SETTINGS SHARED === */
+.settings-page {
+    height: 100%;
+    overflow-y: auto;
+    padding: 24px;
+    background: var(--background);
+}
+
+.settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.settings-title {
+    font-weight: 700;
+    font-size: 20px;
+}
+
+.settings-subtitle {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+/* Stats Cards */
+.settings-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+}
+
+.stat-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 16px 20px;
+}
+
+.stat-card-value {
+    font-weight: 700;
+    font-size: 28px;
+    color: var(--text-primary);
+}
+
+.stat-card-label {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+/* Phone Numbers Table */
+.phone-table-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    overflow: hidden;
+}
+
+.phone-table-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.phone-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.phone-table th {
+    text-align: left;
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    font-weight: 600;
+    padding: 12px 16px;
+    background: #F9FAFB;
+    border-bottom: 1px solid var(--border);
+}
+
+.phone-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid #F3F4F6;
+    font-size: 14px;
+}
+
+.phone-num-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.phone-num-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 13px;
+}
+
+.phone-num-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.phone-status-active {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 12px;
+    background: #D1FAE5;
+    color: #065F46;
+    border-radius: 999px;
+}
+
+.phone-status-inactive {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 12px;
+    background: #FEE2E2;
+    color: #991B1B;
+    border-radius: 999px;
+}
+
+.phone-action-btn {
+    padding: 6px 10px;
+    background: none;
+    border: none;
+    color: #9CA3AF;
+    cursor: pointer;
+    transition: color 0.15s;
+}
+
+.phone-action-btn:hover {
+    color: var(--primary);
+}
+
+/* Configure Twilio */
+.twilio-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 24px;
+    max-width: 640px;
+}
+
+.twilio-form-group {
+    margin-bottom: 16px;
+}
+
+.twilio-label {
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: block;
+}
+
+.twilio-input {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-btn);
+    outline: none;
+    background: #fff;
+}
+
+.twilio-input:focus {
+    box-shadow: 0 0 0 1px var(--primary);
+}
+
+.twilio-input-with-copy {
+    display: flex;
+    gap: 8px;
+}
+
+.twilio-copy-btn {
+    padding: 10px 16px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-btn);
+    background: #fff;
+    cursor: pointer;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    transition: all 0.15s;
+}
+
+.twilio-copy-btn:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.twilio-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.twilio-test-btn {
+    padding: 10px 20px;
+    border: 2px solid var(--primary);
+    border-radius: var(--radius-btn);
+    background: #fff;
+    color: var(--primary);
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.15s;
+}
+
+.twilio-test-btn:hover {
+    background: var(--primary-light);
+}
+
+/* AI Agent */
+.ai-agent-layout {
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 24px;
+}
+
+.ai-agent-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 24px;
+}
+
+.ai-agent-section {
+    margin-bottom: 24px;
+}
+
+.ai-agent-section-title {
+    font-weight: 700;
+    font-size: 14px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.ai-agent-section-title i {
+    color: var(--primary);
+}
+
+/* Voice Picker */
+.voice-picker-btn {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-btn);
+    background: #fff;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: border-color 0.15s;
+}
+
+.voice-picker-btn:hover {
+    border-color: var(--primary);
+}
+
+.voice-picker-dropdown {
+    border: 1px solid var(--border);
+    border-radius: var(--radius-btn);
+    background: #fff;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    margin-top: 8px;
+    overflow: hidden;
+}
+
+.voice-picker-filters {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    border-bottom: 1px solid var(--border);
+}
+
+.voice-filter-btn {
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 12px;
+    border: 1px solid var(--border);
+    background: #fff;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.voice-filter-btn.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
+.voice-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.voice-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.15s;
+}
+
+.voice-item:hover {
+    background: #F9FAFB;
+}
+
+.voice-item.active {
+    background: var(--primary-light);
+}
+
+.voice-item-name {
+    font-size: 13px;
+}
+
+.voice-item-gender {
+    font-size: 10px;
+    color: var(--text-secondary);
+}
+
+/* Prompt Textarea */
+.ai-prompt-textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-btn);
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    resize: vertical;
+    line-height: 1.5;
+}
+
+.ai-prompt-textarea:focus {
+    box-shadow: 0 0 0 1px var(--primary);
+}
+
+.ai-prompt-counter {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-align: right;
+    margin-top: 4px;
+}
+
+/* Behaviour Toggles */
+.ai-behaviour-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #F3F4F6;
+}
+
+.ai-behaviour-label {
+    font-size: 14px;
+}
+
+.ai-behaviour-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* Preview Card */
+.ai-preview-card {
+    background: linear-gradient(135deg, #7C3AED 0%, #A855F7 100%);
+    border-radius: var(--radius-card);
+    padding: 24px;
+    color: #fff;
+    text-align: center;
+    margin-bottom: 16px;
+}
+
+.ai-preview-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 12px;
+    font-size: 24px;
+}
+
+.ai-preview-name {
+    font-weight: 700;
+    font-size: 18px;
+    margin-bottom: 4px;
+}
+
+.ai-preview-label {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+.ai-preview-play {
+    margin-top: 16px;
+    padding: 10px 24px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: var(--radius-btn);
+    color: #fff;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    backdrop-filter: blur(4px);
+    transition: background 0.15s;
+}
+
+.ai-preview-play:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Add Number Modal */
+.add-num-modal-body {
+    padding: 20px;
+}
+
+.add-num-toggle-group {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.add-num-toggle-card {
+    flex: 1;
+    padding: 16px;
+    border: 2px solid var(--border);
+    border-radius: var(--radius-card);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+}
+
+.add-num-toggle-card.selected {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.add-num-type-pills {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.add-num-type-pill {
+    padding: 6px 14px;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    font-size: 12px;
+    cursor: pointer;
+    background: #fff;
+    transition: all 0.15s;
+}
+
+.add-num-type-pill.selected {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}

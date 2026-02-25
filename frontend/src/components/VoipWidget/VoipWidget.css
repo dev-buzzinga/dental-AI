@@ -1,0 +1,474 @@
+.voip-fab {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 9999;
+    cursor: pointer;
+}
+
+.voip-fab-btn {
+    background: var(--primary);
+    color: #fff;
+    height: 48px;
+    padding: 0 20px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: var(--shadow-widget);
+    position: relative;
+    font-weight: 600;
+    font-size: 14px;
+    transition: filter 0.15s;
+}
+
+.voip-fab-btn:hover {
+    filter: brightness(0.95);
+}
+
+.voip-fab-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: var(--danger);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid #fff;
+}
+
+.voip-widget {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: #fff;
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-widget);
+    z-index: 9999;
+    overflow: hidden;
+    max-width: 340px;
+    width: 100%;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.voip-widget.closed {
+    opacity: 0;
+    transform: translateY(10px);
+    pointer-events: none;
+}
+
+.voip-widget.open {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+.voip-header {
+    background: var(--primary);
+    padding: 8px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.voip-header span {
+    color: #fff;
+    font-weight: 700;
+    font-size: 12px;
+}
+
+.voip-header button {
+    color: rgba(255, 255, 255, 0.8);
+    padding: 4px;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.voip-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    background: #fff;
+}
+
+.voip-tab {
+    flex: 1;
+    padding: 12px 0;
+    font-size: 14px;
+    color: var(--text-secondary);
+    text-align: center;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    background: none;
+    border-top: none;
+    border-left: none;
+    border-right: none;
+    transition: all 0.15s;
+}
+
+.voip-tab.active {
+    color: var(--primary);
+    font-weight: 700;
+    border-bottom-color: var(--primary);
+}
+
+/* Incoming */
+.voip-incoming-header {
+    background: var(--primary);
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.voip-incoming-header .left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.voip-caller-info {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.voip-avatar {
+    width: 48px;
+    height: 48px;
+    background: #E5E7EB;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    font-weight: 700;
+    font-size: 18px;
+    margin-bottom: 12px;
+}
+
+.voip-caller-name {
+    font-weight: 700;
+    font-size: 18px;
+    color: var(--text-primary);
+}
+
+.voip-caller-badge {
+    background: #D1FAE5;
+    color: #065F46;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 999px;
+    margin-top: 4px;
+}
+
+.voip-patient-stats {
+    margin: 0 12px;
+    padding: 12px;
+    background: #F3F4F6;
+    border-radius: 8px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 4px;
+    text-align: center;
+}
+
+.voip-stat-label {
+    font-size: 9px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: -0.02em;
+}
+
+.voip-stat-value {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.voip-stat-divider {
+    border-left: 1px solid #E5E7EB;
+    border-right: 1px solid #E5E7EB;
+}
+
+.voip-actions {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.voip-btn {
+    width: 100%;
+    padding: 12px 0;
+    border-radius: var(--radius-btn);
+    font-weight: 700;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: none;
+    cursor: pointer;
+    transition: filter 0.15s;
+}
+
+.voip-btn:hover {
+    filter: brightness(0.95);
+}
+
+.voip-btn-answer {
+    background: var(--success);
+    color: #fff;
+}
+
+.voip-btn-decline {
+    background: var(--danger);
+    color: #fff;
+}
+
+.voip-btn-end {
+    background: var(--danger);
+    color: #fff;
+}
+
+/* Active Call */
+.voip-active-header {
+    background: var(--primary);
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.voip-active-header .left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.voip-active-dot {
+    width: 8px;
+    height: 8px;
+    background: var(--success);
+    border-radius: 50%;
+}
+
+.voip-active-name {
+    color: #fff;
+    font-weight: 700;
+    max-width: 140px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.voip-timer {
+    color: #fff;
+    font-family: monospace;
+    font-size: 14px;
+}
+
+.voip-call-info {
+    margin: 12px;
+    padding: 12px;
+    background: #F3F4F6;
+    border-radius: 8px;
+}
+
+.voip-call-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.voip-call-info-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.voip-call-info-value {
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.voip-call-info-doctor {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+.voip-doctor-avatar {
+    width: 24px;
+    height: 24px;
+    background: #D1D5DB;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.voip-controls {
+    padding: 8px;
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+}
+
+.voip-control-btn {
+    width: 44px;
+    height: 44px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.voip-control-btn.active {
+    background: var(--primary-light);
+    color: var(--primary);
+    border-color: var(--primary);
+}
+
+.voip-note-section {
+    padding: 0 12px;
+    overflow: hidden;
+    transition: max-height 0.3s;
+}
+
+.voip-note-textarea {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-btn);
+    padding: 8px;
+    font-size: 14px;
+    outline: none;
+    resize: none;
+}
+
+/* Dialpad */
+.voip-dialpad-header {
+    background: var(--primary);
+    padding: 16px;
+    text-align: center;
+}
+
+.voip-dialpad-header span {
+    color: #fff;
+    font-weight: 700;
+}
+
+.voip-dialpad-search {
+    padding: 12px;
+}
+
+.voip-dialpad-grid {
+    padding: 0 16px 16px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+}
+
+.voip-dial-key {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-btn);
+    height: 52px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.voip-dial-key:hover {
+    background: #F9FAFB;
+}
+
+.voip-dial-key .digit {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.voip-dial-key .letters {
+    font-size: 9px;
+    color: #9CA3AF;
+}
+
+.voip-call-fab {
+    display: flex;
+    justify-content: center;
+    padding-bottom: 24px;
+}
+
+.voip-call-fab button {
+    width: 56px;
+    height: 56px;
+    background: var(--success);
+    color: #fff;
+    border-radius: 50%;
+    border: none;
+    font-size: 20px;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    cursor: pointer;
+    transition: filter 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.voip-call-fab button:hover {
+    filter: brightness(0.95);
+}
+
+.voip-search-results {
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    top: 52px;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-btn);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+    max-height: 192px;
+    overflow-y: auto;
+}
+
+.voip-search-result {
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #F3F4F6;
+    transition: background 0.15s;
+}
+
+.voip-search-result:hover {
+    background: #F9FAFB;
+}
+
+.voip-search-result:last-child {
+    border-bottom: none;
+}
