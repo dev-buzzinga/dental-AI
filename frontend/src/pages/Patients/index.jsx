@@ -5,7 +5,7 @@ import { AuthContext } from '../../context/AuthContext';
 import { SearchInput } from '../../components/common/SearchInput';
 import { useToast } from '../../components/Toast/Toast';
 import PatientModal from '../../components/Patients/PatientModal';
-import './Patients.css';
+import '../../styles/Patients.css';
 
 const PatientsPage = () => {
     const { user } = useContext(AuthContext);

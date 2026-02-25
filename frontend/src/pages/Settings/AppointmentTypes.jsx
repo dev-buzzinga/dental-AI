@@ -4,8 +4,8 @@ import { AuthContext } from '../../context/AuthContext';
 import { SearchInput } from '../../components/common/SearchInput';
 import { useToast } from '../../components/Toast/Toast';
 import AppointmentTypeModal from '../../components/Settings/AppointmentTypeModal';
-import './Settings.css';
-import '../Patients/Patients.css'; // Reusing some table and header styles
+import '../../styles/Settings.css';
+import '../../styles/Patients.css'; // Reusing some table and header styles
 
 const AppointmentTypes = () => {
     const { user } = useContext(AuthContext);
@@ -156,7 +156,7 @@ const AppointmentTypes = () => {
                                             <button className="btn-outline" onClick={(e) => handleEditType(t, e)} style={{ padding: '6px 12px', fontSize: 13 }}>
                                                 <i className="fas fa-edit" />
                                             </button>
-                                            <button className="btn-outline" onClick={(e) => handleDeleteType(t.id, e)} style={{ padding: '6px 12px', fontSize: 13}}>
+                                            <button className="btn-outline" onClick={(e) => handleDeleteType(t.id, e)} style={{ padding: '6px 12px', fontSize: 13 }}>
                                                 <i className="fas fa-trash" />
                                             </button>
                                         </div>

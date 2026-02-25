@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { initialSmsData } from '../../data/dummyData';
 import { SearchInput } from '../../components/common/SearchInput';
 import { Toggle } from '../../components/common/SearchInput';
-import './SMS.css';
+import '../../styles/SMS.css';
 
 const SMSPage = () => {
     const [activeSMSId, setActiveSMSId] = useState('EH');

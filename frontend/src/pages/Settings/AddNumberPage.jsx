@@ -3,7 +3,7 @@ import { initialPhoneNumbers, initialDoctors } from '../../data/dummyData';
 import { SearchInput } from '../../components/common/SearchInput';
 import { Modal, Toggle } from '../../components/common/SearchInput';
 import { useToast } from '../../components/Toast/Toast';
-import './Settings.css';
+import '../../styles/Settings.css';
 
 const AddNumberPage = () => {
     const [phoneNumbers, setPhoneNumbers] = useState(initialPhoneNumbers);

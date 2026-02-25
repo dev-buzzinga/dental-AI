@@ -5,7 +5,7 @@ import { AuthContext } from '../../context/AuthContext';
 import { useToast } from '../../components/Toast/Toast';
 import AddAppointmentModal from '../../components/Patients/AddAppointmentModal';
 import PatientModal from '../../components/Patients/PatientModal';
-import './Patients.css';
+import '../../styles/Patients.css';
 
 const PatientDetail = () => {
     const { id } = useParams();

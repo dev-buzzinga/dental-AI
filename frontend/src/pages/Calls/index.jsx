@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { callLog } from '../../data/dummyData';
 import { SearchInput } from '../../components/common/SearchInput';
-import './Calls.css';
+import '../../styles/Calls.css';
 
 const waveformHeights = Array.from({ length: 80 }, () => Math.floor(Math.random() * 40) + 8);
 

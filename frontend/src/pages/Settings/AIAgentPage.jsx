@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { voices } from '../../data/dummyData';
 import { Toggle } from '../../components/common/SearchInput';
 import { useToast } from '../../components/Toast/Toast';
-import './Settings.css';
+import '../../styles/Settings.css';
 
 const defaultPrompt = `You are a professional dental practice AI assistant for Smile Dental. Your role is to handle incoming calls and SMS messages. Be warm, empathetic, and efficient. Always:
 

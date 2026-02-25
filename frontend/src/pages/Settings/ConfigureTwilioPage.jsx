@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useToast } from '../../components/Toast/Toast';
-import './Settings.css';
+import '../../styles/Settings.css';
 
 const ConfigureTwilioPage = () => {
     const [accountSid, setAccountSid] = useState('');

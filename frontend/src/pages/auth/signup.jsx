@@ -3,7 +3,7 @@ import { AuthContext } from "../../context/AuthContext";
 import { useToast } from "../../components/Toast/Toast";
 import { Link, useNavigate } from "react-router-dom";
 import logo from "../../assets/images/logo.png";
-import "./login.css";
+import "../../styles/login.css";
 
 const Signup = () => {
     const [name, setName] = useState("");

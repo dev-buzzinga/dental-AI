@@ -3,7 +3,7 @@ import { AuthContext } from "../../context/AuthContext";
 import { useToast } from "../../components/Toast/Toast";
 import logo from "../../assets/images/logo.png";
 import { Link } from "react-router-dom";
-import "./login.css";
+import "../../styles/login.css";
 
 const Login = () => {
     const [email, setEmail] = useState("");
