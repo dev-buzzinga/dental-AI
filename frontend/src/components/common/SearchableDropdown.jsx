@@ -44,15 +44,6 @@ const SearchableDropdown = ({
         setSearch("");
     };
 
-    const handleToggle = () => {
-        setIsOpen((prev) => !prev);
-        if (!isOpen) {
-            setTimeout(() => inputRef.current?.focus(), 50);
-        } else {
-            setSearch("");
-        }
-    };
-
     return (
         <div className="sd-container" ref={containerRef}>
             {label && (
@@ -60,31 +51,22 @@ const SearchableDropdown = ({
                     {label} {required && <span className="required">*</span>}
                 </label>
             )}
-            <div
-                className={`sd-trigger ${isOpen ? "sd-trigger-active" : ""}`}
-                onClick={handleToggle}
-            >
-                <span className={`sd-trigger-text ${!selectedOption ? "sd-placeholder" : ""}`}>
-                    {selectedOption ? (displayValue ? displayValue(selectedOption) : selectedOption.name) : placeholder}
-                </span>
-                <i className={`fas fa-chevron-${isOpen ? "up" : "down"} sd-chevron`} />
-            </div>
+            <div className="sd-input-wrapper">
+                <input
+                    ref={inputRef}
+                    type="search"
+                    autoComplete="off"
+                    className={`sd-search-input-unified ${isOpen ? "sd-input-active" : ""} ${selectedOption ? "sd-has-selection" : ""}`}
+                    placeholder={selectedOption ? (displayValue ? displayValue(selectedOption) : selectedOption.name) : placeholder}
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    onFocus={() => setIsOpen(true)}
+                    onClick={() => setIsOpen(true)}
+                />
+                <i className={`fas fa-chevron-${isOpen ? "up" : "down"} sd-chevron-unified`} />
 
-            {isOpen && (
-                <div className="sd-dropdown">
-                    <div className="sd-search-wrap">
-                        <i className="fas fa-search sd-search-icon" />
-                        <input
-                            ref={inputRef}
-                            type="text"
-                            className="sd-search-input"
-                            placeholder={placeholder}
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            onClick={(e) => e.stopPropagation()}
-                        />
-                    </div>
-                    <div className="sd-options custom-scrollbar">
+                {isOpen && (
+                    <div className="sd-dropdown-unified custom-scrollbar">
                         {filtered.length === 0 ? (
                             <div className="sd-no-results">No results found</div>
                         ) : (
@@ -101,8 +83,8 @@ const SearchableDropdown = ({
                             ))
                         )}
                     </div>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 };

@@ -346,13 +346,16 @@ const NewAppointmentModal = ({ isOpen, onClose, onSave, userId }) => {
                     <div className="modal-body custom-scrollbar">
                         <div className="appt-form-grid">
                             {/* Time Zone */}
-                            <div className="appt-form-group full-width">
-                                <label>Time Zone <span className="required">*</span></label>
-                                <select name="timezone" value={formData.timezone} onChange={handleChange} required>
-                                    {TIMEZONES.map((tz) => (
-                                        <option key={tz.value} value={tz.value}>{tz.label}</option>
-                                    ))}
-                                </select>
+                            <div className="appt-form-group full-width" style={{ position: 'relative' }}>
+                                <SearchableDropdown
+                                    label="Time Zone"
+                                    required
+                                    placeholder="Search timezone..."
+                                    options={TIMEZONES.map(tz => ({ id: tz.value, name: tz.label }))}
+                                    value={formData.timezone}
+                                    onChange={(tz) => setFormData(prev => ({ ...prev, timezone: tz.id }))}
+                                    searchKeys={["name"]}
+                                />
                             </div>
 
                             {/* Meeting Date */}
