@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "../../config/supabase";
 import SearchableDropdown from "../common/SearchableDropdown";
 import { useToast } from "../Toast/Toast";
+import "./calenderModel.css"
 
 const TIMEZONES = [
     { value: "America/New_York", label: "Eastern Time (ET)" },

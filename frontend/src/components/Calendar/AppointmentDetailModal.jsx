@@ -1,3 +1,4 @@
+import "./calenderModel.css"
 const AppointmentDetailModal = ({ isOpen, onClose, appointment, doctorMap, typeMap }) => {
     if (!isOpen || !appointment) return null;
 
