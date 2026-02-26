@@ -45,17 +45,22 @@ const PatientsPage = () => {
 
     const handleSavePatient = async (formData) => {
         try {
+            const dataToUpdate = { ...formData };
+            if (dataToUpdate.next_appointment == "") {
+                delete dataToUpdate.next_appointment;
+            }
             if (editingPatient) {
+
                 const { error } = await supabase
                     .from('patients')
-                    .update({ ...formData })
+                    .update(dataToUpdate)
                     .eq('id', editingPatient.id);
                 if (error) throw error;
                 showToast("Patient updated successfully!", "success");
             } else {
                 const { error } = await supabase
                     .from('patients')
-                    .insert([{ ...formData, user_id: user.id }]);
+                    .insert([{ ...dataToUpdate, user_id: user.id }]);
                 if (error) throw error;
                 showToast("Patient added successfully!", "success");
             }

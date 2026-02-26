@@ -71,9 +71,14 @@ const PatientDetail = () => {
 
     const handleSavePatientDetails = async (formData) => {
         try {
+            const dataToUpdate = { ...formData };
+            if (dataToUpdate.next_appointment == "") {
+                delete dataToUpdate.next_appointment;
+            }
+
             const { error } = await supabase
                 .from('patients')
-                .update({ ...formData })
+                .update(dataToUpdate)
                 .eq('id', id);
 
             if (error) throw error;

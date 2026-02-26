@@ -38,7 +38,7 @@ const PatientModal = ({ isOpen, onClose, onSave, patient = null }) => {
                 next_appointment: ""
             });
         }
-    }, [patient]);
+    }, [patient, isOpen]);
 
     if (!isOpen) return null;
 
