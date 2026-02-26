@@ -210,7 +210,7 @@ const PatientDetail = () => {
                     </div>
                 </div>
 
-                <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+                <div className="patient-detail-actions">
                     <button className="btn-outline"><i className="fas fa-phone" /> Call</button>
                     <button className="btn-outline"><i className="fas fa-message" /> SMS</button>
                     <button className="btn-outline" onClick={handleEditPatient}>

@@ -17,6 +17,22 @@ const DoctorsPage = () => {
     const [editingDoctor, setEditingDoctor] = useState(null);
     const showToast = useToast();
 
+    // 10 different colors for doctor avatars
+    const avatarColors = [
+        '#7C3AED', // Purple
+        '#3B82F6', // Blue
+        '#096e4d', // Green
+        '#F59E0B', // Amber
+        '#EF4444', // Red
+        '#14B8A6', // Teal
+        '#EC4899', // Pink
+        '#6366F1', // Indigo
+        '#06B6D4', // Cyan
+        '#8B5CF6'  // Violet
+    ];
+
+    const getAvatarColor = (index) => avatarColors[index % avatarColors.length];
+
     useEffect(() => {
         if (user) {
             fetchDoctors();
@@ -129,10 +145,10 @@ const DoctorsPage = () => {
                     </div>
                 ) : (
                     <div className="doctors-grid">
-                        {filteredDoctors.map((d) => (
+                        {filteredDoctors.map((d, index) => (
                             <div key={d.id} className="doctor-card" onClick={() => navigate(`/settings/doctors/${d.id}`)}>
                                 <div className="doctor-card-top">
-                                    <div className="doctor-card-avatar" style={{ background: d.image_url ? 'transparent' : 'var(--primary)', overflow: 'hidden' }}>
+                                    <div className="doctor-card-avatar" style={{ background: d.image_url ? 'transparent' : getAvatarColor(index), overflow: 'hidden' }}>
                                         {d.image_url ? (
                                             <img src={d.image_url} alt={d.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                         ) : (

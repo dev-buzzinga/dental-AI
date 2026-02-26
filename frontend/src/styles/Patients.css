@@ -174,8 +174,9 @@
     padding: 24px;
     display: flex;
     align-items: center;
-    gap: 0;
+    gap: 24px;
     margin-bottom: 24px;
+    flex-wrap: wrap;
 }
 
 .banner-main {
@@ -183,7 +184,7 @@
     align-items: center;
     padding-right: 32px;
     border-right: 1px solid #F3F4F6;
-    min-width: 180px;
+    flex: 0 1 auto;
 }
 
 .patient-detail-avatar {
@@ -217,12 +218,15 @@
     display: flex;
     flex: 1;
     align-items: center;
+    flex-wrap: wrap;
+    min-width: 300px;
 }
 
 .banner-section {
     padding: 0 32px;
     border-right: 1px solid #F3F4F6;
-    flex: 1;
+    flex: 1 1 auto;
+    min-width: 120px;
 }
 
 .banner-section:last-child {
@@ -242,6 +246,14 @@
     font-size: 15px;
     font-weight: 600;
     color: var(--text-primary);
+}
+
+.patient-detail-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 .patient-detail-grid {
@@ -534,4 +546,255 @@
 .btn-sm {
     padding: 6px 14px;
     font-size: 12px;
+}
+
+/* === RESPONSIVE STYLES === */
+@media (max-width: 1024px) {
+    .patients-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .patients-header-actions {
+        width: 100%;
+        justify-content: space-between;
+        flex-wrap: wrap;
+    }
+
+    .patients-table-container {
+        padding: 0 12px 16px;
+    }
+
+    .patient-detail {
+        padding: 16px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .patient-detail-banner {
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .banner-info-grid {
+        flex-wrap: wrap;
+        width: 100%;
+    }
+
+    .banner-section {
+        padding: 0 16px;
+        flex: 1 1 calc(50% - 8px);
+        min-width: 150px;
+    }
+
+    .patient-detail-actions {
+        flex-wrap: wrap;
+        width: 100%;
+    }
+
+    .patient-detail-actions .btn-outline,
+    .patient-detail-actions .btn-primary {
+        flex: 1 1 calc(50% - 4px);
+        min-width: 120px;
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 768px) {
+    .patients-header {
+        padding: 16px 12px;
+    }
+
+    .patients-header-left {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+
+    .patients-header-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .patients-header-actions .btn-primary {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .patients-table th,
+    .patients-table td {
+        padding: 10px 8px;
+        font-size: 12px;
+    }
+
+    .patient-detail {
+        padding: 16px 12px;
+    }
+
+    .patient-detail-banner {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 12px;
+        padding: 16px;
+    }
+
+    .banner-main {
+        padding-right: 0;
+        border-right: none;
+        width: 100%;
+        min-width: auto;
+    }
+
+    .banner-info-grid {
+        flex-direction: column;
+        width: 100%;
+        gap: 8px;
+        align-items: stretch;
+    }
+
+    .banner-section {
+        padding: 8px 0;
+        border-right: none;
+        border-bottom: 1px solid #F3F4F6;
+        width: 100%;
+        flex: none;
+    }
+
+    .banner-section:last-child {
+        border-bottom: none;
+    }
+
+    .patient-detail-actions {
+        margin-left: 0;
+        width: 100%;
+        gap: 6px;
+        flex-wrap: wrap;
+        justify-content: stretch;
+    }
+
+    .patient-detail-actions .btn-outline,
+    .patient-detail-actions .btn-primary {
+        flex: 1 1 calc(50% - 3px);
+        justify-content: center;
+        min-width: 100px;
+        font-size: 13px;
+        padding: 8px 12px;
+    }
+
+    .patient-detail-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+    }
+
+    .appointment-item-card {
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .appointment-date-block {
+        margin-right: 0;
+        width: 100%;
+    }
+
+    .appointment-info-main {
+        width: 100%;
+    }
+
+    .pagination-controls {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+}
+
+@media (max-width: 480px) {
+    .patients-title {
+        font-size: 18px;
+    }
+
+    .patients-header {
+        padding: 12px 8px;
+    }
+
+    .patient-detail {
+        padding: 12px 8px;
+    }
+
+    .patient-detail-banner {
+        padding: 12px;
+        gap: 8px;
+    }
+
+    .patient-detail-avatar {
+        width: 48px;
+        height: 48px;
+        font-size: 20px;
+        margin-right: 12px;
+    }
+
+    .patient-detail-name {
+        font-size: 16px;
+    }
+
+    .banner-label {
+        font-size: 10px;
+    }
+
+    .banner-value {
+        font-size: 14px;
+    }
+
+    .patient-detail-actions {
+        gap: 4px;
+    }
+
+    .patient-detail-actions .btn-outline,
+    .patient-detail-actions .btn-primary {
+        flex: 1 1 calc(50% - 2px);
+        min-width: 80px;
+        font-size: 12px;
+        padding: 6px 8px;
+    }
+
+    .patient-detail-actions i {
+        display: none;
+    }
+
+    .patient-info-card {
+        padding: 12px;
+    }
+
+    .patient-info-card-title {
+        font-size: 13px;
+        margin-bottom: 12px;
+    }
+
+    .patient-info-row {
+        font-size: 12px;
+        padding: 6px 0;
+    }
+
+    .appointment-item-card {
+        padding: 12px;
+    }
+
+    .appointment-date-block {
+        width: 50px;
+        height: 60px;
+        margin-right: 0;
+    }
+
+    .appt-day-num {
+        font-size: 16px;
+    }
+
+    .appointment-purpose {
+        font-size: 14px;
+    }
+
+    .appointment-doctor-tag {
+        font-size: 12px;
+    }
 }
