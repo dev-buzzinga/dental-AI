@@ -2,10 +2,12 @@ import express from "express";
 import cors from "cors";
 import routes from "./routes/index.js";
 import createError from 'http-errors';
+import logger from "morgan";
 const app = express();
 
 // Middlewares
 app.use(cors());
+app.use(logger("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 

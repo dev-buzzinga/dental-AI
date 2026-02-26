@@ -1,8 +1,8 @@
-import twilio from "twilio";
+// import twilio from "twilio";
 import { config } from "../config/env.js";
 
-const AccessToken = twilio.jwt.AccessToken;
-const VoiceGrant = AccessToken.VoiceGrant;
+// const AccessToken = twilio.jwt.AccessToken;
+// const VoiceGrant = AccessToken.VoiceGrant;
 
 export const generateToken = (identity) => {
     const token = new AccessToken(
