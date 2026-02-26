@@ -167,18 +167,26 @@ const NewAppointmentModal = ({ isOpen, onClose, onSave, userId }) => {
 
     const fetchDropdownData = async () => {
         try {
-            const [doctorsRes, patientsRes, typesRes] = await Promise.all([
-                supabase.from("doctors").select("id, name, weekly_availability, off_days").eq('user_id', userId),
-                supabase.from("patients").select("id, name, email, phone").eq('user_id', userId),
-                supabase.from("appointment_types").select("id, name").eq('user_id', userId),
-            ]);
-
+            // Sequential calls to avoid race conditions/API failure
+            const doctorsRes = await supabase
+                .from("doctors")
+                .select("id, name, weekly_availability, off_days")
+                .eq('user_id', userId);
             if (doctorsRes.error) throw doctorsRes.error;
-            if (patientsRes.error) throw patientsRes.error;
-            if (typesRes.error) throw typesRes.error;
-
             setDoctors(doctorsRes.data || []);
+
+            const patientsRes = await supabase
+                .from("patients")
+                .select("id, name, email, phone")
+                .eq('user_id', userId);
+            if (patientsRes.error) throw patientsRes.error;
             setPatients(patientsRes.data || []);
+
+            const typesRes = await supabase
+                .from("appointment_types")
+                .select("id, name")
+                .eq('user_id', userId);
+            if (typesRes.error) throw typesRes.error;
             setAppointmentTypes(typesRes.data || []);
         } catch (error) {
             console.error("Error fetching dropdown data:", error);

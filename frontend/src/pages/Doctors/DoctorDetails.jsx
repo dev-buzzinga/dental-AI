@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../config/supabase';
+import { AuthContext } from '../../context/AuthContext';
 import { useToast } from '../../components/Toast/Toast';
 import TimeOffModal from '../../components/Doctors/TimeOffModal';
 import AppointmentDetailModal from '../../components/Calendar/AppointmentDetailModal';
@@ -8,6 +9,7 @@ import AppointmentDetailModal from '../../components/Calendar/AppointmentDetailM
 const DoctorDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { user } = useContext(AuthContext);
     const [doctor, setDoctor] = useState(null);
     const [upcomingAppointments, setUpcomingAppointments] = useState([]);
     const [appointmentTypes, setAppointmentTypes] = useState([]);
@@ -20,16 +22,28 @@ const DoctorDetails = () => {
     const showToast = useToast();
 
     useEffect(() => {
-        if (id) {
-            fetchDoctorDetails();
-            fetchUpcomingAppointments();
-            fetchAppointmentTypes();
+        if (id && user) {
+            fetchAllData();
         }
-    }, [id]);
+    }, []);
+
+    const fetchAllData = async () => {
+        try {
+            setLoading(true);
+
+            // Sequential calls to avoid race conditions and ensure data consistency
+            await fetchDoctorDetails();
+            await fetchUpcomingAppointments();
+            await fetchAppointmentTypes();
+        } catch (error) {
+            console.error("Error fetching doctor page data:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const fetchDoctorDetails = async () => {
         try {
-            setLoading(true);
             const { data, error } = await supabase
                 .from('doctors')
                 .select('*')
@@ -41,8 +55,6 @@ const DoctorDetails = () => {
             setTempAvail(data.weekly_availability || {});
         } catch (error) {
             showToast(error.message, "error");
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -69,7 +81,8 @@ const DoctorDetails = () => {
         try {
             const { data, error } = await supabase
                 .from('appointment_types')
-                .select('*').eq('user_id', user.id);
+                .select('*')
+                .eq('user_id', user.id);
             if (error) throw error;
             setAppointmentTypes(data || []);
         } catch (error) {
@@ -236,25 +249,35 @@ const DoctorDetails = () => {
                         <div className="doctor-info-card">
                             <div className="doctor-info-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
                                 <div className="doctor-info-card-title" style={{ marginBottom: 0 }}>Weekly Availability</div>
-                                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                                <div className="doctor-card-header-actions">
                                     <button
-                                        style={{ border: 'none', background: 'none', color: 'var(--primary)', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                        className="btn-card-action btn-card-action-primary"
                                         onClick={() => setIsTimeOffModalOpen(true)}
                                     >
                                         <i className="fas fa-calendar-alt" />
                                         Add Time Off
                                     </button>
                                     {!isEditingAvail ? (
-                                        <button style={{ border: 'none', background: 'none', color: 'var(--primary)', fontSize: 13, fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }} onClick={() => setIsEditingAvail(true)}>
+                                        <button
+                                            className="btn-card-action btn-card-action-primary"
+                                            onClick={() => setIsEditingAvail(true)}
+                                        >
                                             <i className="fas fa-edit" />
                                             Edit Availability
                                         </button>
                                     ) : (
                                         <div style={{ display: 'flex', gap: 8 }}>
-                                            <button style={{ border: 'none', background: 'none', color: 'var(--text-secondary)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }} onClick={() => { setIsEditingAvail(false); setTempAvail(doctor.weekly_availability); }}>
+                                            <button
+                                                className="btn-card-action btn-card-action-secondary"
+                                                onClick={() => { setIsEditingAvail(false); setTempAvail(doctor.weekly_availability); }}
+                                            >
                                                 Cancel
                                             </button>
-                                            <button style={{ border: 'none', background: 'none', color: 'var(--primary)', fontSize: 13, fontWeight: 600, cursor: 'pointer' }} onClick={handleSaveAvail} disabled={saveLoading}>
+                                            <button
+                                                className="btn-card-action btn-card-action-primary"
+                                                onClick={handleSaveAvail}
+                                                disabled={saveLoading}
+                                            >
                                                 {saveLoading ? "Saving..." : "Save"}
                                             </button>
                                         </div>

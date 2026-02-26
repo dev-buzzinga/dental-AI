@@ -64,7 +64,7 @@ const Signup = () => {
                         <input
                             id="email"
                             type="email"
-                            placeholder="kaushik.hegde@gmail.com"
+                            placeholder="Enter Your Email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             autoComplete="off"
@@ -77,7 +77,7 @@ const Signup = () => {
                             <input
                                 id="password"
                                 type={showPassword ? "text" : "password"}
-                                placeholder="••••••••"
+                                placeholder="Enter Your Password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 autoComplete="off"

@@ -32,25 +32,29 @@ const CalendarPage = () => {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const [apptsRes, doctorsRes, typesRes] = await Promise.all([
-                supabase
-                    .from('doctors_appointments')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .order('meeting_date', { ascending: false }),
-                supabase.from('doctors').select('id, name').eq('user_id', user.id),
-                supabase.from('appointment_types').select('id, name').eq('user_id', user.id),
-            ]);
-
+            // Sequential calls to avoid race conditions/API failure
+            const apptsRes = await supabase
+                .from('doctors_appointments')
+                .select('*')
+                .eq('user_id', user.id)
+                .order('meeting_date', { ascending: false });
             if (apptsRes.error) throw apptsRes.error;
             setAppointments(apptsRes.data || []);
 
+            const doctorsRes = await supabase
+                .from('doctors')
+                .select('id, name')
+                .eq('user_id', user.id);
             if (doctorsRes.error) throw doctorsRes.error;
             const docList = doctorsRes.data || [];
             setDoctors(docList);
             // Select all doctors by default
             setSelectedDoctors(new Set(docList.map(d => d.id)));
 
+            const typesRes = await supabase
+                .from('appointment_types')
+                .select('id, name')
+                .eq('user_id', user.id);
             if (typesRes.error) throw typesRes.error;
             setAppointmentTypes(typesRes.data || []);
         } catch (error) {

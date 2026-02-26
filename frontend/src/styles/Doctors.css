@@ -179,7 +179,7 @@
 }
 
 .doctor-detail-badge {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
     padding: 6px 12px;
     background: #fff;
@@ -580,4 +580,69 @@
 .appointments-list::-webkit-scrollbar-thumb {
     background: #E5E7EB;
     border-radius: 3px;
+}
+
+/* Action Buttons in Cards */
+.doctor-card-header-actions {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.btn-card-action {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid transparent;
+    line-height: 1;
+}
+
+.btn-card-action i {
+    font-size: 14px;
+}
+
+.btn-card-action-primary {
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+.btn-card-action-primary:hover {
+    background: var(--primary-light);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.btn-card-action-secondary {
+    background: #F8FAFC;
+    color: #64748B;
+    border-color: #E2E8F0;
+}
+
+.btn-card-action-secondary:hover {
+    background: #F1F5F9;
+    color: #1E293B;
+    border-color: #CBD5E1;
+}
+
+.btn-card-action-ghost {
+    background: transparent;
+    color: var(--primary);
+    padding: 8px 10px;
+}
+
+.btn-card-action-ghost:hover {
+    background: var(--primary-light);
+}
+
+.btn-card-action:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none !important;
+    box-shadow: none !important;
 }
