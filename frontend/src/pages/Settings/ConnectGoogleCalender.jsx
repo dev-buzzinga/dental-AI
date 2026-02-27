@@ -85,15 +85,16 @@ const ConnectGoogleCalender = () => {
     };
 
     return (
-        <div className="settings-page custom-scrollbar">
-            <div className="settings-header">
-                <div>
-                    <h2 className="settings-title">Google Calendar</h2>
-                    <p className="settings-subtitle">Connect your doctor's Google Calendar to sync appointments</p>
+        <div className="connect-calendar-page custom-scrollbar">
+            <div className="practice-header-section">
+                <div className="practice-header-content">
+                    <div>
+                        <h2 className="settings-title">Google Calendar</h2>
+                    </div>
                 </div>
             </div>
 
-            <div className="phone-table-card" style={{ padding: '24px', maxWidth: '600px', overflow: 'visible' }}>
+            <div className="phone-table-card" style={{ padding: '24px', maxWidth: '600px', overflow: 'visible', margin: '24px' }}>
                 <div style={{ marginBottom: '20px' }}>
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-end' }}>
                         <div style={{ flex: 1 }}>

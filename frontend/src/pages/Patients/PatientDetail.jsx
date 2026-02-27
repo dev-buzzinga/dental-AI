@@ -114,7 +114,7 @@ const PatientDetail = () => {
                 // Insert new
                 const { error } = await supabase
                     .from('patients_appointment_history')
-                    .insert([{ ...appointmentData, patient_id: id }]);
+                    .insert({ ...appointmentData, patient_id: id });
 
                 if (error) throw error;
                 showToast("Appointment added successfully", "success");

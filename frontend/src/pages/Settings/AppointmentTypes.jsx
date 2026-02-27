@@ -64,7 +64,7 @@ const AppointmentTypes = () => {
             } else {
                 const { error } = await supabase
                     .from('appointment_types')
-                    .insert([{ ...dataToSave, user_id: user.id }]);
+                    .insert({ ...dataToSave, user_id: user.id });
                 if (error) throw error;
                 showToast("Appointment type added successfully!", "success");
             }

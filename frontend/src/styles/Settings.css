@@ -23,6 +23,24 @@
     color: var(--text-secondary);
 }
 
+/* Practice Header Section */
+.practice-header-section {
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    padding: 20px 24px;
+}
+
+.practice-header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.practice-header-content>div:first-child {
+    flex: 1;
+}
+
 /* Stats Cards */
 .settings-stats {
     display: grid;
@@ -477,4 +495,144 @@
     background: var(--primary);
     color: #fff;
     border-color: var(--primary);
+}
+
+/* Practice Details */
+.practice-details-layout {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+    margin-bottom: 24px;
+    padding: 24px;
+}
+
+.practice-details-layout .practice-card:first-child {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 1200px) {
+    .practice-details-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .practice-details-layout .practice-card:first-child {
+        grid-column: 1;
+    }
+}
+
+@media (max-width: 768px) {
+    .practice-details-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .practice-details-layout .practice-card:first-child {
+        grid-column: 1;
+    }
+}
+
+.practice-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.practice-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.practice-card-title {
+    font-size: 15px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.practice-card-title i {
+    color: var(--primary);
+}
+
+.practice-card-body {
+    margin-top: 4px;
+}
+
+.practice-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px 16px;
+}
+
+.practice-form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.practice-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 6px;
+    color: var(--text-primary);
+}
+
+.practice-input {
+    width: 100%;
+    padding: 9px 12px;
+    font-size: 14px;
+    border-radius: var(--radius-btn);
+    border: 1px solid var(--border);
+    outline: none;
+    background: #fff;
+}
+
+.practice-input:focus {
+    box-shadow: 0 0 0 1px var(--primary);
+}
+
+.practice-type-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.practice-type-pill {
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: #fff;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.practice-type-pill.selected {
+    background: var(--primary-light);
+    color: var(--primary);
+    border-color: var(--primary-light);
+}
+
+.practice-actions {
+    margin-top: 8px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* Button Disabled State */
+.practice-details-page .btn-primary:disabled {
+    background-color: #D1D5DB;
+    color: grey;
+    cursor: not-allowed;
+    border-color: #D1D5DB;
+    opacity: 0.6;
+}
+
+.practice-details-page .btn-primary:disabled:hover {
+    background-color: #D1D5DB;
+    color: grey;
 }

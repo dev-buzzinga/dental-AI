@@ -60,7 +60,7 @@ const PatientsPage = () => {
             } else {
                 const { error } = await supabase
                     .from('patients')
-                    .insert([{ ...dataToUpdate, user_id: user.id }]);
+                    .insert({ ...dataToUpdate, user_id: user.id });
                 if (error) throw error;
                 showToast("Patient added successfully!", "success");
             }

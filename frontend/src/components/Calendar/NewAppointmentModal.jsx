@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "../../config/supabase";
+import appointmentService from "../../service/appointment";
 import SearchableDropdown from "../common/SearchableDropdown";
 import { useToast } from "../Toast/Toast";
 import "./calenderModel.css"
@@ -150,7 +151,7 @@ const INITIAL_FORM = {
     notes: "",
 };
 
-const NewAppointmentModal = ({ isOpen, onClose, onSave, userId }) => {
+const NewAppointmentModal = ({ isOpen, onClose, onCreated, userId }) => {
     const [formData, setFormData] = useState(INITIAL_FORM);
     const [doctors, setDoctors] = useState([]);
     const [patients, setPatients] = useState([]);
@@ -254,6 +255,13 @@ const NewAppointmentModal = ({ isOpen, onClose, onSave, userId }) => {
         const availStart = timeToMinutes(avail.start);
         const availEnd = timeToMinutes(avail.end);
 
+        // Basic sanity check: end time must be after start time (same day)
+        if (apptTo <= apptFrom) {
+            showToast("End time must be after start time.", "error");
+            setLoading(false);
+            return;
+        }
+
         if (apptFrom < availStart || apptTo > availEnd) {
             showToast(`Selected time is outside doctor's working hours (${avail.start} - ${avail.end}).`, "error");
             setLoading(false);
@@ -303,8 +311,28 @@ const NewAppointmentModal = ({ isOpen, onClose, onSave, userId }) => {
             notes: formData.notes,
         };
 
-        await onSave(payload);
-        setLoading(false);
+        // Small delay before calling backend API
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+
+        try {
+            const response = await appointmentService.createAppointment(payload);
+            if (response.data?.success) {
+                showToast(response.data.message || "Appointment created successfully", "success");
+                if (onCreated) {
+                    onCreated(response.data.data);
+                }
+            } else {
+                showToast(response.data?.message || "Failed to create appointment", "error");
+            }
+        } catch (error) {
+            const message =
+                error?.response?.data?.message ||
+                error?.message ||
+                "Failed to create appointment";
+            showToast(message, "error");
+        } finally {
+            setLoading(false);
+        }
     };
 
     if (!isOpen) return null;

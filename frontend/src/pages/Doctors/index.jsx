@@ -69,7 +69,7 @@ const DoctorsPage = () => {
             } else {
                 const { error } = await supabase
                     .from('doctors')
-                    .insert([{ ...formData, user_id: user.id }]);
+                    .insert({ ...formData, user_id: user.id });
                 if (error) throw error;
                 showToast("Doctor added successfully!", "success");
             }
