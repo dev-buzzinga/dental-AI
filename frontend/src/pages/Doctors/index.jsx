@@ -164,7 +164,11 @@ const DoctorsPage = () => {
                                 <div className="doctor-card-specialty">{d.specialty}</div>
                                 <div className="doctor-card-badges">
                                     <span className="doctor-badge-type">{d.type}</span>
-                                    <span className="doctor-badge-active">Active</span>
+                                    {d.calendar_connected && (
+                                        <span className="doctor-badge-calendar">
+                                            <i className="fab fa-google" /> Connected
+                                        </span>
+                                    )}
                                 </div>
                                 <button className="doctor-card-btn">
                                     View Details

@@ -101,19 +101,9 @@ const CalendarPage = () => {
         }
     };
 
-    const handleSaveAppointment = async (payload) => {
-        try {
-            const { error } = await supabase
-                .from('doctors_appointments')
-                .insert([payload]);
-
-            if (error) throw error;
-            showToast("Appointment created successfully!", "success");
-            setIsModalOpen(false);
-            fetchData();
-        } catch (error) {
-            showToast(error.message, "error");
-        }
+    const handleAppointmentCreated = () => {
+        fetchData();
+        setIsModalOpen(false);
     };
 
     const getDoctorColor = (idx) => DOCTOR_COLORS[idx % DOCTOR_COLORS.length];
@@ -202,7 +192,7 @@ const CalendarPage = () => {
             <NewAppointmentModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                onSave={handleSaveAppointment}
+                onCreated={handleAppointmentCreated}
                 userId={user?.id}
             />
 

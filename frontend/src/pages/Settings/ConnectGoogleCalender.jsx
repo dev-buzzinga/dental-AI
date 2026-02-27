@@ -3,7 +3,7 @@ import { supabase } from '../../config/supabase';
 import SearchableDropdown from '../../components/common/SearchableDropdown';
 import '../../styles/Settings.css';
 import { AuthContext } from '../../context/AuthContext';
-import googleService from '../../service/google';
+import appointmentService from '../../service/appointment';
 
 const ConnectGoogleCalender = () => {
     const { user } = useContext(AuthContext);
@@ -40,7 +40,7 @@ const ConnectGoogleCalender = () => {
         if (!selectedDoctor) return;
         try {
             setConnecting(true);
-            const response = await googleService.connectGoogle(selectedDoctor);
+            const response = await appointmentService.connectGoogle(selectedDoctor);
             const url = response?.data?.url;
             if (url) {
                 window.open(url, '_blank', 'noopener,noreferrer');

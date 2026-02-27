@@ -120,6 +120,23 @@
     color: var(--primary);
 }
 
+.doctor-badge-calendar {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: var(--primary-light);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid var(--primary);
+}
+
+.doctor-badge-calendar i {
+    font-size: 12px;
+}
+
 .doctor-card-btn {
     width: 100%;
     padding: 10px 0;
