@@ -133,6 +133,7 @@ const PatientsPage = () => {
                     <table className="patients-table">
                         <thead>
                             <tr>
+                                <th>S.No</th>
                                 <th>Patient</th>
                                 <th>Phone</th>
                                 <th>Date of Birth</th>
@@ -140,8 +141,11 @@ const PatientsPage = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredPatients.map((p) => (
+                            {filteredPatients.map((p, index) => (
                                 <tr key={p.id} onClick={() => showDetail(p.id)}>
+                                    <td>
+                                        <div style={{ fontWeight: 600 }}>{index + 1}</div>
+                                    </td>
                                     <td>
                                         <div className="patient-row-name">
                                             <div className="patient-row-avatar">{p.name.charAt(0)}</div>

@@ -3,12 +3,14 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 import './Sidebar.css';
 import logo from '../../assets/images/logo.png';
+import logo_icon from '../../assets/images/logo_icon.png';
 
 const Sidebar = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const { logout } = useContext(AuthContext);
     const [settingsOpen, setSettingsOpen] = useState(true);
+    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
 
     const handleLogout = async () => {
@@ -34,8 +36,8 @@ const Sidebar = () => {
 
     const settingsItems = [
         { path: '/settings/doctors', icon: 'fa-user-doctor', label: 'Doctors' },
-        { path: '/settings/appointment-types', icon: 'fa-calendar-check', label: 'Appointment Types' },
-        { path: '/settings/connect-google-calendar', icon: 'fa-calendar-plus', label: 'Connect Google Calendar' },
+        { path: '/settings/appointment-types', icon: 'fa-book', label: 'Appointment Types' },
+        { path: '/settings/connect-google-calendar', icon: 'fa-brands fa-google', label: 'Google Calendar' },
         { path: '/settings/practice-details', icon: 'fa-building', label: 'Practice Details' },
         // { path: '/settings/add-number', icon: 'fa-plus-circle', label: 'Add Number' },
         // { path: '/settings/configure-twilio', icon: 'fa-plug', label: 'Configure Twilio' },
@@ -43,12 +45,35 @@ const Sidebar = () => {
     ];
 
     return (
-        <div className="sidebar">
+        <div className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
             <div className="sidebar-nav">
-
-                <div className="sidebar-logo">
-                    <img src={logo} style={{ width: "100%" }} alt="DentalAI" />
+                <div className="sidebar-header">
+                    <div className="sidebar-logo">
+                        {sidebarCollapsed ? (
+                            <img src={logo_icon} alt="DentalAI Icon" />
+                        ) : (
+                            <img src={logo} alt="DentalAI" />
+                        )}
+                    </div>
+                    {!sidebarCollapsed && (
+                        <button
+                            className="sidebar-toggle-btn"
+                            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                            title="Collapse"
+                        >
+                            <i className="fas fa-chevron-left" />
+                        </button>
+                    )}
                 </div>
+                {sidebarCollapsed && (
+                    <button
+                        className="sidebar-toggle-icon-btn"
+                        onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+                        title="Expand"
+                    >
+                        <i className="fas fa-chevron-right" />
+                    </button>
+                )}
                 {navItems.map((item) => (
                     <div
                         key={item.path}

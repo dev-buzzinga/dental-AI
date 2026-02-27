@@ -139,14 +139,18 @@ const AppointmentTypes = () => {
                     <table className="patients-table">
                         <thead>
                             <tr>
+                                <th>S.No</th>
                                 <th>Name</th>
                                 <th>Duration (Mins)</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredTypes.map((t) => (
+                            {filteredTypes.map((t, index) => (
                                 <tr key={t.id}>
+                                    <td>
+                                        <div style={{ fontWeight: 600 }}>{index + 1}</div>
+                                    </td>
                                     <td>
                                         <div style={{ fontWeight: 600 }}>{t.name}</div>
                                     </td>
