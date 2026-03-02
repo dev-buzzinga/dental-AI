@@ -1,4 +1,5 @@
 import { google } from "googleapis";
+import { DateTime } from "luxon";
 import { supabase } from "../config/database.js";
 
 const oauth2Client = new google.auth.OAuth2(
@@ -45,7 +46,6 @@ export const googleCallback = async (req, res) => {
         if (!tokens.refresh_token) {
             console.log("No refresh token received");
         }
-        // Store refresh_token in Supabase
         const { data, error, count } = await supabase
             .from("doctors")
             .update({
@@ -70,31 +70,44 @@ export const createAppointment = async (req, res) => {
         const {
             user_id,
             timezone,
-            meeting_date,
-            from,
-            to,
+            start_time,
+            end_time,
             appointment_type_id,
             doctor_id,
             patient_details,
             notes
         } = req.body;
-
-        if (!user_id || !doctor_id || !meeting_date || !from || !to) {
+        console.log("From frontend start_time=>", start_time);
+        console.log("From frontend end_time=>", end_time);
+        if (!user_id || !doctor_id || !start_time || !end_time) {
             return res.status(400).json({
                 success: false,
-                message: "Missing required fields for appointment creation",
+                message: "Missing required fields: user_id, doctor_id, start_time, end_time",
             });
         }
 
-        // 1. Save appointment in doctors_appointments (same shape as FE previously used)
+        // Store UTC only. DB columns: start_time, end_time (TIMESTAMPTZ).
+        const startUTC = DateTime.fromISO(start_time).toUTC().toISO();
+        const endUTC = DateTime.fromISO(end_time).toUTC().toISO();
+        console.log("startUTC=>", startUTC);
+        console.log("endUTC=>", endUTC);
+        if (!startUTC || !endUTC) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid start_time or end_time ISO format",
+            });
+        }
+
+        const meeting_date = DateTime.fromISO(startUTC).toFormat("yyyy-MM-dd");
+        console.log("meeting_date=>", meeting_date);
         const { data: appointment, error: insertError } = await supabase
             .from("doctors_appointments")
             .insert({
                 user_id,
-                timezone,
+                timezone: timezone || null,
                 meeting_date,
-                from,
-                to,
+                start_time: startUTC,
+                end_time: endUTC,
                 appointment_type_id,
                 doctor_id,
                 patient_details,
@@ -111,7 +124,7 @@ export const createAppointment = async (req, res) => {
             });
         }
 
-        // 2. Fetch doctor
+        // 3. Fetch doctor
         const { data: doctor, error: doctorError } = await supabase
             .from("doctors")
             .select("*")
@@ -121,18 +134,18 @@ export const createAppointment = async (req, res) => {
 
         if (doctorError) {
             console.error("Error fetching doctor for appointment:", doctorError);
-            // Appointment is created even if doctor fetch fails
             return res.status(201).json({
                 success: true,
                 message: "Appointment created successfully",
                 data: appointment
             });
         }
-        console.log("doctor=>", doctor);
-        // 3. If Google connected → create event in background (do not block response)
+
+        const practiceTimezone = await getPracticeTimezone(user_id);
+        const eventTimezone = practiceTimezone || timezone || "UTC";
+
         if (doctor?.calendar_connected) {
-            console.log("Creating Google Calendar event");
-            createGoogleEvent(doctor, appointment).catch((googleError) => {
+            createGoogleEvent(doctor, appointment, eventTimezone).catch((googleError) => {
                 console.error("Error creating Google Calendar event:", googleError);
             });
         }
@@ -151,37 +164,26 @@ export const createAppointment = async (req, res) => {
     }
 };
 
-const buildDateTimeString = (dateStr, timeStr) => {
-    if (!dateStr || !timeStr) return null;
-
-    // Handle 12-hour format: "09:00 AM"
-    const match12 = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-    let hours;
-    let minutes;
-
-    if (match12) {
-        hours = parseInt(match12[1], 10);
-        minutes = parseInt(match12[2], 10);
-        const period = match12[3].toUpperCase();
-
-        if (period === "PM" && hours !== 12) hours += 12;
-        if (period === "AM" && hours === 12) hours = 0;
-    } else {
-        // Handle 24-hour format: "14:30"
-        const match24 = timeStr.match(/^(\d{1,2}):(\d{2})$/);
-        if (!match24) return null;
-
-        hours = parseInt(match24[1], 10);
-        minutes = parseInt(match24[2], 10);
+const getPracticeTimezone = async (user_id) => {
+    try {
+        const { data, error } = await supabase
+            .from("practice_details")
+            .select("address")
+            .eq("user_id", user_id)
+            .single();
+        if (error) throw error;
+        return data?.address?.time_zone ?? null;
+    } catch (error) {
+        console.error("Error fetching practice timezone:", error);
+        return null;
     }
-
-    const hh = String(hours).padStart(2, "0");
-    const mm = String(minutes).padStart(2, "0");
-
-    return `${dateStr}T${hh}:${mm}:00`;
 };
 
-const createGoogleEvent = async (doctor, appointment) => {
+/**
+ * Create Google Calendar event. appointment has start_time, end_time (UTC ISO).
+ * We send local time in practice timezone so Google displays correctly.
+ */
+const createGoogleEvent = async (doctor, appointment, timeZone) => {
     const oauth2Client = new google.auth.OAuth2(
         process.env.GOOGLE_CLIENT_ID,
         process.env.GOOGLE_CLIENT_SECRET,
@@ -197,22 +199,18 @@ const createGoogleEvent = async (doctor, appointment) => {
         auth: oauth2Client,
     });
 
-    const startDateTime = buildDateTimeString(appointment.meeting_date, appointment.from);
-    const endDateTime = buildDateTimeString(appointment.meeting_date, appointment.to);
+    const startDt = DateTime.fromISO(appointment.start_time, { zone: "utc" }).setZone(timeZone);
+    const endDt = DateTime.fromISO(appointment.end_time, { zone: "utc" }).setZone(timeZone);
 
-    if (!startDateTime || !endDateTime) {
-        console.error("Invalid date/time for Google Calendar event", {
-            meeting_date: appointment.meeting_date,
-            from: appointment.from,
-            to: appointment.to,
-        });
-        return;
-    }
+    const startDateTime = startDt.toFormat("yyyy-MM-dd'T'HH:mm:ss");
+    const endDateTime = endDt.toFormat("yyyy-MM-dd'T'HH:mm:ss");
 
     const summaryName =
         appointment.patient_details?.name ||
         appointment.patient_details?.patient_name ||
         "Patient";
+
+    const tz = timeZone || "UTC";
 
     await calendar.events.insert({
         calendarId: "primary",
@@ -220,11 +218,11 @@ const createGoogleEvent = async (doctor, appointment) => {
             summary: `Appointment - ${summaryName}`,
             start: {
                 dateTime: startDateTime,
-                timeZone: appointment.timezone || "Asia/Kolkata",
+                timeZone: tz,
             },
             end: {
                 dateTime: endDateTime,
-                timeZone: appointment.timezone || "Asia/Kolkata",
+                timeZone: tz,
             },
         },
     });

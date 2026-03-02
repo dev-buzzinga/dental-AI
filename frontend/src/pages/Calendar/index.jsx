@@ -5,6 +5,7 @@ import { useToast } from '../../components/Toast/Toast';
 import NewAppointmentModal from '../../components/Calendar/NewAppointmentModal';
 import CalendarGrid from '../../components/Calendar/CalendarGrid';
 import AppointmentDetailModal from '../../components/Calendar/AppointmentDetailModal';
+import { appointmentToDisplay } from '../../utils/appointmentDisplay';
 import '../../styles/Calendar.css';
 
 const DOCTOR_COLORS = [
@@ -32,29 +33,30 @@ const CalendarPage = () => {
     const fetchData = async () => {
         try {
             setLoading(true);
-            // Sequential calls to avoid race conditions/API failure
-            const apptsRes = await supabase
-                .from('doctors_appointments')
-                .select('*')
-                .eq('user_id', user.id)
-                .order('meeting_date', { ascending: false });
-            if (apptsRes.error) throw apptsRes.error;
-            setAppointments(apptsRes.data || []);
+            const [apptsRes, practiceRes, doctorsRes, typesRes] = await Promise.all([
+                supabase
+                    .from('doctors_appointments')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .order('start_time', { ascending: false }),
+                supabase
+                    .from('practice_details')
+                    .select('address')
+                    .eq('user_id', user.id)
+                    .maybeSingle(),
+                supabase.from('doctors').select('id, name').eq('user_id', user.id),
+                supabase.from('appointment_types').select('id, name').eq('user_id', user.id),
+            ]);
 
-            const doctorsRes = await supabase
-                .from('doctors')
-                .select('id, name')
-                .eq('user_id', user.id);
+            if (apptsRes.error) throw apptsRes.error;
+            const tz = practiceRes.data?.address?.time_zone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+            setAppointments((apptsRes.data || []).map((a) => ({ ...a, ...appointmentToDisplay(a, tz) })));
+
             if (doctorsRes.error) throw doctorsRes.error;
             const docList = doctorsRes.data || [];
             setDoctors(docList);
-            // Select all doctors by default
-            setSelectedDoctors(new Set(docList.map(d => d.id)));
+            setSelectedDoctors(new Set(docList.map((d) => d.id)));
 
-            const typesRes = await supabase
-                .from('appointment_types')
-                .select('id, name')
-                .eq('user_id', user.id);
             if (typesRes.error) throw typesRes.error;
             setAppointmentTypes(typesRes.data || []);
         } catch (error) {

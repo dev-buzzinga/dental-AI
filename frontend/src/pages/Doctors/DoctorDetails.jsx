@@ -5,6 +5,7 @@ import { AuthContext } from '../../context/AuthContext';
 import { useToast } from '../../components/Toast/Toast';
 import TimeOffModal from '../../components/Doctors/TimeOffModal';
 import AppointmentDetailModal from '../../components/Calendar/AppointmentDetailModal';
+import { appointmentToDisplay } from '../../utils/appointmentDisplay';
 
 const DoctorDetails = () => {
     const { id } = useParams();
@@ -60,18 +61,23 @@ const DoctorDetails = () => {
 
     const fetchUpcomingAppointments = async () => {
         try {
-            const today = new Date().toISOString().split('T')[0];
-            const { data, error } = await supabase
+            const nowUTC = new Date().toISOString();
+            let { data, error } = await supabase
                 .from('doctors_appointments')
                 .select('*')
                 .eq('doctor_id', id)
-                .gte('meeting_date', today)
-                .order('meeting_date', { ascending: true })
-                .order('from', { ascending: true })
+                .gte('start_time', nowUTC)
+                .order('start_time', { ascending: true })
                 .limit(10);
 
             if (error) throw error;
-            setUpcomingAppointments(data || []);
+            const { data: practice } = await supabase
+                .from('practice_details')
+                .select('address')
+                .eq('user_id', user.id)
+                .maybeSingle();
+            const tz = practice?.address?.time_zone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+            setUpcomingAppointments((data || []).map((a) => ({ ...a, ...appointmentToDisplay(a, tz) })));
         } catch (error) {
             console.error("Error fetching upcoming appointments:", error);
         }

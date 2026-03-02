@@ -1,6 +1,11 @@
-import "./calenderModel.css"
+import "./calenderModel.css";
+import { appointmentToDisplay } from "../../utils/appointmentDisplay";
+
 const AppointmentDetailModal = ({ isOpen, onClose, appointment, doctorMap, typeMap }) => {
     if (!isOpen || !appointment) return null;
+    const display = appointment.meeting_date && appointment.from && appointment.to
+        ? { meeting_date: appointment.meeting_date, from: appointment.from, to: appointment.to }
+        : appointmentToDisplay(appointment, appointment.timezone);
     const doctorName = doctorMap[appointment.doctor_id] || appointment.doctor_id || '—';
     const typeName = typeMap[appointment.appointment_type_id] || appointment.appointment_type_id || '—';
     const patient = appointment.patient_details || {};
@@ -28,8 +33,8 @@ const AppointmentDetailModal = ({ isOpen, onClose, appointment, doctorMap, typeM
                             <div className="appt-detail-item">
                                 <span className="appt-detail-label">Meeting Date</span>
                                 <span className="appt-detail-value">
-                                    {appointment.meeting_date
-                                        ? new Date(appointment.meeting_date + 'T00:00:00')
+                                    {display.meeting_date
+                                        ? new Date(display.meeting_date + 'T00:00:00')
                                             .toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
                                         : '—'}
                                 </span>
@@ -37,7 +42,7 @@ const AppointmentDetailModal = ({ isOpen, onClose, appointment, doctorMap, typeM
                             <div className="appt-detail-item">
                                 <span className="appt-detail-label">Time & Slot</span>
                                 <span className="appt-detail-value" style={{ color: 'var(--primary)', fontWeight: 700 }}>
-                                    {appointment.from || '—'} – {appointment.to || '—'}
+                                    {display.from || '—'} – {display.to || '—'}
                                 </span>
                             </div>
                             <div className="appt-detail-item">

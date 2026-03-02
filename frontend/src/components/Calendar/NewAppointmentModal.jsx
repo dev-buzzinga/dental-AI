@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { DateTime } from "luxon";
 import { supabase } from "../../config/supabase";
 import appointmentService from "../../service/appointment";
 import SearchableDropdown from "../common/SearchableDropdown";
@@ -25,8 +26,6 @@ const TIMEZONES = [
 
 const timeToMinutes = (timeStr) => {
     if (!timeStr) return 0;
-
-    // Handle 12-hour format: "09:00 AM"
     const match12 = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
     if (match12) {
         let [, h, m, period] = match12;
@@ -36,16 +35,27 @@ const timeToMinutes = (timeStr) => {
         if (period.toUpperCase() === "AM" && h === 12) h = 0;
         return h * 60 + m;
     }
-
-    // Handle 24-hour format: "14:30"
     const match24 = timeStr.match(/^(\d{1,2}):(\d{2})$/);
     if (match24) {
         const h = parseInt(match24[1], 10);
         const m = parseInt(match24[2], 10);
         return h * 60 + m;
     }
-
     return 0;
+};
+
+/** Parse "09:00 AM" or "14:30" to { hour, minute } (24h) */
+const parseTimeToHourMinute = (timeStr) => {
+    const mins = timeToMinutes(timeStr);
+    return { hour: Math.floor(mins / 60), minute: mins % 60 };
+};
+
+/** Build ISO string from date (YYYY-MM-DD), time string, and IANA zone */
+const toISOInZone = (dateStr, timeStr, zone) => {
+    const { hour, minute } = parseTimeToHourMinute(timeStr);
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const dt = DateTime.fromObject({ year: y, month: m, day: d, hour, minute, second: 0 }, { zone });
+    return dt.toISO();
 };
 
 const getDayName = (dateStr) => {
@@ -268,12 +278,23 @@ const NewAppointmentModal = ({ isOpen, onClose, onCreated, userId }) => {
             return;
         }
 
-        // 3. Check for Conflicts (Double Booking)
+        const userZone = formData.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+        const startISO = toISOInZone(formData.meeting_date, formData.from, userZone);
+        const endISO = toISOInZone(formData.meeting_date, formData.to, userZone);
+
+        if (!startISO || !endISO) {
+            showToast("Invalid date or time.", "error");
+            setLoading(false);
+            return;
+        }
+
+        // 3. Check for Conflicts (Double Booking) using UTC range
         const { data: conflicts, error: conflictError } = await supabase
             .from("doctors_appointments")
-            .select("id, from, to")
+            .select("id, start_time, end_time")
             .eq("doctor_id", selectedDoctor.id)
-            .eq("meeting_date", formData.meeting_date);
+            .lt("start_time", endISO)
+            .gt("end_time", startISO);
 
         if (conflictError) {
             showToast("Error checking for conflicts", "error");
@@ -281,14 +302,7 @@ const NewAppointmentModal = ({ isOpen, onClose, onCreated, userId }) => {
             return;
         }
 
-        const hasConflict = conflicts.some(c => {
-            const cFrom = timeToMinutes(c.from);
-            const cTo = timeToMinutes(c.to);
-            // Overlap check: (start1 < end2) and (start2 < end1)
-            return apptFrom < cTo && cFrom < apptTo;
-        });
-
-        if (hasConflict) {
+        if (conflicts?.length > 0) {
             showToast(`Doctor ${selectedDoctor.name} already has an appointment during this time.`, "error");
             setLoading(false);
             return;
@@ -297,9 +311,8 @@ const NewAppointmentModal = ({ isOpen, onClose, onCreated, userId }) => {
         const payload = {
             user_id: userId,
             timezone: formData.timezone,
-            meeting_date: formData.meeting_date,
-            from: formData.from,
-            to: formData.to,
+            start_time: startISO,
+            end_time: endISO,
             appointment_type_id: parseInt(formData.appointment_type_id, 10),
             doctor_id: selectedDoctor?.id,
             patient_details: {
@@ -310,9 +323,6 @@ const NewAppointmentModal = ({ isOpen, onClose, onCreated, userId }) => {
             },
             notes: formData.notes,
         };
-
-        // Small delay before calling backend API
-        await new Promise((resolve) => setTimeout(resolve, 1000));
 
         try {
             const response = await appointmentService.createAppointment(payload);
