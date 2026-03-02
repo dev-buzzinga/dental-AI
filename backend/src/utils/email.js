@@ -1,6 +1,6 @@
 import { config } from "../config/env.js";
 import nodemailer from "nodemailer";
-
+import axios from "axios";
 function createTransporter() {
     return nodemailer.createTransport({
         host: config.SMTP_HOST,
@@ -58,3 +58,42 @@ export async function sendEmail({ to, subject, text, html, inReplyTo }) {
         };
     }
 }
+
+
+export async function sendEmailWithApi(emailData) {
+    const { email, name, subject, html, text, attachments, from, fromName } = emailData;
+    const url = "https://api.brevo.com/v3/smtp/email";
+    // console.log("html==>", html);
+
+    const payload = {
+        sender: {
+            name: fromName || "Denstis AI Support",
+            email: from || "support@denstis.com",
+        },
+        to: [
+            {
+                email: email,
+                name: name || 'denstis',
+            },
+        ],
+        subject: subject,
+        ...(text ? { textContent: text } : {}),
+        ...(html ? { htmlContent: html } : {}),
+        ...(attachments ? { attachment: attachments } : {})
+    };
+
+    const headers = {
+        accept: "application/json",
+        "api-key": config.EMAIL_API_KEY,
+        "content-type": "application/json",
+    };
+
+    try {
+        const response = await axios.post(url, payload, { headers });
+        console.log("email send response==>", response.data);
+        return response.data;
+    } catch (error) {
+        console.log("email send error==>", error);
+        return error.response ? error.response.data : error.message;
+    }
+};

@@ -148,7 +148,7 @@ const TimePicker = ({ value, onChange, label, required }) => {
 };
 
 const INITIAL_FORM = {
-    timezone: "America/New_York",
+    timezone: "",
     meeting_date: "",
     from: "",
     to: "",
@@ -179,30 +179,45 @@ const NewAppointmentModal = ({ isOpen, onClose, onCreated, userId }) => {
 
     const fetchDropdownData = async () => {
         try {
-            // Sequential calls to avoid race conditions/API failure
             const doctorsRes = await supabase
                 .from("doctors")
                 .select("id, name, weekly_availability, off_days")
-                .eq('user_id', userId);
+                .eq("user_id", userId);
+
             if (doctorsRes.error) throw doctorsRes.error;
             setDoctors(doctorsRes.data || []);
 
             const patientsRes = await supabase
                 .from("patients")
                 .select("id, name, email, phone")
-                .eq('user_id', userId);
+                .eq("user_id", userId);
+
             if (patientsRes.error) throw patientsRes.error;
             setPatients(patientsRes.data || []);
 
             const typesRes = await supabase
                 .from("appointment_types")
                 .select("id, name")
-                .eq('user_id', userId);
+                .eq("user_id", userId);
+
             if (typesRes.error) throw typesRes.error;
             setAppointmentTypes(typesRes.data || []);
 
+            const practiceRes = await supabase
+                .from("practice_details")
+                .select("address")
+                .eq("user_id", userId)
+                .maybeSingle();
+
+            if (practiceRes.error) throw practiceRes.error;
+
             const tz = practiceRes.data?.address?.time_zone || "Asia/Kolkata";
             setPracticeTimezone(tz);
+            // Default timezone dropdown to practice timezone so payload timezone matches it
+            setFormData(prev => ({
+                ...prev,
+                timezone: tz,
+            }));
         } catch (error) {
             console.error("Error fetching dropdown data:", error);
         }
@@ -227,6 +242,36 @@ const NewAppointmentModal = ({ isOpen, onClose, onCreated, userId }) => {
         e.preventDefault();
         setLoading(true);
 
+        // ── Required field validation ──────────────────────────────────────
+        if (!formData.timezone) {
+            showToast("Please select a timezone", "error");
+            setLoading(false);
+            return;
+        }
+        if (!formData.meeting_date) {
+            showToast("Please select a meeting date", "error");
+            setLoading(false);
+            return;
+        }
+
+        if (!formData.appointment_type_id) {
+            showToast("Please select an appointment type", "error");
+            setLoading(false);
+            return;
+        }
+
+        if (!formData.from) {
+            showToast("Please select a start time", "error");
+            setLoading(false);
+            return;
+        }
+
+        if (!formData.to) {
+            showToast("Please select an end time", "error");
+            setLoading(false);
+            return;
+        }
+
         const selectedDoctor = doctors.find((d) => String(d.id) === String(formData.doctor_id));
         const selectedPatient = patients.find((p) => String(p.id) === String(formData.patient_id));
 
@@ -235,6 +280,13 @@ const NewAppointmentModal = ({ isOpen, onClose, onCreated, userId }) => {
             setLoading(false);
             return;
         }
+
+        if (!selectedPatient) {
+            showToast("Please select a patient", "error");
+            setLoading(false);
+            return;
+        }
+        // ──────────────────────────────────────────────────────────────────
 
         const apptFrom = timeToMinutes(formData.from);
         const apptTo = timeToMinutes(formData.to);

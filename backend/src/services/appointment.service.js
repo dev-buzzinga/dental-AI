@@ -1,7 +1,8 @@
 import { google } from "googleapis";
 import { DateTime } from "luxon";
 import { supabase } from "../config/database.js";
-import { sendEmail } from "../utils/email.js";
+import { sendEmailWithApi } from "../utils/email.js";
+import { config } from "../config/env.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import { promises as fs } from "fs";
@@ -24,37 +25,45 @@ export const connectGoogle = async (req, res) => {
                 message: "Doctor ID is required"
             });
         }
-        const authUrl = oauth2Client.generateAuthUrl({
-            access_type: "offline",
-            prompt: "consent",
-            scope: ["https://www.googleapis.com/auth/calendar"],
-            state: doctor_id
-        });
+
         const { data: doctor, error: doctorFetchError } = await supabase
             .from("doctors")
             .select("email")
             .eq("id", doctor_id)
             .single();
         if (doctorFetchError || !doctor) {
+            console.log("doctor not found");
             return res.status(400).json({
                 success: false,
                 message: "Doctor not found.",
             });
         }
 
+        const authUrl = oauth2Client.generateAuthUrl({
+            access_type: "offline",
+            prompt: "consent",
+            scope: ["https://www.googleapis.com/auth/calendar"],
+            state: doctor_id
+        });
+
         const templatePath = path.join(__dirname, "../utils/html/connect_calendar.html");
         let html = await fs.readFile(templatePath, "utf8");
-        html = html.replace(/\$\{authUrl\}/g, authUrl);
+        const logoUrl = config.LOGO_URL || "";
+        console.log("logoUrl==>", logoUrl);
+        
+        html = html.replace(/\$\{authUrl\}/g, authUrl).replace(/\$\{logoUrl\}/g, logoUrl);
 
         const text = `Please use the following link to connect your Google Calendar: ${authUrl}`;
 
-        const result = await sendEmail({
-            to: doctor.email,
-            subject: "Connect your Google Calendar",
+
+        let result = await sendEmailWithApi({
+            email: doctor.email,
+            subject: "Connect your Google Calendar to Denstis AI",
             text,
-            html
+            html,
         });
-        if (!result.success) {
+        console.log("result==>", result);
+        if (!result.messageId) {
             return res.status(500).json({
                 success: false,
                 message: "Failed to send email.",
@@ -113,8 +122,8 @@ export const createAppointment = async (req, res) => {
             patient_details,
             notes
         } = req.body;
-        console.log("From frontend start_time=>", start_time);
-        console.log("From frontend end_time=>", end_time);
+        // console.log("From frontend start_time=>", start_time);
+        // console.log("From frontend end_time=>", end_time);
         if (!user_id || !doctor_id || !start_time || !end_time) {
             return res.status(400).json({
                 success: false,
@@ -124,8 +133,8 @@ export const createAppointment = async (req, res) => {
 
         const startDt = DateTime.fromISO(start_time);
         const endDt = DateTime.fromISO(end_time);
-        console.log("From backend startDt=>", startDt);
-        console.log("From backend endDt=>", endDt);
+        // console.log("From backend startDt=>", startDt);
+        // console.log("From backend endDt=>", endDt);
         if (!startDt.isValid || !endDt.isValid) {
             return res.status(400).json({
                 success: false,

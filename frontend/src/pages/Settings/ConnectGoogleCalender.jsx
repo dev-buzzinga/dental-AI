@@ -41,7 +41,7 @@ const ConnectGoogleCalender = () => {
         try {
             setConnecting(true);
             const response = await appointmentService.connectGoogle(selectedDoctor);
-           
+
             if (response.status === 200) {
                 showToast('Successfully sent email on Doctor\'s email to connect Google Calendar', 'success');
             } else {

@@ -20,5 +20,7 @@ export const config = {
     // SMTP Configuration
     SMTP_HOST: process.env.SMTP_HOST || 'smtp.gmail.com',
     SMTP_PORT: parseInt(process.env.SMTP_PORT) || 587,
+    EMAIL_API_KEY: process.env.EMAIL_API_KEY,
+    LOGO_URL: process.env.LOGO_URL,
     // ================================================
 }
