@@ -15,7 +15,8 @@
     "googleapis": "^171.4.0",
     "http-errors": "^2.0.1",
     "luxon": "^3.7.2",
-    "morgan": "^1.10.1"
+    "morgan": "^1.10.1",
+    "nodemailer": "^8.0.1"
   },
   "devDependencies": {
     "nodemon": "^3.1.4"

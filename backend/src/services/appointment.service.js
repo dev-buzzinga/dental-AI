@@ -1,6 +1,13 @@
 import { google } from "googleapis";
 import { DateTime } from "luxon";
 import { supabase } from "../config/database.js";
+import { sendEmail } from "../utils/email.js";
+import path from "path";
+import { fileURLToPath } from "url";
+import { promises as fs } from "fs";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
@@ -23,14 +30,43 @@ export const connectGoogle = async (req, res) => {
             scope: ["https://www.googleapis.com/auth/calendar"],
             state: doctor_id
         });
+        const { data: doctor, error: doctorFetchError } = await supabase
+            .from("doctors")
+            .select("email")
+            .eq("id", doctor_id)
+            .single();
+        if (doctorFetchError || !doctor) {
+            return res.status(400).json({
+                success: false,
+                message: "Doctor not found.",
+            });
+        }
+
+        const templatePath = path.join(__dirname, "../utils/html/connect_calendar.html");
+        let html = await fs.readFile(templatePath, "utf8");
+        html = html.replace(/\$\{authUrl\}/g, authUrl);
+
+        const text = `Please use the following link to connect your Google Calendar: ${authUrl}`;
+
+        const result = await sendEmail({
+            to: doctor.email,
+            subject: "Connect your Google Calendar",
+            text,
+            html
+        });
+        if (!result.success) {
+            return res.status(500).json({
+                success: false,
+                message: "Failed to send email.",
+            });
+        }
         return res.status(200).json({
             success: true,
-            message: "Google Calendar connect URL generated successfully",
-            url: authUrl,
+            message: "Email sent on doctor's email successfully",
         });
     } catch (error) {
         console.error("Error connecting to Google Calendar:", error);
-        res.status(500).json({
+        return res.status(500).json({
             success: false,
             message: error.message
         });

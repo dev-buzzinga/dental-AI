@@ -13,5 +13,12 @@ export const config = {
     GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI,
     SUPABASE_URL: process.env.SUPABASE_URL,
     // SUPABASE_KEY: process.env.SUPABASE_KEY,
-    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY
+    SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    // ======Email credentials==========================================
+    EMAIL_USER: process.env.EMAIL_USER,
+    EMAIL_PASSWORD: process.env.EMAIL_PASSWORD,
+    // SMTP Configuration
+    SMTP_HOST: process.env.SMTP_HOST || 'smtp.gmail.com',
+    SMTP_PORT: parseInt(process.env.SMTP_PORT) || 587,
+    // ================================================
 }

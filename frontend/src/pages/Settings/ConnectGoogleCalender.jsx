@@ -4,14 +4,14 @@ import SearchableDropdown from '../../components/common/SearchableDropdown';
 import '../../styles/Settings.css';
 import { AuthContext } from '../../context/AuthContext';
 import appointmentService from '../../service/appointment';
-
+import { useToast } from '../../components/Toast/Toast';
 const ConnectGoogleCalender = () => {
     const { user } = useContext(AuthContext);
     const [doctors, setDoctors] = useState([]);
     const [selectedDoctor, setSelectedDoctor] = useState('');
     const [loading, setLoading] = useState(true);
     const [connecting, setConnecting] = useState(false);
-
+    const showToast = useToast();
     useEffect(() => {
         if (user) {
             fetchDoctors();
@@ -41,19 +41,18 @@ const ConnectGoogleCalender = () => {
         try {
             setConnecting(true);
             const response = await appointmentService.connectGoogle(selectedDoctor);
-            const url = response?.data?.url;
-            if (url) {
-                window.open(url, '_blank', 'noopener,noreferrer');
+           
+            if (response.status === 200) {
+                showToast('Successfully sent email on Doctor\'s email to connect Google Calendar', 'success');
             } else {
-                console.error('No Google auth URL returned from backend');
+                showToast('Failed to send email on doctor\'s email', 'error');
             }
         } catch (error) {
-            console.error('Error connecting to Google Calendar:', error);
+            showToast(error.message, 'error');
         } finally {
             setConnecting(false);
         }
-    };
-
+    }
     const renderDoctorAvatar = (doctor) => {
         if (doctor.image_url) {
             return (
@@ -123,8 +122,17 @@ const ConnectGoogleCalender = () => {
                             onClick={handleConnect}
                             disabled={!selectedDoctor || connecting}
                         >
-                            <i className="fab fa-google" style={{ marginRight: '8px' }} />
-                            {connecting ? 'Connecting...' : 'Connect with Google Calendar'}
+                            {connecting ? (
+                                <>
+                                    <i className="fas fa-spinner fa-spin" style={{ marginRight: '8px' }} />
+                                    Sending Email...
+                                </>
+                            ) : (
+                                <>
+                                    <i className="fab fa-google" style={{ marginRight: '8px' }} />
+                                    Connect with Google Calendar
+                                </>
+                            )}
                         </button>
                     </div>
                 </div>
