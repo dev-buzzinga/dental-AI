@@ -166,15 +166,16 @@ const NewAppointmentModal = ({ isOpen, onClose, onCreated, userId }) => {
     const [doctors, setDoctors] = useState([]);
     const [patients, setPatients] = useState([]);
     const [appointmentTypes, setAppointmentTypes] = useState([]);
+    const [practiceTimezone, setPracticeTimezone] = useState("Asia/Kolkata");
     const [loading, setLoading] = useState(false);
     const showToast = useToast();
 
     useEffect(() => {
-        if (isOpen) {
+        if (isOpen && userId) {
             setFormData(INITIAL_FORM);
             fetchDropdownData();
         }
-    }, [isOpen]);
+    }, [isOpen, userId]);
 
     const fetchDropdownData = async () => {
         try {
@@ -199,6 +200,9 @@ const NewAppointmentModal = ({ isOpen, onClose, onCreated, userId }) => {
                 .eq('user_id', userId);
             if (typesRes.error) throw typesRes.error;
             setAppointmentTypes(typesRes.data || []);
+
+            const tz = practiceRes.data?.address?.time_zone || "Asia/Kolkata";
+            setPracticeTimezone(tz);
         } catch (error) {
             console.error("Error fetching dropdown data:", error);
         }
@@ -232,55 +236,18 @@ const NewAppointmentModal = ({ isOpen, onClose, onCreated, userId }) => {
             return;
         }
 
-        // 1. Check Off Days
-        const offDays = selectedDoctor.off_days || [];
-
-        const isOffDay = offDays.some(odStr => {
-            try {
-                const od = JSON.parse(odStr);
-                const checkDate = new Date(formData.meeting_date + 'T00:00:00');
-                const from = new Date(od.from + 'T00:00:00');
-                const to = new Date(od.to + 'T00:00:00');
-                return checkDate >= from && checkDate <= to;
-            } catch (e) { return false; }
-        });
-
-        if (isOffDay) {
-            showToast(`Doctor ${selectedDoctor.name} is on leave on this day.`, "error");
-            setLoading(false);
-            return;
-        }
-
-        // 2. Check Weekly Availability
-        const dayName = getDayName(formData.meeting_date);
-        const avail = selectedDoctor.weekly_availability?.[dayName];
-        if (!avail || !avail.enabled) {
-            showToast(`Doctor ${selectedDoctor.name} is not available on ${dayName}s.`, "error");
-            setLoading(false);
-            return;
-        }
-
         const apptFrom = timeToMinutes(formData.from);
         const apptTo = timeToMinutes(formData.to);
-        const availStart = timeToMinutes(avail.start);
-        const availEnd = timeToMinutes(avail.end);
-
-        // Basic sanity check: end time must be after start time (same day)
         if (apptTo <= apptFrom) {
             showToast("End time must be after start time.", "error");
             setLoading(false);
             return;
         }
 
-        if (apptFrom < availStart || apptTo > availEnd) {
-            showToast(`Selected time is outside doctor's working hours (${avail.start} - ${avail.end}).`, "error");
-            setLoading(false);
-            return;
-        }
-
-        const userZone = formData.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-        const startISO = toISOInZone(formData.meeting_date, formData.from, userZone);
-        const endISO = toISOInZone(formData.meeting_date, formData.to, userZone);
+        // Build ISO in practice timezone. Conflict, leave and availability are validated on backend (UTC).
+        // Always interpret entered time as practice timezone (dropdown timezone is only stored, never used for conversion)
+        const startISO = toISOInZone(formData.meeting_date, formData.from, practiceTimezone);
+        const endISO = toISOInZone(formData.meeting_date, formData.to, practiceTimezone);
 
         if (!startISO || !endISO) {
             showToast("Invalid date or time.", "error");
@@ -288,26 +255,7 @@ const NewAppointmentModal = ({ isOpen, onClose, onCreated, userId }) => {
             return;
         }
 
-        // 3. Check for Conflicts (Double Booking) using UTC range
-        const { data: conflicts, error: conflictError } = await supabase
-            .from("doctors_appointments")
-            .select("id, start_time, end_time")
-            .eq("doctor_id", selectedDoctor.id)
-            .lt("start_time", endISO)
-            .gt("end_time", startISO);
-
-        if (conflictError) {
-            showToast("Error checking for conflicts", "error");
-            setLoading(false);
-            return;
-        }
-
-        if (conflicts?.length > 0) {
-            showToast(`Doctor ${selectedDoctor.name} already has an appointment during this time.`, "error");
-            setLoading(false);
-            return;
-        }
-
+        // Conflict, leave and availability validated on backend
         const payload = {
             user_id: userId,
             timezone: formData.timezone,

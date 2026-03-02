@@ -86,20 +86,60 @@ export const createAppointment = async (req, res) => {
             });
         }
 
-        // Store UTC only. DB columns: start_time, end_time (TIMESTAMPTZ).
-        const startUTC = DateTime.fromISO(start_time).toUTC().toISO();
-        const endUTC = DateTime.fromISO(end_time).toUTC().toISO();
-        console.log("startUTC=>", startUTC);
-        console.log("endUTC=>", endUTC);
-        if (!startUTC || !endUTC) {
+        const startDt = DateTime.fromISO(start_time);
+        const endDt = DateTime.fromISO(end_time);
+        console.log("From backend startDt=>", startDt);
+        console.log("From backend endDt=>", endDt);
+        if (!startDt.isValid || !endDt.isValid) {
             return res.status(400).json({
                 success: false,
                 message: "Invalid start_time or end_time ISO format",
             });
         }
 
+        const startUTC = startDt.toUTC().toISO();
+        const endUTC = endDt.toUTC().toISO();
+        if (endDt <= startDt) {
+            return res.status(400).json({
+                success: false,
+                message: "End time must be after start time.",
+            });
+        }
+
+        const practiceTimezone = await getPracticeTimezone(user_id);
+        const tz = practiceTimezone || "UTC";
+
+        const { data: doctor, error: doctorFetchError } = await supabase
+            .from("doctors")
+            .select("*")
+            .eq("user_id", user_id)
+            .eq("id", doctor_id)
+            .single();
+
+        if (doctorFetchError || !doctor) {
+            return res.status(400).json({
+                success: false,
+                message: "Doctor not found.",
+            });
+        }
+
+        const conflictError = await validateNoConflict(doctor_id, startUTC, endUTC);
+        if (conflictError) {
+            return res.status(400).json({ success: false, message: conflictError });
+        }
+
+        const leaveError = validateDoctorNotOnLeave(doctor, startUTC, tz);
+        if (leaveError) {
+            return res.status(400).json({ success: false, message: leaveError });
+        }
+
+        const availabilityError = validateDoctorAvailable(doctor, startUTC, endUTC, tz);
+        if (availabilityError) {
+            return res.status(400).json({ success: false, message: availabilityError });
+        }
+
         const meeting_date = DateTime.fromISO(startUTC).toFormat("yyyy-MM-dd");
-        console.log("meeting_date=>", meeting_date);
+
         const { data: appointment, error: insertError } = await supabase
             .from("doctors_appointments")
             .insert({
@@ -124,24 +164,6 @@ export const createAppointment = async (req, res) => {
             });
         }
 
-        // 3. Fetch doctor
-        const { data: doctor, error: doctorError } = await supabase
-            .from("doctors")
-            .select("*")
-            .eq("user_id", user_id)
-            .eq("id", doctor_id)
-            .single();
-
-        if (doctorError) {
-            console.error("Error fetching doctor for appointment:", doctorError);
-            return res.status(201).json({
-                success: true,
-                message: "Appointment created successfully",
-                data: appointment
-            });
-        }
-
-        const practiceTimezone = await getPracticeTimezone(user_id);
         const eventTimezone = practiceTimezone || timezone || "UTC";
 
         if (doctor?.calendar_connected) {
@@ -163,6 +185,110 @@ export const createAppointment = async (req, res) => {
         });
     }
 };
+
+// ---------- Validation helpers (all work in UTC / practice timezone) ----------
+
+/** Parse time string "09:00" or "09:00 AM" to minutes since midnight */
+function timeToMinutes(timeStr) {
+    if (!timeStr || typeof timeStr !== "string") return 0;
+    const match12 = timeStr.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (match12) {
+        let h = parseInt(match12[1], 10);
+        const m = parseInt(match12[2], 10);
+        const period = match12[3].toUpperCase();
+        if (period === "PM" && h !== 12) h += 12;
+        if (period === "AM" && h === 12) h = 0;
+        return h * 60 + m;
+    }
+    const match24 = timeStr.trim().match(/^(\d{1,2}):(\d{2})$/);
+    if (match24) {
+        const h = parseInt(match24[1], 10);
+        const m = parseInt(match24[2], 10);
+        return h * 60 + m;
+    }
+    return 0;
+}
+
+/** Day name from DateTime in given zone: "Mon", "Tue", ... "Sun" */
+function getDayName(dt) {
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    return days[dt.weekday % 7];
+}
+
+/**
+ * 1. Same doctor: no overlapping appointment (UTC).
+ * Returns error message string or null.
+ */
+async function validateNoConflict(doctor_id, startUTC, endUTC) {
+    const { data: existing } = await supabase
+        .from("doctors_appointments")
+        .select("id")
+        .eq("doctor_id", doctor_id)
+        .lt("start_time", endUTC)
+        .gt("end_time", startUTC);
+
+    if (existing && existing.length > 0) {
+        return "This doctor already has an appointment in this time slot. Please choose another time.";
+    }
+    return null;
+}
+
+/**
+ * 2. Doctor not on leave on appointment date (off_days: array of JSON strings with from, to dates).
+ * Appointment date is taken in practice timezone.
+ */
+function validateDoctorNotOnLeave(doctor, startUTC, practiceTimezone) {
+    const off_days = doctor.off_days || [];
+    const startInTz = DateTime.fromISO(startUTC, { zone: "utc" }).setZone(practiceTimezone);
+    const appointmentDateStr = startInTz.toFormat("yyyy-MM-dd");
+
+    for (const item of off_days) {
+        let od;
+        try {
+            od = typeof item === "string" ? JSON.parse(item) : item;
+        } catch {
+            continue;
+        }
+        const from = od.from;
+        const to = od.to;
+        if (!from || !to) continue;
+        if (appointmentDateStr >= from && appointmentDateStr <= to) {
+            const name = od.name ? ` (${od.name})` : "";
+            return `Doctor is on leave on this date${name}. Please choose another day.`;
+        }
+    }
+    return null;
+}
+
+/**
+ * 3. Doctor is available that day and time (weekly_availability: day-wise { enabled, start, end }).
+ * Start/end of appointment in practice timezone must fall within that day's slot.
+ */
+function validateDoctorAvailable(doctor, startUTC, endUTC, practiceTimezone) {
+    const weekly = doctor.weekly_availability || {};
+    const startInTz = DateTime.fromISO(startUTC, { zone: "utc" }).setZone(practiceTimezone);
+    const endInTz = DateTime.fromISO(endUTC, { zone: "utc" }).setZone(practiceTimezone);
+
+    const dayName = getDayName(startInTz);
+    const avail = weekly[dayName];
+
+    if (!avail || !avail.enabled) {
+        return `Doctor is not available on ${dayName}s. Please choose another day.`;
+    }
+
+    const apptStartMinutes = startInTz.hour * 60 + startInTz.minute;
+    const apptEndMinutes = endInTz.hour * 60 + endInTz.minute;
+    const slotStart = timeToMinutes(avail.start);
+    const slotEnd = timeToMinutes(avail.end);
+
+    if (apptStartMinutes < slotStart) {
+        return `Doctor is available from ${avail.start} on ${dayName}s. Please choose a time within working hours.`;
+    }
+    if (apptEndMinutes > slotEnd) {
+        return `Doctor is available until ${avail.end} on ${dayName}s. Please choose a time within working hours.`;
+    }
+    return null;
+}
 
 const getPracticeTimezone = async (user_id) => {
     try {
