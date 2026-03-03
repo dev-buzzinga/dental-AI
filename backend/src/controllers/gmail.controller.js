@@ -15,9 +15,7 @@ export const connectGmail = async (req, res) => {
 export const getReferralEmails = async (req, res) => {
     try {
         const userId = req.user.id;
-
         const threads = await gmailService.fetchReferralEmails(userId);
-
         return res.status(200).json({
             success: true,
             data: threads,
@@ -27,6 +25,23 @@ export const getReferralEmails = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: error?.message || "Failed to fetch referral emails",
+        });
+    }
+};
+
+export const getGmailThreads = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const threads = await gmailService.listGmailThreads(userId);
+        return res.status(200).json({
+            success: true,
+            data: threads,
+        });
+    } catch (error) {
+        console.error("getGmailThreads controller error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error?.message || "Failed to fetch gmail threads",
         });
     }
 };

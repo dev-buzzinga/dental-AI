@@ -420,6 +420,10 @@ export const fetchReferralEmails = async (userId) => {
     return threads;
 };
 
+export const listGmailThreads = async (userId) => {
+    return await listReferralThreads(userId);
+};
+
 // export const gmailCallback = async (req, res) => {
 
 //     try {
