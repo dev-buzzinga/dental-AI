@@ -21,6 +21,7 @@ import PracticeDetails from './pages/Settings/PracticeDetails';
 import CalendarPage from './pages/Calendar/index';
 import Login from './pages/auth/login';
 import Signup from './pages/auth/signup';
+import ConnectGoogleGmail from './pages/Settings/ConnectGoogleGmail';
 
 
 
@@ -59,6 +60,7 @@ const AppContent = () => {
                 <Route path="/settings/appointment-types" element={<AppointmentTypes />} />
                 <Route path="/settings/add-number" element={<AddNumberPage />} />
                 <Route path="/settings/connect-google-calendar" element={<ConnectGoogleCalender />} />
+                <Route path="/settings/connect-google-gmail" element={<ConnectGoogleGmail />} />
                 <Route path="/settings/practice-details" element={<PracticeDetails />} />
                 <Route path="*" element={<Navigate to="/calls" replace />} />
               </Routes>

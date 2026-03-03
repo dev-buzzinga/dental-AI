@@ -43,7 +43,10 @@ export const connectGoogle = async (req, res) => {
             access_type: "offline",
             prompt: "consent",
             scope: ["https://www.googleapis.com/auth/calendar"],
-            state: doctor_id
+            state: JSON.stringify({
+                doctor_id,
+                type: "calendar"
+            })
         });
 
         const templatePath = path.join(__dirname, "../utils/html/connect_calendar.html");
@@ -85,22 +88,62 @@ export const connectGoogle = async (req, res) => {
 export const googleCallback = async (req, res) => {
     try {
         const { code, state } = req.query;
-        const doctor_id = Number(state);
+        const { type } = JSON.parse(state);
+        console.log("type==>", type);
+        if (type == "calendar") {
+            const doctor_id = Number(state);
 
-        const { tokens } = await oauth2Client.getToken(code);
-        if (!tokens.refresh_token) {
-            console.log("No refresh token received");
+            const { tokens } = await oauth2Client.getToken(code);
+            if (!tokens.refresh_token) {
+                console.log("No refresh token received");
+            }
+            const { data, error, count } = await supabase
+                .from("doctors")
+                .update({
+                    google_refresh_token: tokens.refresh_token,
+                    calendar_connected: true
+                })
+                .eq("id", doctor_id)
+                .select("*", { count: "exact" });
+
+            res.send("Google Calendar connected successfully. You can close this window.");
+        } else if (type == "gmail") {
+
+            const { userId } = JSON.parse(state);
+            const { tokens } = await oauth2Client.getToken(code);
+            oauth2Client.setCredentials(tokens);
+            const gmail = google.gmail({ version: "v1", auth: oauth2Client });
+
+            // Get user Gmail email
+            const profile = await gmail.users.getProfile({
+                userId: "me",
+            });
+
+            const gmailEmail = profile.data.emailAddress;
+            const { error } = await supabase
+                .from("user_gmail_accounts")
+                .upsert({
+                    user_id: userId,
+                    gmail_email: gmailEmail,
+                    access_token: tokens.access_token,
+                    refresh_token: tokens.refresh_token,
+                    token_expiry: tokens.expiry_date
+                        ? new Date(tokens.expiry_date)
+                        : null,
+                    is_active: true,
+                    updated_at: new Date(),
+                });
+
+            if (error) {
+                console.log("gmail connect error in callback==>", error);
+                return res.status(500).json({
+                    success: false,
+                    message: error.message,
+                });
+            }
+
+            return res.send("Gmail connected successfully. You can close this window.");
         }
-        const { data, error, count } = await supabase
-            .from("doctors")
-            .update({
-                google_refresh_token: tokens.refresh_token,
-                calendar_connected: true
-            })
-            .eq("id", doctor_id)
-            .select("*", { count: "exact" });
-
-        res.send("Google Calendar connected successfully. You can close this window.");
     } catch (error) {
         console.error("Error handling Google callback:", error);
         res.status(500).json({

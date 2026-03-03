@@ -10,14 +10,3 @@ export const connectGmail = async (req, res) => {
         });
     }
 };
-
-export const gmailCallback = async (req, res) => {
-    try {
-        return await gmailService.gmailCallback(req, res);
-    } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error,
-        });
-    }
-};

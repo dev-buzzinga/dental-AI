@@ -24,7 +24,7 @@ const Sidebar = () => {
     };
 
     const isActive = (path) => location.pathname === path;
-    const isSettingsActive = ['/settings/doctors', '/settings/appointment-types', '/settings/add-number', '/settings/configure-twilio', '/settings/ai-agent', '/settings/connect-google-calendar', '/settings/practice-details']
+    const isSettingsActive = ['/settings/doctors', '/settings/appointment-types', '/settings/add-number', '/settings/configure-twilio', '/settings/ai-agent', '/settings/connect-google-calendar', '/settings/connect-google-gmail', '/settings/practice-details']
         .includes(location.pathname);
 
     const navItems = [
@@ -39,6 +39,7 @@ const Sidebar = () => {
         { path: '/settings/doctors', icon: 'fa-user-doctor', label: 'Doctors' },
         { path: '/settings/appointment-types', icon: 'fa-book', label: 'Appointment Types' },
         { path: '/settings/connect-google-calendar', icon: 'fa-brands fa-google', label: 'Google Calendar' },
+        { path: '/settings/connect-google-gmail', icon: 'fa-brands fa-google', label: 'Google Gmail' },
         { path: '/settings/practice-details', icon: 'fa-building', label: 'Practice Details' },
         // { path: '/settings/add-number', icon: 'fa-plus-circle', label: 'Add Number' },
         // { path: '/settings/configure-twilio', icon: 'fa-plug', label: 'Configure Twilio' },

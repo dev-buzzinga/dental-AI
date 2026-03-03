@@ -12,6 +12,14 @@ export const AuthProvider = ({ children }) => {
             try {
                 const { data } = await supabase.auth.getUser()
                 setUser(data.user)
+
+                const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+
+                if (!sessionError && sessionData?.session?.access_token) {
+                    localStorage.setItem("token", sessionData.session.access_token)
+                } else {
+                    localStorage.removeItem("token")
+                }
             } catch (error) {
                 console.error("Error fetching user:", error)
             } finally {
@@ -24,6 +32,12 @@ export const AuthProvider = ({ children }) => {
             (_event, session) => {
                 setUser(session?.user || null)
                 setLoading(false)
+
+                if (session?.access_token) {
+                    localStorage.setItem("token", session.access_token)
+                } else {
+                    localStorage.removeItem("token")
+                }
             }
         )
 
