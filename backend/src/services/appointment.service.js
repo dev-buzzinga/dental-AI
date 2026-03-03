@@ -49,8 +49,8 @@ export const connectGoogle = async (req, res) => {
         const templatePath = path.join(__dirname, "../utils/html/connect_calendar.html");
         let html = await fs.readFile(templatePath, "utf8");
         const logoUrl = config.LOGO_URL || "";
-        console.log("logoUrl==>", logoUrl);
-        
+        // console.log("logoUrl==>", logoUrl);
+
         html = html.replace(/\$\{authUrl\}/g, authUrl).replace(/\$\{logoUrl\}/g, logoUrl);
 
         const text = `Please use the following link to connect your Google Calendar: ${authUrl}`;
@@ -62,7 +62,7 @@ export const connectGoogle = async (req, res) => {
             text,
             html,
         });
-        console.log("result==>", result);
+
         if (!result.messageId) {
             return res.status(500).json({
                 success: false,

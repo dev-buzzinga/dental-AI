@@ -9,6 +9,7 @@ import GuestRoute from './components/auth/GuestRoute';
 // Pages
 import CallsPage from './pages/Calls';
 import SMSPage from './pages/SMS';
+import EmailPage from './pages/Email';
 import PatientsPage from './pages/Patients/index';
 import DoctorsPage from './pages/Doctors/index';
 import DoctorDetails from './pages/Doctors/DoctorDetails';
@@ -49,6 +50,7 @@ const AppContent = () => {
                 <Route path="/" element={<Navigate to="/calls" replace />} />
                 <Route path="/calls" element={<CallsPage />} />
                 <Route path="/sms" element={<SMSPage />} />
+                <Route path="/email" element={<EmailPage />} />
                 <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/patients/:id" element={<PatientDetail />} />
                 <Route path="/patients" element={<PatientsPage />} />
