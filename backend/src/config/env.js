@@ -23,4 +23,5 @@ export const config = {
     EMAIL_API_KEY: process.env.EMAIL_API_KEY,
     LOGO_URL: process.env.LOGO_URL,
     // ================================================
+    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
 }
