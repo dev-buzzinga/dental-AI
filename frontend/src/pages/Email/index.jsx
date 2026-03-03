@@ -85,16 +85,16 @@ const EmailPage = () => {
                     <div className="sms-chat-header">
                         <div>
                             <div className="sms-chat-name">{activeSMS.name}</div>
-                            <div className="sms-chat-number">{activeSMS.number}</div>
+                            <div className="sms-chat-number">test@gmail.com</div>
                         </div>
-                        <div className="sms-chat-actions">
+                        {/* <div className="sms-chat-actions">
                             <button className="sms-chat-action-btn" onClick={() => setShowPatientContext(!showPatientContext)}>
                                 <i className="fas fa-user" /> Patient Info
                             </button>
                             <button className="sms-chat-action-btn">
                                 <i className="fas fa-phone" /> Call
                             </button>
-                        </div>
+                        </div> */}
                     </div>
 
                     <div className="sms-messages custom-scrollbar">
