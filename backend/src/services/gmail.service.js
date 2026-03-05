@@ -10,6 +10,9 @@ import { validateReferral } from "./anthropic.service.js";
 import {
     formatMessageForChat,
     getAttachmentsFromMessage,
+    getHeader,
+    buildReplyRawMessage,
+    toBase64Url,
 } from "../utils/emailReadHelper.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -472,6 +475,82 @@ export const getAttachment = async (userId, messageId, filename) => {
         data,
         filename: attachment.filename,
         mimeType: attachment.mimeType || "application/octet-stream",
+    };
+};
+
+/**
+ * Send a reply in an email thread. Uses thread's last message for In-Reply-To/References.
+ * @param {string} userId
+ * @param {string} threadId
+ * @param {{ body: string, attachments?: Array<{ filename: string, content: string, mimeType?: string }> }} payload - body = plain text; attachments: content is base64
+ * @returns {{ messageId: string, threadId: string }}
+ */
+export const sendReply = async (userId, threadId, payload) => {
+    const account = await getUserGmailAccount(userId);
+    if (!account?.is_active) {
+        throw new Error("Gmail is not connected for this user");
+    }
+
+    const updatedAccount = await refreshAccessTokenIfNeeded(account);
+    const gmail = getGmailClient(updatedAccount.access_token);
+    const myEmail = updatedAccount.gmail_email || "";
+
+    const threadRes = await gmail.users.threads.get({
+        userId: "me",
+        id: threadId,
+    });
+    const thread = threadRes.data;
+    const messageIds = (thread.messages || []).map((m) => m.id);
+    if (!messageIds.length) {
+        throw new Error("Thread has no messages");
+    }
+
+    const lastMessageId = messageIds[messageIds.length - 1];
+    const lastMessage = await getMessageDetails({ gmail, messageId: lastMessageId });
+
+    const messageIdHeader = getHeader(lastMessage, "Message-ID");
+    const referencesHeader = getHeader(lastMessage, "References");
+    const references = referencesHeader ? `${referencesHeader} ${messageIdHeader}`.trim() : messageIdHeader || "";
+
+    let subject = extractSubject(lastMessage);
+    if (subject && !/^re:\s/i.test(subject)) {
+        subject = `Re: ${subject}`;
+    }
+
+    const { senderEmail } = extractSender(lastMessage);
+    const toHeader = getHeader(lastMessage, "To");
+    const isLastFromMe = lastMessage.labelIds?.includes("SENT") || (myEmail && senderEmail.toLowerCase() === myEmail.toLowerCase());
+    const replyTo = isLastFromMe
+        ? (toHeader || "").split(",")[0].trim()
+        : (getHeader(lastMessage, "From") || senderEmail || "");
+
+    if (!replyTo) {
+        throw new Error("Could not determine reply-to address");
+    }
+
+    const rawBuffer = buildReplyRawMessage({
+        to: replyTo,
+        subject: subject || "Re: (no subject)",
+        inReplyTo: messageIdHeader || undefined,
+        references: references || undefined,
+        bodyText: payload.body || "",
+        fromEmail: myEmail,
+        attachments: payload.attachments || [],
+    });
+
+    const rawBase64Url = toBase64Url(rawBuffer);
+
+    const sendRes = await gmail.users.messages.send({
+        userId: "me",
+        requestBody: {
+            raw: rawBase64Url,
+            threadId,
+        },
+    });
+
+    return {
+        messageId: sendRes.data.id,
+        threadId: sendRes.data.threadId || threadId,
     };
 };
 

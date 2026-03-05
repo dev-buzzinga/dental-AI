@@ -329,10 +329,42 @@
 }
 
 /* Compose */
-.sms-compose {
-    padding: 12px 24px;
+.sms-compose-wrap {
     background: #fff;
     border-top: 1px solid var(--border);
+}
+
+.sms-reply-attachments {
+    padding: 8px 24px 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.sms-reply-attachment-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: var(--primary-light, #eef2ff);
+    border-radius: 999px;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+.sms-reply-attachment-chip button {
+    background: none;
+    border: none;
+    padding: 0 2px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 10px;
+}
+.sms-reply-attachment-chip button:hover {
+    color: var(--danger, #dc2626);
+}
+
+.sms-compose {
+    padding: 12px 24px;
     display: flex;
     gap: 12px;
     align-items: flex-end;
@@ -368,8 +400,13 @@
     transition: filter 0.15s;
 }
 
-.sms-compose-send:hover {
+.sms-compose-send:hover:not(:disabled) {
     filter: brightness(0.9);
+}
+
+.sms-compose-send:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 /* Patient Context Panel */

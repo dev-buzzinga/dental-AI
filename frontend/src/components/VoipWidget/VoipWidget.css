@@ -472,3 +472,11 @@
 .voip-search-result:last-child {
     border-bottom: none;
 }
+
+.voip-fab--raised {
+    bottom: 96px;
+}
+
+.voip-widget--raised {
+    bottom: 96px;
+}

@@ -31,10 +31,22 @@ const getAttachmentBlob = async (messageId, filename) => {
     return response.data;
 };
 
+/**
+ * Send reply in a thread. attachments: [{ filename, content: base64, mimeType }].
+ */
+const sendReply = async (threadId, { body, attachments = [] }) => {
+    const response = await authAxiosInstance.post(
+        `/gmail/threads/${threadId}/reply`,
+        { body, attachments }
+    );
+    return response.data;
+};
+
 export default {
     connectGmail,
     getGmailThreads,
     getReferralEmails,
     getThreadHistory,
     getAttachmentBlob,
+    sendReply,
 };

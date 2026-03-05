@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { dialpadKeys } from '../../data/dummyData';
 import { SearchInput } from '../common/SearchInput';
 import './VoipWidget.css';
 
 const VoipWidget = () => {
+    const location = useLocation();
     const [isOpen, setIsOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('incoming');
     const [callSeconds, setCallSeconds] = useState(0);
@@ -48,9 +50,13 @@ const VoipWidget = () => {
         )
         : [];
 
+    const isInboxPage = location.pathname.startsWith('/sms') || location.pathname.startsWith('/email');
+    const fabClassName = `voip-fab${isInboxPage ? ' voip-fab--raised' : ''}`;
+    const widgetClassName = `voip-widget${isInboxPage ? ' voip-widget--raised' : ''} ${isOpen ? 'open' : 'closed'}`;
+
     if (!isOpen) {
         return (
-            <div className="voip-fab" onClick={() => setIsOpen(true)}>
+            <div className={fabClassName} onClick={() => setIsOpen(true)}>
                 <div className="voip-fab-btn">
                     <i className="fas fa-phone" />
                     <span>VoIP</span>
@@ -61,7 +67,7 @@ const VoipWidget = () => {
     }
 
     return (
-        <div className={`voip-widget ${isOpen ? 'open' : 'closed'}`}>
+        <div className={widgetClassName}>
             {/* Header */}
             <div className="voip-header">
                 <span>DENTALAIASSIST</span>

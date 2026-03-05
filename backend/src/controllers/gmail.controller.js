@@ -107,3 +107,35 @@ export const getAttachment = async (req, res) => {
         });
     }
 };
+
+export const sendReply = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { threadId } = req.params;
+        const { body = "", attachments = [] } = req.body;
+
+        if (!threadId) {
+            return res.status(400).json({
+                success: false,
+                message: "threadId is required",
+            });
+        }
+
+        const result = await gmailService.sendReply(userId, threadId, {
+            body: typeof body === "string" ? body : "",
+            attachments: Array.isArray(attachments) ? attachments : [],
+        });
+
+        return res.status(200).json({
+            success: true,
+            data: result,
+            message: "Reply sent successfully",
+        });
+    } catch (error) {
+        console.error("sendReply controller error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error?.message || "Failed to send reply",
+        });
+    }
+};

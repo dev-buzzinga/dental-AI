@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useContext } from 'react';
+import { useState, useMemo, useEffect, useContext, useRef } from 'react';
 import { supabase } from '../../config/supabase';
 import { AuthContext } from '../../context/AuthContext';
 import gmailService from '../../service/gmail';
@@ -24,6 +24,9 @@ const EmailPage = () => {
     const [showAISuggestion, setShowAISuggestion] = useState(true);
     const [showPatientContext, setShowPatientContext] = useState(false);
     const [messageInput, setMessageInput] = useState('');
+    const [replyAttachments, setReplyAttachments] = useState([]);
+    const [sendingReply, setSendingReply] = useState(false);
+    const replyFileInputRef = useRef(null);
 
     useEffect(() => {
         const checkGmailConnection = async () => {
@@ -133,6 +136,44 @@ const EmailPage = () => {
         loadThreadHistory();
         return () => { cancelled = true; };
     }, [activeThreadId, isGmailActive]);
+
+    const fileToBase64 = (file) =>
+        new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const dataUrl = reader.result;
+                const base64 = dataUrl.split(',')[1] || '';
+                resolve(base64);
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+
+    const handleSendReply = async () => {
+        if (!activeThreadId || sendingReply) return;
+        const body = (messageInput || '').trim();
+        if (!body && replyAttachments.length === 0) return;
+
+        setSendingReply(true);
+        try {
+            const attachments = await Promise.all(
+                replyAttachments.map(async (f) => ({
+                    filename: f.name,
+                    content: await fileToBase64(f),
+                    mimeType: f.type || 'application/octet-stream',
+                }))
+            );
+            await gmailService.sendReply(activeThreadId, { body: body || ' ', attachments });
+            setMessageInput('');
+            setReplyAttachments([]);
+            const res = await gmailService.getThreadHistory(activeThreadId);
+            if (res?.data) setThreadHistory(res.data);
+        } catch (err) {
+            console.error('Send reply failed', err);
+        } finally {
+            setSendingReply(false);
+        }
+    };
 
     const handleAttachmentDownload = async (messageId, filename) => {
         try {
@@ -372,17 +413,62 @@ const EmailPage = () => {
                             )}
                         </div>
 
-                        <div className="sms-compose">
-                            <input
-                                type="text"
-                                className="sms-compose-input"
-                                placeholder="Type a reply..."
-                                value={messageInput}
-                                onChange={(e) => setMessageInput(e.target.value)}
-                            />
-                            <button className="sms-compose-send" type="button">
-                                <i className="fas fa-paper-plane" />
-                            </button>
+                        <div className="sms-compose-wrap">
+                            {replyAttachments.length > 0 && (
+                                <div className="sms-reply-attachments">
+                                    {replyAttachments.map((f, i) => (
+                                        <span key={i} className="sms-reply-attachment-chip">
+                                            <i className="fas fa-paperclip" /> {f.name}
+                                            <button
+                                                type="button"
+                                                aria-label="Remove"
+                                                onClick={() => setReplyAttachments((prev) => prev.filter((_, j) => j !== i))}
+                                            >
+                                                <i className="fas fa-times" />
+                                            </button>
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+                            <div className="sms-compose">
+                                <input
+                                    ref={replyFileInputRef}
+                                    type="file"
+                                    multiple
+                                    accept="*/*"
+                                    style={{ display: 'none' }}
+                                    onChange={(e) => {
+                                        const files = e.target.files ? [...e.target.files] : [];
+                                        setReplyAttachments((prev) => [...prev, ...files]);
+                                        e.target.value = '';
+                                    }}
+                                />
+                                <textarea
+                                    className="sms-compose-input"
+                                    placeholder="Type a reply..."
+                                    value={messageInput}
+                                    onChange={(e) => setMessageInput(e.target.value)}
+                                    rows={2}
+                                    style={{ resize: 'none', minHeight: 44 }}
+                                />
+                                <button
+                                    type="button"
+                                    className="sms-chat-action-btn"
+                                    style={{ alignSelf: 'flex-end' }}
+                                    onClick={() => replyFileInputRef.current?.click()}
+                                    title="Attach file"
+                                >
+                                    <i className="fas fa-paperclip" />
+                                </button>
+                                <button
+                                    className="sms-compose-send"
+                                    type="button"
+                                    disabled={sendingReply || ((!messageInput || !messageInput.trim()) && replyAttachments.length === 0)}
+                                    onClick={handleSendReply}
+                                >
+                                    {sendingReply ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-paper-plane" />}
+                                </button>
+                            </div>
                         </div>
                     </>
                 )}

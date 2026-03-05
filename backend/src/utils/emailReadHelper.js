@@ -169,3 +169,93 @@ export function formatMessageForChat(message, myEmail = "") {
         })),
     };
 }
+
+/**
+ * Build a raw MIME message for reply (RFC 2822). Used by Gmail API send.
+ * @param {object} opts
+ * @param {string} opts.to - To address
+ * @param {string} opts.subject - Subject (e.g. "Re: ...")
+ * @param {string} [opts.inReplyTo] - Message-ID of the message we're replying to
+ * @param {string} [opts.references] - References header for threading
+ * @param {string} opts.bodyText - Plain text body
+ * @param {string} [opts.fromEmail] - From address (optional; Gmail may override)
+ * @param {Array<{ filename: string, content: string, mimeType: string }>} [opts.attachments] - Attachments (content = base64)
+ * @returns {Buffer} - Raw MIME message (use base64url encode for Gmail API)
+ */
+export function buildReplyRawMessage(opts) {
+    const {
+        to,
+        subject,
+        inReplyTo = "",
+        references = "",
+        bodyText = "",
+        fromEmail = "",
+        attachments = [],
+    } = opts;
+
+    const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const lines = [];
+
+    const push = (str) => lines.push(str);
+    const crlf = "\r\n";
+
+    // Headers
+    if (fromEmail) push(`From: ${fromEmail}`);
+    push(`To: ${to}`);
+    push(`Subject: ${subject}`);
+    if (inReplyTo) push(`In-Reply-To: ${inReplyTo}`);
+    if (references) push(`References: ${references}`);
+    push("MIME-Version: 1.0");
+
+    if (attachments.length === 0) {
+        push("Content-Type: text/plain; charset=UTF-8");
+        push("Content-Transfer-Encoding: base64");
+        push("");
+        const bodyBase64 = Buffer.from(bodyText || " ", "utf8").toString("base64");
+        for (let i = 0; i < bodyBase64.length; i += 76) {
+            push(bodyBase64.slice(i, i + 76));
+        }
+    } else {
+        push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
+        push("");
+
+        push(`--${boundary}`);
+        push("Content-Type: text/plain; charset=UTF-8");
+        push("Content-Transfer-Encoding: base64");
+        push("");
+        const bodyBase64 = Buffer.from(bodyText || " ", "utf8").toString("base64");
+        for (let i = 0; i < bodyBase64.length; i += 76) {
+            push(bodyBase64.slice(i, i + 76));
+        }
+        push("");
+
+        for (const att of attachments) {
+            const filename = att.filename || "attachment";
+            const mimeType = att.mimeType || "application/octet-stream";
+            const content = typeof att.content === "string" ? att.content : Buffer.from(att.content).toString("base64");
+            push(`--${boundary}`);
+            push(`Content-Type: ${mimeType}; name="${filename}"`);
+            push("Content-Transfer-Encoding: base64");
+            push(`Content-Disposition: attachment; filename="${filename}"`);
+            push("");
+            for (let i = 0; i < content.length; i += 76) {
+                push(content.slice(i, i + 76));
+            }
+            push("");
+        }
+
+        push(`--${boundary}--`);
+    }
+
+    const raw = lines.join(crlf);
+    return Buffer.from(raw, "utf8");
+}
+
+/**
+ * Encode buffer to base64url (Gmail API raw format).
+ * @param {Buffer} buf
+ * @returns {string}
+ */
+export function toBase64Url(buf) {
+    return buf.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
