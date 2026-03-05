@@ -122,17 +122,20 @@ export const googleCallback = async (req, res) => {
             const gmailEmail = profile.data.emailAddress;
             const { error } = await supabase
                 .from("user_gmail_accounts")
-                .upsert({
-                    user_id: userId,
-                    gmail_email: gmailEmail,
-                    access_token: tokens.access_token,
-                    refresh_token: tokens.refresh_token,
-                    token_expiry: tokens.expiry_date
-                        ? new Date(tokens.expiry_date)
-                        : null,
-                    is_active: true,
-                    updated_at: new Date(),
-                });
+                .upsert(
+                    {
+                        user_id: userId,
+                        gmail_email: gmailEmail,
+                        access_token: tokens.access_token,
+                        refresh_token: tokens.refresh_token ?? undefined,
+                        token_expiry: tokens.expiry_date
+                            ? new Date(tokens.expiry_date)
+                            : null,
+                        is_active: true,
+                        updated_at: new Date(),
+                    },
+                    { onConflict: "user_id" }
+                );
 
             if (error) {
                 console.log("gmail connect error in callback==>", error);

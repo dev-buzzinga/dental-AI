@@ -27,7 +27,8 @@ export const oauth2Client = new google.auth.OAuth2(
 export const SCOPES = [
     "https://www.googleapis.com/auth/gmail.modify",
     "https://www.googleapis.com/auth/gmail.send",
-    "https://www.googleapis.com/auth/userinfo.email"
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile"
 ];
 
 export const connectGmail = async (req, res) => {
@@ -278,7 +279,17 @@ const extractBodyText = (message) => {
     return message.snippet || "";
 };
 
-const upsertReferralThread = async ({ userId, threadId, lastMessage, lastMessageTime, senderName, senderEmail, subject }) => {
+const upsertReferralThread = async ({
+    userId,
+    threadId,
+    lastMessage,
+    lastMessageTime,
+    senderName,
+    senderEmail,
+    receiverName,
+    receiverEmail,
+    subject,
+}) => {
     const { error } = await supabase
         .from("gmail_threads")
         .upsert(
@@ -289,6 +300,8 @@ const upsertReferralThread = async ({ userId, threadId, lastMessage, lastMessage
                 last_message_time: lastMessageTime,
                 sender_name: senderName || null,
                 sender_email: senderEmail || null,
+                receiver_name: receiverName || null,
+                receiver_email: receiverEmail || null,
                 subject: subject || null,
                 is_new: true,
                 last_synced_at: new Date().toISOString(),
@@ -358,6 +371,21 @@ export const fetchReferralEmails = async (userId) => {
             const subject = extractSubject(message);
             const bodyText = extractBodyText(message);
             const { senderName, senderEmail } = extractSender(message);
+            const toHeader = getHeader(message, "to") || "";
+
+            let receiverName = "";
+            let receiverEmail = "";
+            if (toHeader) {
+                const firstRecipientRaw = toHeader.split(",")[0].trim();
+                const match = firstRecipientRaw.match(/^(.*?)(?:\s*<(.+?)>)?$/);
+                if (match) {
+                    const name = (match[1] || "").replace(/"/g, "").trim();
+                    const email = (match[2] || match[1] || "").replace(/["<>]/g, "").trim();
+                    receiverName = name || email;
+                    receiverEmail = email;
+                }
+            }
+
             const lastMessage = extractLastMessageSnippet(message);
             const lastMessageTime = extractInternalDate(message);
 
@@ -388,6 +416,8 @@ export const fetchReferralEmails = async (userId) => {
                         last_message_time: lastMessageTime,
                         sender_name: senderName || null,
                         sender_email: senderEmail || null,
+                        receiver_name: receiverName || null,
+                        receiver_email: receiverEmail || null,
                         subject: subject || null,
                         is_new: true,
                         last_synced_at: new Date().toISOString(),
@@ -431,6 +461,8 @@ export const fetchReferralEmails = async (userId) => {
                 lastMessageTime,
                 senderName,
                 senderEmail,
+                receiverName,
+                receiverEmail,
                 subject,
             });
         } catch (error) {
@@ -549,6 +581,18 @@ export const sendReply = async (userId, threadId, payload) => {
     const gmail = getGmailClient(updatedAccount.access_token);
     const myEmail = updatedAccount.gmail_email || "";
 
+    // Fetch Gmail account's display name via Google userinfo
+    let fromName = "";
+    try {
+        const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });
+        const { data: userInfo } = await oauth2.userinfo.get();
+        console.log("userInfo==>", userInfo);
+        fromName = userInfo?.name || "";
+
+    } catch (err) {
+        console.warn("Could not fetch Gmail display name for reply", err.message);
+    }
+
     const threadRes = await gmail.users.threads.get({
         userId: "me",
         id: threadId,
@@ -589,6 +633,7 @@ export const sendReply = async (userId, threadId, payload) => {
         references: references || undefined,
         bodyText: payload.body || "",
         fromEmail: myEmail,
+        fromName,
         attachments: payload.attachments || [],
     });
 

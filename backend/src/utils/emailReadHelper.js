@@ -190,6 +190,7 @@ export function buildReplyRawMessage(opts) {
         references = "",
         bodyText = "",
         fromEmail = "",
+        fromName = "",
         attachments = [],
     } = opts;
 
@@ -199,8 +200,11 @@ export function buildReplyRawMessage(opts) {
     const push = (str) => lines.push(str);
     const crlf = "\r\n";
 
-    // Headers
-    if (fromEmail) push(`From: ${fromEmail}`);
+    // Headers — include display name so Gmail shows "Name" instead of just email
+    if (fromEmail) {
+        push(fromName ? `From: ${fromName} <${fromEmail}>` : `From: ${fromEmail}`);
+    }
+
     push(`To: ${to}`);
     push(`Subject: ${subject}`);
     if (inReplyTo) push(`In-Reply-To: ${inReplyTo}`);

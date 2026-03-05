@@ -6,6 +6,26 @@ import { SearchInput } from '../../components/common/SearchInput';
 import { Toggle } from '../../components/common/SearchInput';
 import '../../styles/SMS.css';
 
+const getDisplayUser = (thread, currentUserEmail) => {
+    if (!thread) {
+        return { name: 'Unknown', email: '' };
+    }
+
+    const me = (currentUserEmail || '').toLowerCase();
+    const senderEmail = (thread.sender_email || '').toLowerCase();
+    const isMeSender = me && senderEmail === me;
+
+    if (isMeSender) {
+        const name = thread.receiver_name || thread.receiver_email || 'Unknown';
+        const email = thread.receiver_email || thread.receiver_name || '';
+        return { name, email };
+    }
+
+    const name = thread.sender_name || thread.sender_email || 'Unknown';
+    const email = thread.sender_email || thread.sender_name || '';
+    return { name, email };
+};
+
 const EmailPage = () => {
     const { user, loading: authLoading } = useContext(AuthContext);
     const [gmailChecked, setGmailChecked] = useState(false);
@@ -352,12 +372,12 @@ const EmailPage = () => {
                             onClick={() => { setActiveThreadId(thread.thread_id); }}
                         >
                             <div className="sms-avatar">
-                                {(thread.sender_name || thread.sender_email || '?').slice(0, 2).toUpperCase()}
+                                {(getDisplayUser(thread, user?.email).name || '?').slice(0, 2).toUpperCase()}
                             </div>
                             <div className="sms-meta">
                                 <div className="sms-name-row">
                                     <span className="sms-name">
-                                        {thread.sender_name || thread.sender_email || 'Unknown sender'}
+                                        {getDisplayUser(thread, user?.email).name || 'Unknown sender'}
                                     </span>
                                     <span className="sms-time">
                                         {thread.last_message_time
@@ -366,7 +386,13 @@ const EmailPage = () => {
                                     </span>
                                 </div>
                                 <div className="sms-preview">
-                                    {thread.sender_email || 'Referral Thread'}
+                                    <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
+                                        <span style={{ fontWeight: 500 }}>From:</span>{' '}
+                                        {thread.sender_name || thread.sender_email || 'Unknown'}
+                                        <span style={{ margin: '0 6px', color: 'var(--border-subtle, #e0e0e0)' }}>•</span>
+                                        <span style={{ fontWeight: 500 }}>To:</span>{' '}
+                                        {thread.receiver_name || thread.receiver_email || 'Unknown'}
+                                    </span>
                                 </div>
                             </div>
                             {thread.is_new && <div className="sms-unread-dot" />}
@@ -385,15 +411,21 @@ const EmailPage = () => {
                     <>
                         <div className="sms-chat-header">
                             <div>
-                                <div className="sms-chat-name">
-                                    {activeThread?.sender_name || activeThread?.sender_email || 'Unknown sender'}
-                                </div>
-                                <div className="sms-chat-number">
-                                    {threadHistory?.sender_email ?? activeThread?.sender_email ?? 'Referral Thread'}
-                                </div>
-                                {/* <div className="sms-chat-number">
-                                    {threadHistory?.subject ?? activeThread?.subject ?? 'Referral Thread'}
-                                </div> */}
+                                {(() => {
+                                    const display = getDisplayUser(activeThread, user?.email);
+                                    return (
+                                        <>
+                                            <div className="sms-chat-name">
+                                                {display.name}
+                                            </div>
+                                            <div className="sms-chat-number">
+                                                <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+                                                    {display.email || activeThread?.sender_email || activeThread?.receiver_email || ''}
+                                                </span>
+                                            </div>
+                                        </>
+                                    );
+                                })()}
                             </div>
                             {activeThread?.is_new && (
                                 <div className="sms-chat-actions">
@@ -534,7 +566,7 @@ const EmailPage = () => {
                 )}
             </div>
 
-           
+
         </div>
     );
 };
