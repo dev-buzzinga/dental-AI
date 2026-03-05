@@ -445,8 +445,10 @@ export const getThreadHistory = async (userId, threadId) => {
 
 /**
  * Get attachment content for a message. Returns base64 data + metadata for download/view.
+ * NOTE: Gmail API returns a different attachmentId on every messages.get call,
+ * so we match by filename instead and use the fresh attachmentId to download.
  */
-export const getAttachment = async (userId, messageId, attachmentId) => {
+export const getAttachment = async (userId, messageId, filename) => {
     const account = await getUserGmailAccount(userId);
     if (!account?.is_active) {
         throw new Error("Gmail is not connected for this user");
@@ -457,12 +459,15 @@ export const getAttachment = async (userId, messageId, attachmentId) => {
 
     const message = await getMessageDetails({ gmail, messageId });
     const attachments = getAttachmentsFromMessage(message);
-    const attachment = attachments.find((a) => a.attachmentId === attachmentId);
+
+    // Match by filename since attachmentId changes on every API call
+    const attachment = attachments.find((a) => a.filename === filename);
     if (!attachment) {
         throw new Error("Attachment not found");
     }
 
-    const data = await downloadAttachment({ gmail, messageId, attachmentId });
+    // Use the FRESH attachmentId from re-fetched message
+    const data = await downloadAttachment({ gmail, messageId, attachmentId: attachment.attachmentId });
     return {
         data,
         filename: attachment.filename,

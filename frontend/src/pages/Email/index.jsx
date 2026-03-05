@@ -134,9 +134,9 @@ const EmailPage = () => {
         return () => { cancelled = true; };
     }, [activeThreadId, isGmailActive]);
 
-    const handleAttachmentDownload = async (messageId, attachmentId, filename) => {
+    const handleAttachmentDownload = async (messageId, filename) => {
         try {
-            const blob = await gmailService.getAttachmentBlob(messageId, attachmentId);
+            const blob = await gmailService.getAttachmentBlob(messageId, filename);
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -148,9 +148,9 @@ const EmailPage = () => {
         }
     };
 
-    const handleAttachmentView = async (messageId, attachmentId, filename, mimeType) => {
+    const handleAttachmentView = async (messageId, filename, mimeType) => {
         try {
-            const blob = await gmailService.getAttachmentBlob(messageId, attachmentId);
+            const blob = await gmailService.getAttachmentBlob(messageId, filename);
             const url = URL.createObjectURL(blob);
             const canViewInline = (mimeType || '').startsWith('image/') || (mimeType || '').includes('pdf');
             if (canViewInline) {
@@ -345,7 +345,7 @@ const EmailPage = () => {
                                                         type="button"
                                                         className="sms-chat-action-btn"
                                                         style={{ fontSize: 12, padding: '6px 10px' }}
-                                                        onClick={() => handleAttachmentDownload(msg.id, att.attachmentId, att.filename)}
+                                                        onClick={() => handleAttachmentDownload(msg.id, att.filename)}
                                                         title={`Download ${att.filename}`}
                                                     >
                                                         <i className="fas fa-download" /> {att.filename}
@@ -354,7 +354,7 @@ const EmailPage = () => {
                                                         type="button"
                                                         className="sms-chat-action-btn"
                                                         style={{ fontSize: 12, padding: '6px 10px' }}
-                                                        onClick={() => handleAttachmentView(msg.id, att.attachmentId, att.filename, att.mimeType)}
+                                                        onClick={() => handleAttachmentView(msg.id, att.filename, att.mimeType)}
                                                         title={`View ${att.filename}`}
                                                     >
                                                         <i className="fas fa-external-link-alt" />

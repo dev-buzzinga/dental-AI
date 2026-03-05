@@ -73,17 +73,18 @@ export const getThreadHistory = async (req, res) => {
 export const getAttachment = async (req, res) => {
     try {
         const userId = req.user.id;
-        const { messageId, attachmentId } = req.params;
-        if (!messageId || !attachmentId) {
+        const { messageId } = req.params;
+        const { filename } = req.query;
+        if (!messageId || !filename) {
             return res.status(400).json({
                 success: false,
-                message: "messageId and attachmentId are required",
+                message: "messageId and filename are required",
             });
         }
-        const { data, filename, mimeType } = await gmailService.getAttachment(
+        const { data, filename: fname, mimeType } = await gmailService.getAttachment(
             userId,
             messageId,
-            attachmentId
+            filename
         );
         if (!data) {
             return res.status(404).json({
@@ -95,7 +96,7 @@ export const getAttachment = async (req, res) => {
         res.setHeader("Content-Type", mimeType || "application/octet-stream");
         res.setHeader(
             "Content-Disposition",
-            `attachment; filename="${encodeURIComponent(filename || "attachment")}"`
+            `attachment; filename="${encodeURIComponent(fname || "attachment")}"`
         );
         return res.send(buffer);
     } catch (error) {

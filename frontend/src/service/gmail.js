@@ -20,10 +20,13 @@ const getThreadHistory = async (threadId) => {
     return response.data;
 };
 
-const getAttachmentBlob = async (messageId, attachmentId) => {
+const getAttachmentBlob = async (messageId, filename) => {
     const response = await authAxiosInstance.get(
-        `/gmail/messages/${messageId}/attachments/${attachmentId}`,
-        { responseType: "blob" }
+        `/gmail/messages/${messageId}/attachment`,
+        {
+            params: { filename },
+            responseType: "blob"
+        }
     );
     return response.data;
 };
