@@ -30,7 +30,7 @@ const Sidebar = () => {
     const navItems = [
         { path: '/calls', icon: 'fa-phone-volume', label: 'Calls' },
         { path: '/sms', icon: 'fa-message', label: 'SMS Inbox', badge: 4 },
-        { path: '/email', icon: 'fa-envelope', label: 'Email Inbox', badge: 4 },
+        { path: '/email', icon: 'fa-envelope', label: 'Email Inbox'},
         { path: '/calendar', icon: 'fa-calendar-days', label: 'Calendar' },
         { path: '/patients', icon: 'fa-users', label: 'Patients' },
     ];

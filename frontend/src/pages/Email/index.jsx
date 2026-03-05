@@ -26,6 +26,7 @@ const EmailPage = () => {
     const [messageInput, setMessageInput] = useState('');
     const [replyAttachments, setReplyAttachments] = useState([]);
     const [sendingReply, setSendingReply] = useState(false);
+    const [markingRead, setMarkingRead] = useState(false);
     const replyFileInputRef = useRef(null);
 
     useEffect(() => {
@@ -71,6 +72,9 @@ const EmailPage = () => {
             const response = await gmailService.getGmailThreads();
             const data = response?.data || [];
             setThreads(data);
+            if (!activeThreadId && data.length > 0) {
+                setActiveThreadId(data[0].thread_id);
+            }
         } catch (error) {
             console.error('Failed to load gmail threads', error);
             setThreadsError(error?.response?.data?.message || 'Failed to load gmail threads');
@@ -209,8 +213,44 @@ const EmailPage = () => {
         }
     };
 
+    const handleMarkActiveThreadAsRead = async () => {
+        if (!activeThread || !user || markingRead) return;
+
+        const threadId = activeThread.thread_id;
+        setMarkingRead(true);
+
+        // Optimistic UI update
+        setThreads((prev) =>
+            prev.map((t) =>
+                t.thread_id === threadId ? { ...t, is_new: false } : t
+            )
+        );
+
+        try {
+            const { error } = await supabase
+                .from('gmail_threads')
+                .update({ is_new: false })
+                .eq('user_id', user.id)
+                .eq('thread_id', threadId);
+
+            if (error) {
+                console.error('Failed to mark gmail thread as read', error);
+            }
+        } catch (err) {
+            console.error('Failed to mark gmail thread as read', err);
+        } finally {
+            setMarkingRead(false);
+        }
+    };
+
     const filtered = useMemo(() => {
         let list = threads;
+
+        if (filter === 'unread') {
+            list = list.filter((t) => t.is_new);
+        }
+
+        // 'ai' tab is reserved for future flags; currently behaves like 'all'.
 
         if (searchTerm) {
             list = list.filter((t) =>
@@ -219,7 +259,7 @@ const EmailPage = () => {
         }
 
         return list;
-    }, [threads, searchTerm]);
+    }, [threads, searchTerm, filter]);
 
     const activeThread = filtered.find((t) => t.thread_id === activeThreadId) || filtered[0];
 
@@ -231,8 +271,8 @@ const EmailPage = () => {
                     <div className="sms-sidebar-top">
                         <h2 className="sms-sidebar-title">Email Inbox</h2>
                         <div className="sms-ai-toggle">
-                            <span className="sms-ai-label">AI Auto-Reply</span>
-                            <Toggle on={aiAutoReply} onToggle={() => setAiAutoReply(!aiAutoReply)} size="sm" />
+                            {/* <span className="sms-ai-label">AI Auto-Reply</span>
+                            <Toggle on={aiAutoReply} onToggle={() => setAiAutoReply(!aiAutoReply)} size="sm" /> */}
                             <button
                                 type="button"
                                 onClick={syncReferralEmails}
@@ -326,9 +366,10 @@ const EmailPage = () => {
                                     </span>
                                 </div>
                                 <div className="sms-preview">
-                                    {thread.subject || 'Referral Thread'}
+                                    {thread.sender_email || 'Referral Thread'}
                                 </div>
                             </div>
+                            {thread.is_new && <div className="sms-unread-dot" />}
                         </div>
                     ))}
                 </div>
@@ -336,7 +377,7 @@ const EmailPage = () => {
 
             {/* Center - Email thread chat history */}
             <div className="sms-chat">
-                {!activeThreadId ? (
+                {!activeThread ? (
                     <div className="sms-chat-placeholder custom-scrollbar">
                         <span style={{ color: 'var(--text-secondary)' }}>Select an email to view thread</span>
                     </div>
@@ -348,15 +389,31 @@ const EmailPage = () => {
                                     {activeThread?.sender_name || activeThread?.sender_email || 'Unknown sender'}
                                 </div>
                                 <div className="sms-chat-number">
-                                    {threadHistory?.subject ?? activeThread?.subject ?? 'Referral Thread'}
+                                    {threadHistory?.sender_email ?? activeThread?.sender_email ?? 'Referral Thread'}
                                 </div>
+                                {/* <div className="sms-chat-number">
+                                    {threadHistory?.subject ?? activeThread?.subject ?? 'Referral Thread'}
+                                </div> */}
                             </div>
+                            {activeThread?.is_new && (
+                                <div className="sms-chat-actions">
+                                    <button
+                                        type="button"
+                                        className="sms-chat-action-btn"
+                                        disabled={markingRead}
+                                        onClick={handleMarkActiveThreadAsRead}
+                                    >
+                                        {markingRead ? 'Marking…' : 'Mark as read'}
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
                         <div className="sms-messages custom-scrollbar">
                             {loadingThreadHistory && (
-                                <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-secondary)' }}>
-                                    Loading thread...
+                                <div style={{ padding: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                    <i className="fas fa-spinner fa-spin" />
+                                    <span>Loading thread...</span>
                                 </div>
                             )}
                             {threadHistoryError && !loadingThreadHistory && (
@@ -370,7 +427,10 @@ const EmailPage = () => {
                                     className={`sms-bubble ${msg.isFromMe ? 'sms-bubble-outgoing' : 'sms-bubble-incoming'}`}
                                 >
                                     <div className="sms-bubble-label">
-                                        {msg.fromName || msg.from} {msg.isFromMe && '(You)'}
+                                        {msg.isFromMe
+                                            ? `${(user?.user_metadata?.full_name || user?.email || msg.fromName || msg.from) || ''} (You)`
+                                            : (msg.fromName || msg.from)
+                                        }
                                     </div>
                                     <div className="sms-bubble-time" style={{ marginBottom: 6 }}>
                                         {new Date(msg.date).toLocaleString()}
@@ -474,46 +534,7 @@ const EmailPage = () => {
                 )}
             </div>
 
-            {/* Right Panel - Patient Context */}
-            {/* {showPatientContext && activeSMS && (
-                <div className="sms-patient-context custom-scrollbar fade-in">
-                    <div className="sms-patient-context-header">
-                        <div className="sms-patient-avatar-lg">{activeSMS.initials}</div>
-                        <div className="sms-patient-name">{activeSMS.name}</div>
-                        <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>{activeSMS.number}</div>
-                    </div>
-
-                    <div className="sms-patient-ctx-section">
-                        <div className="sms-patient-ctx-section-title">Patient Details</div>
-                        {[
-                            ['Insurance', 'HCF'],
-                            ['Member ID', 'HCF-112233'],
-                            ['Next Appt', 'Feb 18, 2026'],
-                            ['Last Visit', 'Jan 20, 2026'],
-                            ['Balance', '$0.00'],
-                        ].map(([label, value]) => (
-                            <div key={label} className="sms-patient-ctx-row">
-                                <span className="sms-patient-ctx-label">{label}</span>
-                                <span className="sms-patient-ctx-value">{value}</span>
-                            </div>
-                        ))}
-                    </div>
-
-                    <div className="sms-patient-ctx-section">
-                        <div className="sms-patient-ctx-section-title">SMS Activity</div>
-                        {[
-                            ['Total SMS', '12'],
-                            ['AI Handled', '8'],
-                            ['Avg Reply Time', '2 min'],
-                        ].map(([label, value]) => (
-                            <div key={label} className="sms-patient-ctx-row">
-                                <span className="sms-patient-ctx-label">{label}</span>
-                                <span className="sms-patient-ctx-value">{value}</span>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )} */}
+           
         </div>
     );
 };

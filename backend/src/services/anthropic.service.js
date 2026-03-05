@@ -1,83 +1,64 @@
 import { config } from "../config/env.js";
-import axios from "axios";
+import { Anthropic } from "@anthropic-ai/sdk";
 
-const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
+const anthropic = new Anthropic({
+    apiKey: config.ANTHROPIC_API_KEY,
+});
 
-export const validateReferral = async ({ filename, mimeType, base64Content, subject, body }) => {
+export const validateReferral = async ({ subject, body }) => {
+    // console.log("validateReferral");
     if (!config.ANTHROPIC_API_KEY) {
         console.warn("Anthropic API key is not configured. Skipping referral validation.");
         return false;
     }
 
     try {
-        const prompt = `
-You are a classifier for dental referral emails and their attachments.
 
-You will be given:
-- The email subject
-- The email body text
-- Metadata about an attached file
-- The base64 content of that attachment
+        const prompt = `You are analyzing an email to determine if it contains a dental referral or dentist referring form.
 
-Determine whether this email + attachment represents a DENTAL REFERRAL document (e.g., a dentist or doctor referring a patient to another provider, including patient name, referring provider, reason for referral, etc).
+        Email Subject: ${subject}
 
-Respond with a single JSON object, no extra text:
-{ "is_referral": true | false }
-`;
+        Email Body:
+        ${body}
 
-        const response = await axios.post(
-            ANTHROPIC_API_URL,
-            {
-                model: "claude-sonnet-4-20250514",
-                max_tokens: 64,
-                temperature: 0,
-                messages: [
-                    {
-                        role: "user",
-                        content: [
-                            {
-                                type: "text",
-                                text: prompt,
-                            },
-                            {
-                                type: "text",
-                                text: `Email subject:\n${subject || ""}`,
-                            },
-                            {
-                                type: "text",
-                                text: `Email body:\n${body || ""}`,
-                            },
-                            {
-                                type: "text",
-                                text: `Attachment metadata:\nFilename: ${filename || "unknown"}\nMIME type: ${mimeType || "unknown"}`,
-                            },
-                            {
-                                type: "text",
-                                text: `Attachment base64 content (truncated):\n${base64Content?.slice(0, 8000) || ""}`,
-                            },
-                        ],
-                    },
-                ],
-            },
-            {
-                headers: {
-                    "x-api-key": config.ANTHROPIC_API_KEY,
-                    "anthropic-version": "2023-06-01",
-                    "content-type": "application/json",
+        Question: Is this email related to a dental referral where a dentist is sending a patient referral form or dental referral information?
+
+        Respond with ONLY one word:
+        YES
+        or
+        NO
+
+        Response:`;
+
+        const response = await anthropic.messages.create({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 200,
+            messages: [
+                {
+                    role: "user",
+                    content: prompt,
                 },
-                timeout: 20000,
-            }
-        );
+            ],
+        });
+        // console.log("response==>", response?.content?.[0]?.text);
+        const rawText =
+            response?.content?.[0]?.text ||
+            (Array.isArray(response?.content)
+                ? response.content.map((c) => c.text || "").join(" ")
+                : "");
 
-        const text = response.data?.content?.[0]?.text || "";
+        const answer = (rawText || "").trim().toLowerCase();
+        // console.log("answer==>", answer);
+        if (!answer) return false;
 
-        try {
-            const parsed = JSON.parse(text);
-            return Boolean(parsed.is_referral);
-        } catch {
-            const lowered = text.toLowerCase();
-            return lowered.includes('"is_referral": true') || lowered.includes("is_referral: true");
-        }
+        if (answer.startsWith("yes")) return true;
+        if (answer.startsWith("no")) return false;
+
+        // Fallback: look for yes/no anywhere in the string
+        if (answer.includes("yes")) return true;
+        if (answer.includes("no")) return false;
+
+        return false;
     } catch (error) {
         console.error("Anthropic validateReferral error:", error?.response?.data || error.message);
         return false;

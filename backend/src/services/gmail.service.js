@@ -157,14 +157,23 @@ const getGmailClient = (accessToken) => {
     return google.gmail({ version: "v1", auth: oauth2Client });
 };
 
-const fetchLatestMessages = async ({ gmail, maxResults = 50 }) => {
+const fetchLatestMessages = async ({ gmail, maxResults = 50, after }) => {
+    let q = "";
+    if (after) {
+        const ts = Math.floor(new Date(after).getTime() / 1000);
+        if (!Number.isNaN(ts)) {
+            q = `after:${ts}`;
+        }
+    }
+
     const response = await gmail.users.messages.list({
         userId: "me",
         maxResults,
-        q: "", // can optimize with search query later
+        q,
     });
 
     const messages = response.data.messages || [];
+
     return messages;
 };
 
@@ -281,6 +290,7 @@ const upsertReferralThread = async ({ userId, threadId, lastMessage, lastMessage
                 sender_name: senderName || null,
                 sender_email: senderEmail || null,
                 subject: subject || null,
+                is_new: true,
                 last_synced_at: new Date().toISOString(),
             },
             {
@@ -321,7 +331,11 @@ export const fetchReferralEmails = async (userId) => {
 
     const gmail = getGmailClient(updatedAccount.access_token);
 
-    const messages = await fetchLatestMessages({ gmail, maxResults: 50 });
+    const messages = await fetchLatestMessages({
+        gmail,
+        maxResults: 50,
+        after: account.updated_at || null,
+    });
 
     console.log(`Fetched ${messages.length} recent Gmail messages for referral scanning`);
 
@@ -337,39 +351,71 @@ export const fetchReferralEmails = async (userId) => {
             });
 
             const threadId = message.threadId;
-
             if (processedThreads.has(threadId)) {
-                continue;
-            }
-
-            const attachments = getAttachmentsFromMessage(message);
-
-            if (!attachments.length) {
-                continue;
-            }
-
-            processedThreads.add(threadId);
-
-            const first = attachments[0];
-
-            const base64Content = await downloadAttachment({
-                gmail,
-                messageId: message.id,
-                attachmentId: first.attachmentId,
-            });
-
-            if (!base64Content) {
                 continue;
             }
 
             const subject = extractSubject(message);
             const bodyText = extractBodyText(message);
             const { senderName, senderEmail } = extractSender(message);
+            const lastMessage = extractLastMessageSnippet(message);
+            const lastMessageTime = extractInternalDate(message);
+
+            // Check if this thread already exists in gmail_threads.
+            const { data: existingThread, error: existingThreadError } = await supabase
+                .from("gmail_threads")
+                .select("thread_id")
+                .eq("user_id", userId)
+                .eq("thread_id", threadId)
+                .maybeSingle();
+
+            if (existingThreadError) {
+                console.error("Error checking existing gmail_thread", {
+                    userId,
+                    threadId,
+                    error: existingThreadError.message,
+                });
+            }
+
+            if (existingThread) {
+                // Already a referral thread – always sync latest info and mark as new.
+                processedThreads.add(threadId);
+
+                const { error: updateError } = await supabase
+                    .from("gmail_threads")
+                    .update({
+                        last_message: lastMessage,
+                        last_message_time: lastMessageTime,
+                        sender_name: senderName || null,
+                        sender_email: senderEmail || null,
+                        subject: subject || null,
+                        is_new: true,
+                        last_synced_at: new Date().toISOString(),
+                    })
+                    .eq("user_id", userId)
+                    .eq("thread_id", threadId);
+
+                if (updateError) {
+                    console.error("Failed to update existing gmail_thread", {
+                        userId,
+                        threadId,
+                        error: updateError.message,
+                    });
+                }
+
+                continue;
+            }
+
+            // New thread path: only consider if it has at least one attachment,
+            // and AI marks the subject/body as a referral.
+            const attachments = getAttachmentsFromMessage(message);
+            if (!attachments.length) {
+                continue;
+            }
+
+            processedThreads.add(threadId);
 
             const isReferral = await validateReferral({
-                filename: first.filename,
-                mimeType: first.mimeType,
-                base64Content,
                 subject,
                 body: bodyText,
             });
@@ -377,9 +423,6 @@ export const fetchReferralEmails = async (userId) => {
             if (!isReferral) {
                 continue;
             }
-
-            const lastMessage = extractLastMessageSnippet(message);
-            const lastMessageTime = extractInternalDate(message);
 
             await upsertReferralThread({
                 userId,
@@ -400,6 +443,17 @@ export const fetchReferralEmails = async (userId) => {
     }
 
     const threads = await listReferralThreads(userId);
+
+    // Update sync marker so next run only fetches newer emails
+    try {
+        await supabase
+            .from("user_gmail_accounts")
+            .update({ updated_at: new Date().toISOString() })
+            .eq("user_id", userId)
+            .eq("is_active", true);
+    } catch (err) {
+        console.error("Failed to update user_gmail_accounts.updated_at", err);
+    }
 
     return threads;
 };
