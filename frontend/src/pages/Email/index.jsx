@@ -15,6 +15,9 @@ const EmailPage = () => {
     const [threadsError, setThreadsError] = useState(null);
     const [syncing, setSyncing] = useState(false);
     const [activeThreadId, setActiveThreadId] = useState(null);
+    const [threadHistory, setThreadHistory] = useState(null);
+    const [loadingThreadHistory, setLoadingThreadHistory] = useState(false);
+    const [threadHistoryError, setThreadHistoryError] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [filter, setFilter] = useState('all');
     const [aiAutoReply, setAiAutoReply] = useState(true);
@@ -65,9 +68,6 @@ const EmailPage = () => {
             const response = await gmailService.getGmailThreads();
             const data = response?.data || [];
             setThreads(data);
-            if (data.length > 0) {
-                setActiveThreadId(data[0].thread_id);
-            }
         } catch (error) {
             console.error('Failed to load gmail threads', error);
             setThreadsError(error?.response?.data?.message || 'Failed to load gmail threads');
@@ -84,9 +84,6 @@ const EmailPage = () => {
             const response = await gmailService.getReferralEmails();
             const data = response?.data || [];
             setThreads(data);
-            if (data.length > 0) {
-                setActiveThreadId((prev) => prev || data[0].thread_id);
-            }
         } catch (error) {
             console.error('Failed to sync referral emails', error);
         } finally {
@@ -105,6 +102,71 @@ const EmailPage = () => {
         bootstrap();
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isGmailActive]);
+
+    useEffect(() => {
+        if (!activeThreadId || !isGmailActive) {
+            setThreadHistory(null);
+            setThreadHistoryError(null);
+            return;
+        }
+
+        let cancelled = false;
+
+        const loadThreadHistory = async () => {
+            setLoadingThreadHistory(true);
+            setThreadHistoryError(null);
+            try {
+                const res = await gmailService.getThreadHistory(activeThreadId);
+                if (!cancelled && res?.data) {
+                    setThreadHistory(res.data);
+                }
+            } catch (err) {
+                if (!cancelled) {
+                    setThreadHistoryError(err?.response?.data?.message || 'Failed to load thread');
+                    setThreadHistory(null);
+                }
+            } finally {
+                if (!cancelled) setLoadingThreadHistory(false);
+            }
+        };
+
+        loadThreadHistory();
+        return () => { cancelled = true; };
+    }, [activeThreadId, isGmailActive]);
+
+    const handleAttachmentDownload = async (messageId, attachmentId, filename) => {
+        try {
+            const blob = await gmailService.getAttachmentBlob(messageId, attachmentId);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename || 'attachment';
+            a.click();
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Attachment download failed', err);
+        }
+    };
+
+    const handleAttachmentView = async (messageId, attachmentId, filename, mimeType) => {
+        try {
+            const blob = await gmailService.getAttachmentBlob(messageId, attachmentId);
+            const url = URL.createObjectURL(blob);
+            const canViewInline = (mimeType || '').startsWith('image/') || (mimeType || '').includes('pdf');
+            if (canViewInline) {
+                window.open(url, '_blank', 'noopener');
+            } else {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename || 'attachment';
+                a.target = '_blank';
+                a.click();
+                URL.revokeObjectURL(url);
+            }
+        } catch (err) {
+            console.error('Attachment view failed', err);
+        }
+    };
 
     const filtered = useMemo(() => {
         let list = threads;
@@ -231,75 +293,100 @@ const EmailPage = () => {
                 </div>
             </div>
 
-            {/* Center - Chat */}
-            {activeThread ? (
-                <div className="sms-chat">
-                    <div className="sms-chat-header">
-                        <div>
-                            <div className="sms-chat-name">
-                                {activeThread.sender_name || activeThread.sender_email || 'Unknown sender'}
-                            </div>
-                            <div className="sms-chat-number">
-                                {activeThread.subject || 'Referral Thread'}
+            {/* Center - Email thread chat history */}
+            <div className="sms-chat">
+                {!activeThreadId ? (
+                    <div className="sms-chat-placeholder custom-scrollbar">
+                        <span style={{ color: 'var(--text-secondary)' }}>Select an email to view thread</span>
+                    </div>
+                ) : (
+                    <>
+                        <div className="sms-chat-header">
+                            <div>
+                                <div className="sms-chat-name">
+                                    {activeThread?.sender_name || activeThread?.sender_email || 'Unknown sender'}
+                                </div>
+                                <div className="sms-chat-number">
+                                    {threadHistory?.subject ?? activeThread?.subject ?? 'Referral Thread'}
+                                </div>
                             </div>
                         </div>
-                        {/* <div className="sms-chat-actions">
-                            <button className="sms-chat-action-btn" onClick={() => setShowPatientContext(!showPatientContext)}>
-                                <i className="fas fa-user" /> Patient Info
+
+                        <div className="sms-messages custom-scrollbar">
+                            {loadingThreadHistory && (
+                                <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                    Loading thread...
+                                </div>
+                            )}
+                            {threadHistoryError && !loadingThreadHistory && (
+                                <div style={{ padding: 24, textAlign: 'center', color: 'var(--danger, #dc2626)' }}>
+                                    {threadHistoryError}
+                                </div>
+                            )}
+                            {!loadingThreadHistory && !threadHistoryError && threadHistory?.messages?.length > 0 && threadHistory.messages.map((msg) => (
+                                <div
+                                    key={msg.id}
+                                    className={`sms-bubble ${msg.isFromMe ? 'sms-bubble-outgoing' : 'sms-bubble-incoming'}`}
+                                >
+                                    <div className="sms-bubble-label">
+                                        {msg.fromName || msg.from} {msg.isFromMe && '(You)'}
+                                    </div>
+                                    <div className="sms-bubble-time" style={{ marginBottom: 6 }}>
+                                        {new Date(msg.date).toLocaleString()}
+                                    </div>
+                                    <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                                        {msg.bodyText || msg.snippet}
+                                    </div>
+                                    {msg.attachments?.length > 0 && (
+                                        <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                                            {msg.attachments.map((att) => (
+                                                <span key={att.attachmentId} style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                                                    <button
+                                                        type="button"
+                                                        className="sms-chat-action-btn"
+                                                        style={{ fontSize: 12, padding: '6px 10px' }}
+                                                        onClick={() => handleAttachmentDownload(msg.id, att.attachmentId, att.filename)}
+                                                        title={`Download ${att.filename}`}
+                                                    >
+                                                        <i className="fas fa-download" /> {att.filename}
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="sms-chat-action-btn"
+                                                        style={{ fontSize: 12, padding: '6px 10px' }}
+                                                        onClick={() => handleAttachmentView(msg.id, att.attachmentId, att.filename, att.mimeType)}
+                                                        title={`View ${att.filename}`}
+                                                    >
+                                                        <i className="fas fa-external-link-alt" />
+                                                    </button>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                            {!loadingThreadHistory && !threadHistoryError && threadHistory?.messages?.length === 0 && (
+                                <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                    No messages in this thread.
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="sms-compose">
+                            <input
+                                type="text"
+                                className="sms-compose-input"
+                                placeholder="Type a reply..."
+                                value={messageInput}
+                                onChange={(e) => setMessageInput(e.target.value)}
+                            />
+                            <button className="sms-compose-send" type="button">
+                                <i className="fas fa-paper-plane" />
                             </button>
-                            <button className="sms-chat-action-btn">
-                                <i className="fas fa-phone" /> Call
-                            </button>
-                        </div> */}
-                    </div>
-
-                    <div className="sms-messages custom-scrollbar">
-                        <div
-                            className="sms-bubble sms-bubble-incoming"
-                        >
-                            <div className="sms-bubble-label" style={{ color: 'var(--primary)' }}>
-                                <i className="fas fa-robot" /> AI Classified Referral
-                            </div>
-                            <div>{activeThread.last_message || 'Referral email detected.'}</div>
-                            <div className="sms-bubble-time">
-                                {activeThread.last_message_time
-                                    ? new Date(activeThread.last_message_time).toLocaleString()
-                                    : ''}
-                            </div>
                         </div>
-                    </div>
-
-                    {/* {showAISuggestion && activeSMS.messages.length > 0 && (
-                        <div className="sms-ai-suggestion">
-                            <i className="fas fa-robot" style={{ color: 'var(--primary)', fontSize: 16 }} />
-                            <div className="sms-ai-suggestion-text">
-                                AI suggestion: "You're welcome Emily! Looking forward to seeing you on Tuesday. Don't forget to brush and floss before coming in 😊"
-                            </div>
-                            <div className="sms-ai-suggestion-actions">
-                                <button className="sms-ai-suggestion-btn send" onClick={() => setShowAISuggestion(false)}>Send</button>
-                                <button className="sms-ai-suggestion-btn edit">Edit</button>
-                            </div>
-                        </div>
-                    )} */}
-
-                    <div className="sms-compose">
-                        <input
-                            type="text"
-                            className="sms-compose-input"
-                            placeholder="Type a message..."
-                            value={messageInput}
-                            onChange={(e) => setMessageInput(e.target.value)}
-                        />
-                        <button className="sms-compose-send">
-                            <i className="fas fa-paper-plane" />
-                        </button>
-                    </div>
-                </div>
-            ) : (
-                <div className="sms-chat" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>Select a referral email</span>
-                </div>
-            )}
+                    </>
+                )}
+            </div>
 
             {/* Right Panel - Patient Context */}
             {/* {showPatientContext && activeSMS && (

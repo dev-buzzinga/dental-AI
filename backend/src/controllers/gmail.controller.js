@@ -45,3 +45,64 @@ export const getGmailThreads = async (req, res) => {
         });
     }
 };
+
+export const getThreadHistory = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { threadId } = req.params;
+        if (!threadId) {
+            return res.status(400).json({
+                success: false,
+                message: "threadId is required",
+            });
+        }
+        const result = await gmailService.getThreadHistory(userId, threadId);
+        return res.status(200).json({
+            success: true,
+            data: result,
+        });
+    } catch (error) {
+        console.error("getThreadHistory controller error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error?.message || "Failed to fetch thread history",
+        });
+    }
+};
+
+export const getAttachment = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { messageId, attachmentId } = req.params;
+        if (!messageId || !attachmentId) {
+            return res.status(400).json({
+                success: false,
+                message: "messageId and attachmentId are required",
+            });
+        }
+        const { data, filename, mimeType } = await gmailService.getAttachment(
+            userId,
+            messageId,
+            attachmentId
+        );
+        if (!data) {
+            return res.status(404).json({
+                success: false,
+                message: "Attachment not found",
+            });
+        }
+        const buffer = Buffer.from(data, "base64");
+        res.setHeader("Content-Type", mimeType || "application/octet-stream");
+        res.setHeader(
+            "Content-Disposition",
+            `attachment; filename="${encodeURIComponent(filename || "attachment")}"`
+        );
+        return res.send(buffer);
+    } catch (error) {
+        console.error("getAttachment controller error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error?.message || "Failed to fetch attachment",
+        });
+    }
+};

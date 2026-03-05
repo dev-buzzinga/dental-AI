@@ -15,8 +15,23 @@ const getReferralEmails = async () => {
     return response.data;
 };
 
+const getThreadHistory = async (threadId) => {
+    const response = await authAxiosInstance.get(`/gmail/threads/${threadId}/history`);
+    return response.data;
+};
+
+const getAttachmentBlob = async (messageId, attachmentId) => {
+    const response = await authAxiosInstance.get(
+        `/gmail/messages/${messageId}/attachments/${attachmentId}`,
+        { responseType: "blob" }
+    );
+    return response.data;
+};
+
 export default {
     connectGmail,
     getGmailThreads,
     getReferralEmails,
+    getThreadHistory,
+    getAttachmentBlob,
 };

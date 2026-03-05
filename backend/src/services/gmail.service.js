@@ -7,6 +7,10 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { promises as fs } from "fs";
 import { validateReferral } from "./anthropic.service.js";
+import {
+    formatMessageForChat,
+    getAttachmentsFromMessage,
+} from "../utils/emailReadHelper.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -161,37 +165,14 @@ const fetchLatestMessages = async ({ gmail, maxResults = 50 }) => {
     return messages;
 };
 
-const getMessageDetails = async ({ gmail, messageId }) => {
+const getMessageDetails = async ({ gmail, messageId, format = "full" }) => {
     const response = await gmail.users.messages.get({
         userId: "me",
         id: messageId,
+        format,
     });
 
     return response.data;
-};
-
-const getAttachmentsFromMessage = (message) => {
-    const parts = message.payload?.parts || [];
-    const attachments = [];
-
-    const walkParts = (partsList) => {
-        for (const part of partsList) {
-            if (part.filename && part.body?.attachmentId) {
-                attachments.push({
-                    filename: part.filename,
-                    mimeType: part.mimeType,
-                    attachmentId: part.body.attachmentId,
-                });
-            }
-            if (part.parts && part.parts.length) {
-                walkParts(part.parts);
-            }
-        }
-    };
-
-    walkParts(parts);
-
-    return attachments;
 };
 
 const downloadAttachment = async ({ gmail, messageId, attachmentId }) => {
@@ -422,6 +403,71 @@ export const fetchReferralEmails = async (userId) => {
 
 export const listGmailThreads = async (userId) => {
     return await listReferralThreads(userId);
+};
+
+/**
+ * Get full thread with all messages for chat history.
+ * Uses user's stored tokens (refresh_token/access_token) from DB.
+ */
+export const getThreadHistory = async (userId, threadId) => {
+    const account = await getUserGmailAccount(userId);
+    if (!account?.is_active) {
+        throw new Error("Gmail is not connected for this user");
+    }
+
+    const updatedAccount = await refreshAccessTokenIfNeeded(account);
+    const gmail = getGmailClient(updatedAccount.access_token);
+
+    const threadRes = await gmail.users.threads.get({
+        userId: "me",
+        id: threadId,
+    });
+
+    const thread = threadRes.data;
+    const messageIds = (thread.messages || []).map((m) => m.id);
+
+    const messages = [];
+    for (const messageId of messageIds) {
+        const message = await getMessageDetails({ gmail, messageId });
+        const formatted = formatMessageForChat(message, updatedAccount.gmail_email || "");
+        messages.push(formatted);
+    }
+
+    // Sort by date ascending for chat order
+    messages.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    return {
+        threadId,
+        subject: messages[0]?.subject || "",
+        messages,
+    };
+};
+
+/**
+ * Get attachment content for a message. Returns base64 data + metadata for download/view.
+ */
+export const getAttachment = async (userId, messageId, attachmentId) => {
+    const account = await getUserGmailAccount(userId);
+    if (!account?.is_active) {
+        throw new Error("Gmail is not connected for this user");
+    }
+
+    const updatedAccount = await refreshAccessTokenIfNeeded(account);
+    const gmail = getGmailClient(updatedAccount.access_token);
+
+    const message = await getMessageDetails({ gmail, messageId });
+    const attachments = getAttachmentsFromMessage(message);
+    const attachment = attachments.find((a) => a.attachmentId === attachmentId);
+    if (!attachment) {
+        throw new Error("Attachment not found");
+    }
+
+    const data = await downloadAttachment({ gmail, messageId, attachmentId });
+    return {
+        data,
+        filename: attachment.filename,
+        mimeType: attachment.mimeType || "application/octet-stream",
+    };
 };
 
 // export const gmailCallback = async (req, res) => {
