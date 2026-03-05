@@ -54,7 +54,7 @@ const EmailPage = () => {
         if (!authLoading) {
             checkGmailConnection();
         }
-    }, [authLoading, user]);
+    }, [authLoading]);
 
     const loadExistingThreads = async () => {
         if (!isGmailActive) return;
@@ -99,7 +99,7 @@ const EmailPage = () => {
 
         const bootstrap = async () => {
             await loadExistingThreads();
-            syncReferralEmails();
+            // syncReferralEmails();
         };
 
         bootstrap();
