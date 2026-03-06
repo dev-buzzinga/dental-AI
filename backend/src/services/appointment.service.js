@@ -88,10 +88,9 @@ export const connectGoogle = async (req, res) => {
 export const googleCallback = async (req, res) => {
     try {
         const { code, state } = req.query;
-        const { type } = JSON.parse(state);
+        const { type, doctor_id } = JSON.parse(state);
         console.log("type==>", type);
         if (type == "calendar") {
-            const doctor_id = Number(state);
 
             const { tokens } = await oauth2Client.getToken(code);
             if (!tokens.refresh_token) {
@@ -406,6 +405,7 @@ const createGoogleEvent = async (doctor, appointment, timeZone) => {
         process.env.GOOGLE_CLIENT_SECRET,
         process.env.GOOGLE_REDIRECT_URI
     );
+    // console.log("doctor.google_refresh_token==>", doctor.google_refresh_token);
 
     oauth2Client.setCredentials({
         refresh_token: doctor.google_refresh_token,
@@ -429,18 +429,33 @@ const createGoogleEvent = async (doctor, appointment, timeZone) => {
 
     const tz = timeZone || "UTC";
 
-    await calendar.events.insert({
-        calendarId: "primary",
-        requestBody: {
-            summary: `Appointment - ${summaryName}`,
-            start: {
-                dateTime: startDateTime,
-                timeZone: tz,
+    try {
+        await calendar.events.insert({
+            calendarId: "primary",
+            requestBody: {
+                summary: `Appointment - ${summaryName}`,
+                start: {
+                    dateTime: startDateTime,
+                    timeZone: tz,
+                },
+                end: {
+                    dateTime: endDateTime,
+                    timeZone: tz,
+                },
             },
-            end: {
-                dateTime: endDateTime,
-                timeZone: tz,
-            },
-        },
-    });
+        });
+    }
+    catch (err) {
+        console.log("err.response?.data?.error==>", err.response?.data?.error);
+
+        if (
+            err.response?.data?.error === "invalid_grant" ||
+            err.response?.data?.error_description?.includes("expired")
+        ) {
+            await supabase
+                .from("doctors")
+                .update({ calendar_connected: false })
+                .eq("id", doctor.id);
+        }
+    }
 };
