@@ -47,6 +47,8 @@ const EmailPage = () => {
     const [replyAttachments, setReplyAttachments] = useState([]);
     const [sendingReply, setSendingReply] = useState(false);
     const [markingRead, setMarkingRead] = useState(false);
+    const [refreshingChat, setRefreshingChat] = useState(false);
+    const [viewingAttachmentKey, setViewingAttachmentKey] = useState(null); // 'messageId-filename' when loading
     const replyFileInputRef = useRef(null);
 
     useEffect(() => {
@@ -214,6 +216,8 @@ const EmailPage = () => {
     };
 
     const handleAttachmentView = async (messageId, filename, mimeType) => {
+        const key = `${messageId}-${filename}`;
+        setViewingAttachmentKey(key);
         try {
             const blob = await gmailService.getAttachmentBlob(messageId, filename);
             const url = URL.createObjectURL(blob);
@@ -230,6 +234,8 @@ const EmailPage = () => {
             }
         } catch (err) {
             console.error('Attachment view failed', err);
+        } finally {
+            setViewingAttachmentKey(null);
         }
     };
 
@@ -263,6 +269,19 @@ const EmailPage = () => {
         }
     };
 
+    const handleRefreshChat = async () => {
+        if (!activeThreadId || refreshingChat) return;
+        setRefreshingChat(true);
+        try {
+            const res = await gmailService.getThreadHistory(activeThreadId);
+            if (res?.data) setThreadHistory(res.data);
+        } catch (err) {
+            console.error('Refresh chat failed', err);
+        } finally {
+            setRefreshingChat(false);
+        }
+    };
+
     const filtered = useMemo(() => {
         let list = threads;
 
@@ -273,13 +292,18 @@ const EmailPage = () => {
         // 'ai' tab is reserved for future flags; currently behaves like 'all'.
 
         if (searchTerm) {
-            list = list.filter((t) =>
-                (t.last_message || '').toLowerCase().includes(searchTerm.toLowerCase())
-            );
+            const term = searchTerm.toLowerCase();
+            list = list.filter((t) => {
+                const display = getDisplayUser(t, user?.email);
+                const matchMessage = (t.last_message || '').toLowerCase().includes(term);
+                const matchName = (display.name || '').toLowerCase().includes(term);
+                const matchEmail = (display.email || '').toLowerCase().includes(term);
+                return matchMessage || matchName || matchEmail;
+            });
         }
 
         return list;
-    }, [threads, searchTerm, filter]);
+    }, [threads, searchTerm, filter, user?.email]);
 
     const activeThread = filtered.find((t) => t.thread_id === activeThreadId) || filtered[0];
 
@@ -338,13 +362,13 @@ const EmailPage = () => {
                 ) : null}
 
                 <div className="sms-tabs">
-                    {['all', 'unread', 'ai'].map((f) => (
+                    {['all', 'unread'].map((f) => (
                         <button
                             key={f}
                             className={`sms-tab ${filter === f ? 'active' : ''}`}
                             onClick={() => setFilter(f)}
                         >
-                            {f === 'all' ? 'All' : f === 'unread' ? 'Unread' : 'AI Handled'}
+                            {f === 'all' ? 'All' : f === 'unread' ? 'Unread' : ''}
                         </button>
                     ))}
                 </div>
@@ -427,8 +451,18 @@ const EmailPage = () => {
                                     );
                                 })()}
                             </div>
-                            {activeThread?.is_new && (
-                                <div className="sms-chat-actions">
+                            <div className="sms-chat-actions">
+                                <button
+                                    type="button"
+                                    className="sms-chat-action-btn"
+                                    disabled={refreshingChat}
+                                    onClick={handleRefreshChat}
+                                    title="Refresh to get latest messages"
+                                >
+                                    {refreshingChat ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-sync-alt" />}
+                                    {' '}{refreshingChat ? 'Refreshing…' : 'Refresh chat'}
+                                </button>
+                                {activeThread?.is_new && (
                                     <button
                                         type="button"
                                         className="sms-chat-action-btn"
@@ -437,8 +471,8 @@ const EmailPage = () => {
                                     >
                                         {markingRead ? 'Marking…' : 'Mark as read'}
                                     </button>
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
 
                         <div className="sms-messages custom-scrollbar">
@@ -487,10 +521,15 @@ const EmailPage = () => {
                                                         type="button"
                                                         className="sms-chat-action-btn"
                                                         style={{ fontSize: 12, padding: '6px 10px' }}
+                                                        disabled={viewingAttachmentKey === `${msg.id}-${att.filename}`}
                                                         onClick={() => handleAttachmentView(msg.id, att.filename, att.mimeType)}
                                                         title={`View ${att.filename}`}
                                                     >
-                                                        <i className="fas fa-external-link-alt" />
+                                                        {viewingAttachmentKey === `${msg.id}-${att.filename}` ? (
+                                                            <i className="fas fa-spinner fa-spin" />
+                                                        ) : (
+                                                            <i className="fas fa-external-link-alt" />
+                                                        )}
                                                     </button>
                                                 </span>
                                             ))}

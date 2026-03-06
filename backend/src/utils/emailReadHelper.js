@@ -133,6 +133,41 @@ export function getAttachmentsFromMessage(message) {
 }
 
 /**
+ * Filter email body to show only the latest reply and the first "On ... wrote:" line.
+ * Removes quoted reply history (lines with ">", ">>", and everything after the first quote header).
+ * @param {string} bodyText - Full plain text body of the email
+ * @returns {string}
+ */
+export function filterQuotedReplyHistory(bodyText) {
+    if (!bodyText || typeof bodyText !== "string") return bodyText || "";
+
+    const lines = bodyText.split(/\r?\n/);
+
+    // Gmail reply header pattern
+    const wroteRegex = /^On\s.+wrote:\s*$/i;
+
+    let result = [];
+
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+
+        // Stop when quoted history starts
+        if (line.trim().startsWith(">")) {
+            break;
+        }
+
+        result.push(line);
+
+        // If we reach "On ... wrote:" keep it and stop
+        if (wroteRegex.test(line.trim())) {
+            break;
+        }
+    }
+
+    return result.join("\n").trim();
+}
+
+/**
  * Format a single Gmail message for chat history (from, date, body, attachments).
  * @param {object} message - full Gmail message from messages.get
  * @param {string} myEmail - current user's Gmail address (to show incoming vs sent)
@@ -150,6 +185,8 @@ export function formatMessageForChat(message, myEmail = "") {
         Boolean(message.labelIds?.includes("SENT")) ||
         (Boolean(myEmail) && senderEmail.toLowerCase() === myEmail.toLowerCase());
 
+    const bodyFiltered = filterQuotedReplyHistory(text);
+
     return {
         id: message.id,
         threadId: message.threadId,
@@ -159,7 +196,7 @@ export function formatMessageForChat(message, myEmail = "") {
         subject,
         date: new Date(internalDate).toISOString(),
         snippet: message.snippet || "",
-        bodyText: text,
+        bodyText: bodyFiltered,
         bodyHtml: html || null,
         isFromMe,
         attachments: attachments.map((a) => ({
