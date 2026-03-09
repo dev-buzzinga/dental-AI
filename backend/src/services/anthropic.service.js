@@ -241,6 +241,120 @@ Response:`;
 };
 
 /**
+ * Ask AI to pick the best appointment type from a user's appointment_types list
+ * based on the email content and (optionally) the doctor's details.
+ *
+ * @param {object} params
+ * @param {string} params.subject
+ * @param {string} params.body
+ * @param {string} [params.doctorName]
+ * @param {string} [params.doctorSpecialty]
+ * @param {Array<{ id: number, name: string }>} params.appointmentTypes
+ * @returns {Promise<number|null>} matching appointment_type id, or null/NaN if no clear match
+ */
+export const selectAppointmentTypeForEmail = async ({
+    subject,
+    body,
+    doctorName,
+    doctorSpecialty,
+    appointmentTypes,
+}) => {
+    if (!config.ANTHROPIC_API_KEY) {
+        console.warn("Anthropic API key is not configured. Skipping appointment type selection.");
+        return null;
+    }
+
+    if (!Array.isArray(appointmentTypes) || appointmentTypes.length === 0) {
+        return null;
+    }
+
+    try {
+        const typesDescription = appointmentTypes
+            .map((t) => `- ID: ${t.id} | Name: ${t.name}`)
+            .join("\n");
+
+        const doctorInfoLines = [];
+        if (doctorName) {
+            doctorInfoLines.push(`Doctor: ${doctorName}`);
+        }
+        if (doctorSpecialty) {
+            doctorInfoLines.push(`Doctor Specialty: ${doctorSpecialty}`);
+        }
+
+        const prompt = `You are selecting the best appointment type for a dental appointment
+from the list of appointment types below.
+
+Email Subject: ${subject}
+
+Email Body:
+${body}
+
+${doctorInfoLines.join("\n")}
+
+Available appointment types (from the database):
+${typesDescription}
+
+Decision rules:
+- Choose the ONE appointment type whose name best matches the patient's request,
+  treatment, or reason for visit in the email.
+- If the patient clearly mentions a procedure (for example: "cleaning", "whitening",
+  "root canal", "implant", "braces"), choose the most appropriate type by name.
+- If multiple types could match, choose the MOST specific and best-fitting one.
+- If none of the appointment types match the email content at all, respond with: NO_MATCH
+
+Respond with EXACTLY ONE of:
+- The numeric ID of the chosen appointment type (for example: 3)
+- Or the word: NO_MATCH
+
+No explanation, no extra text. Only the ID number or NO_MATCH.`;
+
+        const response = await anthropic.messages.create({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 50,
+            temperature: 0,
+            messages: [
+                {
+                    role: "user",
+                    content: prompt,
+                },
+            ],
+        });
+
+        const rawText =
+            response?.content?.[0]?.text ||
+            (Array.isArray(response?.content)
+                ? response.content.map((c) => c.text || "").join(" ")
+                : "");
+
+        if (!rawText) return null;
+
+        const answer = rawText.trim();
+        const lower = answer.toLowerCase();
+
+        if (lower === "no_match" || lower === "no match" || lower.includes("no_match")) {
+            return null;
+        }
+
+        const numeric = parseInt(answer, 10);
+        if (!Number.isNaN(numeric)) {
+            return numeric;
+        }
+
+        // Fallback: maybe AI responded like "ID: 3"
+        const matchId = answer.match(/(\d+)/);
+        if (matchId) {
+            const idNum = parseInt(matchId[1], 10);
+            return Number.isNaN(idNum) ? null : idNum;
+        }
+
+        return null;
+    } catch (error) {
+        console.error("Anthropic selectAppointmentTypeForEmail error:", error?.response?.data || error.message);
+        return null;
+    }
+};
+
+/**
  * Try to detect if the patient has requested a specific slot (date + time)
  * in their email body. If so, return a normalized slot object; otherwise null.
  *

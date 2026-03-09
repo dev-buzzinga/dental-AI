@@ -101,8 +101,50 @@ const PracticeDetails = () => {
             if (fetchError) {
                 // If no row exists yet, Supabase may return an error; we treat that as "no data"
                 if (fetchError.code === 'PGRST116' || fetchError.message?.includes('0 rows')) {
-                    setFormData(initialFormState);
-                    setRecordId(null);
+                    // Auto-create a new practice_details row with the logged-in user's email
+                    const baseData = {
+                        general_information: initialFormState.general_information,
+                        address: initialFormState.address,
+                        contact_information: {
+                            ...initialFormState.contact_information,
+                            email: user.email || '',
+                        },
+                    };
+
+                    try {
+                        const { data: inserted, error: insertError } = await supabase
+                            .from('practice_details')
+                            .insert({
+                                user_id: user.id,
+                                general_information: baseData.general_information,
+                                address: baseData.address,
+                                contact_information: baseData.contact_information,
+                            })
+                            .select()
+                            .single();
+
+                        if (insertError) {
+                            console.error('Error auto-creating practice details with email:', insertError);
+                            // Even if insert fails, at least show the email in the UI
+                            setFormData(baseData);
+                            setOriginalData(baseData);
+                            setRecordId(null);
+                        } else if (inserted) {
+                            const newData = {
+                                general_information: inserted.general_information || initialFormState.general_information,
+                                address: inserted.address || initialFormState.address,
+                                contact_information: inserted.contact_information || baseData.contact_information,
+                            };
+                            setRecordId(inserted.id);
+                            setFormData(newData);
+                            setOriginalData(newData);
+                        }
+                    } catch (autoErr) {
+                        console.error('Unexpected error auto-creating practice details:', autoErr);
+                        setFormData(baseData);
+                        setOriginalData(baseData);
+                        setRecordId(null);
+                    }
                     return;
                 }
                 console.error('Error fetching practice details:', fetchError);
@@ -112,10 +154,41 @@ const PracticeDetails = () => {
 
             if (data) {
                 setRecordId(data.id);
+                let contactInfo = data.contact_information || initialFormState.contact_information;
+
+                // If no email saved yet for this practice, auto-fill and persist the logged-in user's email
+                if (!contactInfo.email && user.email) {
+                    const updatedContactInfo = {
+                        ...contactInfo,
+                        email: user.email,
+                    };
+                    try {
+                        const { data: updatedRow, error: updateError } = await supabase
+                            .from('practice_details')
+                            .update({
+                                contact_information: updatedContactInfo,
+                            })
+                            .eq('id', data.id)
+                            .select()
+                            .single();
+
+                        if (updateError) {
+                            console.error('Error auto-updating practice email:', updateError);
+                        } else if (updatedRow) {
+                            contactInfo = updatedRow.contact_information || updatedContactInfo;
+                        } else {
+                            contactInfo = updatedContactInfo;
+                        }
+                    } catch (updateErr) {
+                        console.error('Unexpected error auto-updating practice email:', updateErr);
+                        contactInfo = updatedContactInfo;
+                    }
+                }
+
                 const fetchedData = {
                     general_information: data.general_information || initialFormState.general_information,
                     address: data.address || initialFormState.address,
-                    contact_information: data.contact_information || initialFormState.contact_information,
+                    contact_information: contactInfo,
                 };
                 setFormData(fetchedData);
                 setOriginalData(fetchedData);
@@ -435,7 +508,8 @@ const PracticeDetails = () => {
                                             type="email"
                                             className="practice-input"
                                             value={formData.contact_information.email}
-                                            onChange={(e) => handleContactChange('email', e.target.value)}
+                                            readOnly
+                                            style={{ cursor: 'not-allowed', backgroundColor: 'var(--bg-secondary)' }}
                                             placeholder="Practice email address"
                                         />
                                     </div>

@@ -13,6 +13,7 @@ import {
     matchDoctorForAppointment,
     extractRequestedSlot,
     extractBookingSlots,
+    selectAppointmentTypeForEmail,
 } from "./anthropic.service.js";
 import { createGoogleEvent } from "./appointment.service.js";
 import {
@@ -1106,6 +1107,7 @@ const createAppointmentFromSlot = async ({
     patient,
     slot,
     practiceTimezone,
+    appointmentTypeId,
 }) => {
     const timezone = practiceTimezone || "UTC";
 
@@ -1127,7 +1129,7 @@ const createAppointmentFromSlot = async ({
             meeting_date,
             start_time: slot.startUTC,
             end_time: slot.endUTC,
-            appointment_type_id: null,
+            appointment_type_id: appointmentTypeId ?? null,
             doctor_id: doctor.id,
             patient_details,
             notes: "Auto-booked from email",
@@ -1478,6 +1480,45 @@ const processAppointmentEmailsForAccount = async (account) => {
             const firstSlot = chosenSlots[0];
             const lastSlot = chosenSlots[chosenSlots.length - 1];
 
+            // Determine appointment_type_id using AI + appointment_types table
+            let appointmentTypeId = null;
+            try {
+                const { data: types, error: typesError } = await supabase
+                    .from("appointment_types")
+                    .select("id, name")
+                    .eq("user_id", userId);
+
+                if (!typesError && Array.isArray(types) && types.length > 0) {
+                    const aiTypeId = await selectAppointmentTypeForEmail({
+                        subject,
+                        body: bodyText,
+                        doctorName: matchedDoctor.name,
+                        doctorSpecialty: matchedDoctor.specialty || "",
+                        appointmentTypes: types,
+                    });
+
+                    const matchedType =
+                        typeof aiTypeId === "number"
+                            ? types.find((t) => t.id === aiTypeId)
+                            : types.find(
+                                  (t) =>
+                                      String(t.id) === String(aiTypeId)
+                              );
+
+                    if (matchedType) {
+                        appointmentTypeId = matchedType.id;
+                    } else {
+                        // Fallback: if AI could not pick a valid one, choose the first type
+                        appointmentTypeId = types[0].id;
+                    }
+                }
+            } catch (err) {
+                console.error(
+                    "Error selecting appointment type for email:",
+                    err
+                );
+            }
+
             let patient;
             try {
                 patient = await upsertPatientFromEmail({
@@ -1505,6 +1546,7 @@ const processAppointmentEmailsForAccount = async (account) => {
                         patient,
                         slot,
                         practiceTimezone,
+                        appointmentTypeId,
                     });
                     createdAppointments.push(appt);
                 }

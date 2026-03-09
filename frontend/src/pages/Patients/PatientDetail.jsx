@@ -141,17 +141,6 @@ const PatientDetail = () => {
     };
 
     const getBannerDates = () => {
-        if (!appointments || appointments.length === 0) return { lastVisit: 'No history', nextVisit: 'None' };
-
-        const now = new Date();
-        const pastAppointments = appointments
-            .filter(a => new Date(a.date) < now)
-            .sort((a, b) => new Date(b.date) - new Date(a.date));
-
-        const futureAppointments = appointments
-            .filter(a => new Date(a.date) >= now)
-            .sort((a, b) => new Date(a.date) - new Date(b.date));
-
         const formatDate = (dateStr) => {
             if (!dateStr) return '—';
             return new Date(dateStr).toLocaleDateString('en-US', {
@@ -161,9 +150,34 @@ const PatientDetail = () => {
             });
         };
 
+        const now = new Date();
+        const pastAppointments = (appointments || [])
+            .filter(a => new Date(a.date) < now)
+            .sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        const futureAppointments = (appointments || [])
+            .filter(a => new Date(a.date) >= now)
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        let nextVisitValue = 'None';
+        if (futureAppointments.length > 0) {
+            nextVisitValue = formatDate(futureAppointments[0].date);
+        } else if (patient && patient.next_appointment) {
+            nextVisitValue = formatDate(patient.next_appointment);
+        } else if (appointments && appointments.length > 0) {
+            nextVisitValue = 'Not scheduled';
+        }
+
+        let lastVisitValue = 'No history';
+        if (pastAppointments.length > 0) {
+            lastVisitValue = formatDate(pastAppointments[0].date);
+        } else if (appointments && appointments.length > 0) {
+            lastVisitValue = 'New Patient';
+        }
+
         return {
-            lastVisit: pastAppointments.length > 0 ? formatDate(pastAppointments[0].date) : 'New Patient',
-            nextVisit: futureAppointments.length > 0 ? formatDate(futureAppointments[0].date) : 'Not scheduled'
+            lastVisit: lastVisitValue,
+            nextVisit: nextVisitValue
         };
     };
 
