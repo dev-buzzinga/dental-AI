@@ -12,6 +12,7 @@ import {
     isAppointmentEmail,
     matchDoctorForAppointment,
     extractRequestedSlot,
+    extractBookingSlots,
 } from "./anthropic.service.js";
 import { createGoogleEvent } from "./appointment.service.js";
 import {
@@ -599,7 +600,7 @@ export const sendReply = async (userId, threadId, payload) => {
     try {
         const oauth2 = google.oauth2({ version: "v2", auth: oauth2Client });
         const { data: userInfo } = await oauth2.userinfo.get();
-        console.log("userInfo==>", userInfo);
+        // console.log("userInfo==>", userInfo);
         fromName = userInfo?.name || "";
 
     } catch (err) {
@@ -849,21 +850,115 @@ const formatSlotSummaryForEmail = (doctorName, slotsByDay) => {
 
     const lines = [];
     lines.push(`Dr. ${doctorName} has the following available slots this week:`);
+    lines.push(""); // blank line for readability
 
     for (const day of slotsByDay) {
-        const dateLabel = `${day.weekday}, ${day.date}`;
-        const slotStrings = day.slots.map((s) => {
+        // Highlight day name and date as a section header
+        const dateLabel = `${day.weekday.toUpperCase()} (${day.date})`;
+        lines.push(dateLabel);
+
+        // One line per slot under that day
+        for (const s of day.slots) {
             const start = formatTime12h(s.start_local);
             const end = formatTime12h(s.end_local);
-            return `${start} - ${end}`;
-        });
-        lines.push(`- ${dateLabel}: ${slotStrings.join(", ")}`);
+            lines.push(`  • ${start} - ${end}`);
+        }
+
+        lines.push(""); // blank line between days
     }
 
     lines.push(
         "Please reply with your preferred slot to confirm your appointment."
     );
     return lines.join("\n");
+};
+
+const formatAskPreferenceEmailBody = (doctors) => {
+    const lines = [];
+    lines.push("Thank you for reaching out to book an appointment.");
+    lines.push("");
+    lines.push("To match you with the right doctor, please reply with:");
+    lines.push("- The type of treatment you need (for example: cleaning, root canal, braces, implants, whitening), and");
+    lines.push("- Your preferred doctor, if you already have one.");
+    lines.push("");
+    lines.push("Here are our doctors and their specialties:");
+
+    for (const doc of doctors) {
+        lines.push(
+            `- Dr. ${doc.name} – ${doc.specialty || "General Dentist"}`
+        );
+    }
+
+    return lines.join("\n");
+};
+
+const mapBookingSlotsToAvailable = (availableSlots, bookingSlots) => {
+    if (!Array.isArray(bookingSlots) || bookingSlots.length === 0) {
+        return [];
+    }
+
+    const result = [];
+
+    const toTimeString = (mins) => {
+        const h = Math.floor(mins / 60)
+            .toString()
+            .padStart(2, "0");
+        const m = (mins % 60).toString().padStart(2, "0");
+        return `${h}:${m}`;
+    };
+
+    const resolveDateFromDay = (dayName) => {
+        if (!dayName) return null;
+        const lower = dayName.toLowerCase();
+        const day = (availableSlots || []).find((d) => {
+            const w = (d.weekday || "").toLowerCase();
+            return w === lower || w.startsWith(lower.slice(0, 3));
+        });
+        return day ? day.date : null;
+    };
+
+    for (const b of bookingSlots) {
+        const aiDay = (b.day || "").trim();
+        const aiDate = (b.date || "").trim();
+        const aiTime = (b.time || "").trim();
+
+        let dateStr = aiDate;
+        if (!dateStr) {
+            dateStr = resolveDateFromDay(aiDay);
+        }
+        if (!dateStr) {
+            return [];
+        }
+
+        const day = (availableSlots || []).find((d) => d.date === dateStr);
+        if (!day) {
+            return [];
+        }
+
+        const startMin = timeToMinutes(aiTime);
+        if (!startMin && startMin !== 0) {
+            return [];
+        }
+
+        const startStr = toTimeString(startMin);
+        const endStr = toTimeString(startMin + 60);
+
+        const slot = day.slots.find(
+            (s) =>
+                s.start_local === startStr && s.end_local === endStr
+        );
+        if (!slot) {
+            return [];
+        }
+
+        result.push({
+            ...slot,
+            date: day.date,
+            weekday: day.weekday,
+        });
+    }
+
+    return result;
 };
 
 const formatNoMatchDoctorEmailBody = (doctors) => {
@@ -895,23 +990,52 @@ const findMatchingSlot = (availableSlots, requestedSlot) => {
         return null;
     }
 
-    for (const day of availableSlots || []) {
-        if (day.date !== requestedSlot.date) continue;
-        const slot = day.slots.find(
-            (s) =>
-                s.start_local === requestedSlot.start_time &&
-                s.end_local === requestedSlot.end_time
-        );
-        if (slot) {
-            return {
-                ...slot,
-                date: day.date,
-                weekday: day.weekday,
-            };
-        }
+    const day = (availableSlots || []).find(
+        (d) => d.date === requestedSlot.date
+    );
+    if (!day) return null;
+
+    const startMin = timeToMinutes(requestedSlot.start_time);
+    const endMin = timeToMinutes(requestedSlot.end_time);
+    const slotMinutes = 60;
+
+    if (!startMin || !endMin || endMin <= startMin) {
+        return null;
     }
 
-    return null;
+    const totalMinutes = endMin - startMin;
+    const count = Math.max(1, Math.floor(totalMinutes / slotMinutes));
+
+    const slots = [];
+    let current = startMin;
+
+    const toTime = (mins) => {
+        const h = Math.floor(mins / 60)
+            .toString()
+            .padStart(2, "0");
+        const m = (mins % 60).toString().padStart(2, "0");
+        return `${h}:${m}`;
+    };
+
+    for (let i = 0; i < count; i++) {
+        const startStr = toTime(current);
+        const endStr = toTime(current + slotMinutes);
+        const slot = day.slots.find(
+            (s) =>
+                s.start_local === startStr && s.end_local === endStr
+        );
+        if (!slot) {
+            return null;
+        }
+        slots.push({
+            ...slot,
+            date: day.date,
+            weekday: day.weekday,
+        });
+        current += slotMinutes;
+    }
+
+    return slots;
 };
 
 const upsertPatientFromEmail = async ({
@@ -1087,6 +1211,23 @@ const markAppointmentMessageProcessed = async (userId, messageId) => {
     }
 };
 
+const markGmailMessageAsRead = async ({ gmail, messageId }) => {
+    try {
+        await gmail.users.messages.modify({
+            userId: "me",
+            id: messageId,
+            requestBody: {
+                removeLabelIds: ["UNREAD"],
+            },
+        });
+    } catch (error) {
+        console.error("Error marking Gmail message as read:", {
+            messageId,
+            error: error.message,
+        });
+    }
+};
+
 const processAppointmentEmailsForAccount = async (account) => {
     const userId = account.user_id;
 
@@ -1125,6 +1266,9 @@ const processAppointmentEmailsForAccount = async (account) => {
                 gmail,
                 messageId,
             });
+
+            // Once we've fetched the message in our system, mark it as read in Gmail
+            await markGmailMessageAsRead({ gmail, messageId });
 
             const subject = extractSubject(message);
             const bodyText = extractBodyText(message);
@@ -1175,7 +1319,7 @@ const processAppointmentEmailsForAccount = async (account) => {
                 );
                 try {
                     const body =
-                        "We couldn't find any doctors configured in this dental practice yet. Please contact the clinic directly to schedule your appointment.";
+                        "⚠️ We couldn't find any doctors configured in this dental practice yet. Please contact the clinic directly to schedule your appointment.";
                     await sendReply(userId, threadId, { body });
                 } catch (err) {
                     console.error(
@@ -1198,6 +1342,21 @@ const processAppointmentEmailsForAccount = async (account) => {
                 body: bodyText,
                 doctors: doctorsForAI,
             });
+            console.log("matchedName==> by AI==>", matchedName);
+
+            if (matchedName === "ASK_PREFERENCE") {
+                try {
+                    const body = formatAskPreferenceEmailBody(doctors);
+                    await sendReply(userId, threadId, { body });
+                } catch (err) {
+                    console.error(
+                        "Failed to send ASK_PREFERENCE doctor reply:",
+                        err
+                    );
+                }
+                await markAppointmentMessageProcessed(userId, messageId);
+                continue;
+            }
 
             const matchedDoctor =
                 matchedName && matchedName !== "NO_MATCH"
@@ -1247,33 +1406,54 @@ const processAppointmentEmailsForAccount = async (account) => {
                 continue;
             }
 
-            const requestedSlot = await extractRequestedSlot({
-                body: bodyText,
-                practiceTimezone: practiceTimezone || "UTC",
-            });
-
-            if (!requestedSlot) {
-                const body = formatSlotSummaryForEmail(
-                    matchedDoctor.name,
-                    availableSlots
-                );
-                try {
-                    await sendReply(userId, threadId, { body });
-                } catch (err) {
-                    console.error(
-                        "Failed to send slot suggestion reply:",
-                        err
+            // First, try advanced extraction of one-hour booking slots (can return multiple)
+            let chosenSlots = [];
+            try {
+                const bookingSlots = await extractBookingSlots(subject, bodyText);
+                if (Array.isArray(bookingSlots) && bookingSlots.length > 0) {
+                    chosenSlots = mapBookingSlotsToAvailable(
+                        availableSlots,
+                        bookingSlots
                     );
                 }
-                await markAppointmentMessageProcessed(userId, messageId);
-                continue;
+            } catch (err) {
+                console.error(
+                    "Error in extractBookingSlots, falling back to simple range:",
+                    err
+                );
             }
 
-            const chosenSlot = findMatchingSlot(availableSlots, requestedSlot);
+            // Fallback: single range (start_time/end_time) via extractRequestedSlot
+            if (!chosenSlots || chosenSlots.length === 0) {
+                const requestedSlot = await extractRequestedSlot({
+                    body: bodyText,
+                    practiceTimezone: practiceTimezone || "UTC",
+                });
 
-            if (!chosenSlot) {
+                if (!requestedSlot) {
+                    const body = formatSlotSummaryForEmail(
+                        matchedDoctor.name,
+                        availableSlots
+                    );
+                    try {
+                        await sendReply(userId, threadId, { body });
+                    } catch (err) {
+                        console.error(
+                            "Failed to send slot suggestion reply:",
+                            err
+                        );
+                    }
+                    await markAppointmentMessageProcessed(userId, messageId);
+                    continue;
+                }
+
+                chosenSlots = findMatchingSlot(availableSlots, requestedSlot);
+            }
+
+            if (!chosenSlots || !Array.isArray(chosenSlots) || chosenSlots.length === 0) {
                 const body = [
-                    "The requested time is not available.",
+                    "⚠️ Unfortunately, the requested time slot(s) are not available this week",
+                    "Here are the currently available slots:",
                     "",
                     formatSlotSummaryForEmail(
                         matchedDoctor.name,
@@ -1294,13 +1474,17 @@ const processAppointmentEmailsForAccount = async (account) => {
                 continue;
             }
 
+            // Use the first slot's date as the patient's next_appointment
+            const firstSlot = chosenSlots[0];
+            const lastSlot = chosenSlots[chosenSlots.length - 1];
+
             let patient;
             try {
                 patient = await upsertPatientFromEmail({
                     userId,
                     senderName,
                     senderEmail,
-                    nextAppointmentDate: chosenSlot.date,
+                    nextAppointmentDate: firstSlot.date,
                 });
             } catch (error) {
                 console.error(
@@ -1311,18 +1495,22 @@ const processAppointmentEmailsForAccount = async (account) => {
                 continue;
             }
 
-            let appointment;
+            // Create one appointment per requested 1-hour slot (for ranges like 3 PM–5 PM)
+            const createdAppointments = [];
             try {
-                appointment = await createAppointmentFromSlot({
-                    userId,
-                    doctor: matchedDoctor,
-                    patient,
-                    slot: chosenSlot,
-                    practiceTimezone,
-                });
+                for (const slot of chosenSlots) {
+                    const appt = await createAppointmentFromSlot({
+                        userId,
+                        doctor: matchedDoctor,
+                        patient,
+                        slot,
+                        practiceTimezone,
+                    });
+                    createdAppointments.push(appt);
+                }
             } catch (error) {
                 console.error(
-                    "Failed to create appointment from email slot:",
+                    "Failed to create one or more appointments from email slots:",
                     error
                 );
                 await markAppointmentMessageProcessed(userId, messageId);
@@ -1331,11 +1519,11 @@ const processAppointmentEmailsForAccount = async (account) => {
 
             try {
                 const bodyLines = [
-                    "Your appointment has been successfully booked!",
+                    "✅ Your appointment has been successfully booked!",
                     "",
                     `Doctor: Dr. ${matchedDoctor.name}`,
-                    `Date: ${chosenSlot.date}`,
-                    `Time: ${chosenSlot.start_local} - ${chosenSlot.end_local}`,
+                    `Date: ${firstSlot.date}`,
+                    `Time: ${formatTime12h(firstSlot.start_local)} - ${formatTime12h(lastSlot.end_local)}`,
                     "",
                     "We look forward to seeing you.",
                 ];

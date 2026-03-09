@@ -109,6 +109,7 @@ Response:`;
                 : "");
 
         const answer = (rawText || "").trim().toLowerCase();
+        console.log("isAppointmentEmail==> answer==>", answer);
         if (!answer) return false;
 
         if (answer.startsWith("yes")) return true;
@@ -155,7 +156,7 @@ export const matchDoctorForAppointment = async ({ subject, body, doctors }) => {
 
         const prompt = `You are helping assign a patient email to the most suitable doctor from the list below.
 
-Only use the fields provided: name, specialty, services. Do NOT assume anything about weekly availability.
+Only use the fields provided: name, specialty, services. Do NOT assume anything about weekly availability or make up new information.
 
 Patient Email Subject: ${subject}
 
@@ -165,12 +166,15 @@ ${body}
 Available Doctors:
 ${doctorsDescription}
 
-Task:
-- Decide which ONE doctor from the list best matches the patient's request.
-- If none of the doctors are a good fit, respond with exactly: NO_MATCH
+Your decision rules:
+- If the patient clearly mentions a specific doctor by name, return that doctor's name exactly as shown in the list.
+- ELSE IF the patient clearly describes a specific treatment or problem (for example: "root canal", "braces", "implants", "teeth whitening") that clearly matches ONE best doctor from the list, return that doctor's name.
+- ELSE IF the patient talks about an appointment but does NOT clearly mention any doctor name AND does NOT clearly describe any specific treatment or dental problem, respond with exactly: ASK_PREFERENCE
+- ELSE IF the requested treatment clearly does NOT match any doctor in the list (no one offers that service), respond with exactly: NO_MATCH
 
-Respond with EXACTLY ONE LINE, with no extra text:
+Respond with EXACTLY ONE WORD or ONE LINE, with no extra text:
 - Either the doctor's name exactly as shown in the list above
+- Or the word: ASK_PREFERENCE
 - Or the word: NO_MATCH
 
 Response:`;
@@ -197,7 +201,19 @@ Response:`;
         const answer = rawText.trim();
         const lower = answer.toLowerCase();
 
-        if (lower === "no_match" || lower === "no match" || lower.includes("no_match")) {
+        if (
+            lower === "ask_preference" ||
+            lower === "ask preference" ||
+            lower.includes("ask_preference")
+        ) {
+            return "ASK_PREFERENCE";
+        }
+
+        if (
+            lower === "no_match" ||
+            lower === "no match" ||
+            lower.includes("no_match")
+        ) {
             return "NO_MATCH";
         }
 
@@ -322,3 +338,89 @@ Examples:
 };
 
 
+/**
+ * Extracts requested booking slots from an email
+ * 
+ * @param {string} subject - Email subject
+ * @param {string} body - Email body text
+ * @returns {Promise<Array<Object>|null>} - Array of { day, time } objects or null
+ */
+export async function extractBookingSlots(subject, body) {
+    try {
+        if (!config.ANTHROPIC_API_KEY) {
+            console.log('⚠️  ANTHROPIC_API_KEY not configured, skipping slot extraction');
+            return null;
+        }
+
+        console.log('🤖 Extracting requested booking slots from email...');
+
+        // const anthropic = new Anthropic({
+        //     apiKey: config.ANTHROPIC_API_KEY,
+        // });
+
+        const prompt = `
+You are extracting appointment booking slots from an email. Each slot = 1 hour.
+
+Email Subject: ${subject}
+Email Body: ${body}
+
+TASK:
+Extract ALL requested 1-hour appointment slots.
+
+CRITICAL RULES FOR TIME RANGES:
+- If a time RANGE is mentioned like "1 PM to 3 PM" → create SEPARATE slots for each hour:
+  [{"day": "Monday", "time": "1:00 PM"}, {"day": "Monday", "time": "2:00 PM"}]
+- If client says "2 hours" or "2 slots" on a day with a start time → expand into individual hourly slots
+- If a single time is mentioned like "10 AM" → just one slot: [{"day": "Monday", "time": "10:00 AM"}]
+- If client says "book from 9 AM to 12 PM" → 3 slots: 9:00 AM, 10:00 AM, 11:00 AM
+
+EXAMPLES:
+Input: "I need 1 PM to 3 PM on Monday"
+Output: [{"day": "Monday", "time": "1:00 PM"}, {"day": "Monday", "time": "2:00 PM"}]
+
+Input: "Book me 10 AM on Tuesday and 2 PM to 4 PM on Wednesday"
+Output: [{"day": "Tuesday", "time": "10:00 AM"}, {"day": "Wednesday", "time": "2:00 PM"}, {"day": "Wednesday", "time": "3:00 PM"}]
+
+Input: "I want 3 hours starting 9 AM Friday"
+Output: [{"day": "Friday", "time": "9:00 AM"}, {"day": "Friday", "time": "10:00 AM"}, {"day": "Friday", "time": "11:00 AM"}]
+
+RULES:
+- "day" must be full weekday name (Monday, Tuesday, etc.)
+- If full date mentioned, use YYYY-MM-DD format instead of day name
+- "time" must be in 12-hour format with AM/PM (e.g., "1:00 PM")
+- End time is the START of the LAST slot (1 PM to 3 PM = 1:00 PM and 2:00 PM)
+- If no valid slot found, return: []
+
+OUTPUT FORMAT:
+Return STRICT JSON ARRAY ONLY.
+NO explanation, NO markdown, NO code blocks, NO extra text.
+Only valid JSON array.`;
+
+        const message = await anthropic.messages.create({
+            model: 'claude-sonnet-4-20250514',
+            max_tokens: 1024, // ⬆️ increased for multiple slots
+            temperature: 0,
+            messages: [
+                {
+                    role: 'user',
+                    content: prompt
+                }
+            ],
+        });
+
+        const responseText = message.content[0].text.trim();
+        const cleanedResponse = responseText
+            .replace(/```json\n?/g, '')
+            .replace(/```\n?/g, '')
+            .trim();
+
+        const slots = JSON.parse(cleanedResponse);
+
+        console.log(`🤖 Extracted ${slots.length} booking slot(s)`);
+        return slots.length > 0 ? slots : null;
+
+    } catch (error) {
+        console.error('❌ Error extracting booking slots:', error.message);
+        return null;
+    }
+}

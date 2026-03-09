@@ -405,8 +405,18 @@ export const createGoogleEvent = async (doctor, appointment, timeZone) => {
         process.env.GOOGLE_CLIENT_SECRET,
         process.env.GOOGLE_REDIRECT_URI
     );
-    // console.log("doctor.google_refresh_token==>", doctor.google_refresh_token);
-
+    if (!doctor.google_refresh_token) {
+        const { data: doctorData, error: doctorDataError } = await supabase
+            .from("doctors")
+            .select("*")
+            .eq("id", doctor.id)
+            .single();
+        if (doctorDataError) {
+            console.log("doctorDataError==>", doctorDataError);
+        } else if (doctorData) {
+            doctor = doctorData;
+        }
+    }
     oauth2Client.setCredentials({
         refresh_token: doctor.google_refresh_token,
     });
@@ -446,6 +456,7 @@ export const createGoogleEvent = async (doctor, appointment, timeZone) => {
         });
     }
     catch (err) {
+        console.log("err.response?.data?.error==>", err);
         console.log("err.response?.data?.error==>", err.response?.data?.error);
 
         if (
