@@ -139,3 +139,22 @@ export const sendReply = async (req, res) => {
         });
     }
 };
+
+// Cron-style endpoint to trigger appointment auto-reply and auto-booking logic
+export const runAppointmentCron = async (req, res) => {
+    try {
+        await gmailService.processAppointmentEmailsCron();
+
+        return res.status(200).json({
+            success: true,
+            message: "Appointment email cron executed successfully",
+        });
+    } catch (error) {
+        console.error("runAppointmentCron controller error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error?.message || "Failed to run appointment email cron",
+        });
+    }
+};
+

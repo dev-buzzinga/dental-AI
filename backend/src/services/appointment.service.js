@@ -399,7 +399,7 @@ const getPracticeTimezone = async (user_id) => {
  * Create Google Calendar event. appointment has start_time, end_time (UTC ISO).
  * We send local time in practice timezone so Google displays correctly.
  */
-const createGoogleEvent = async (doctor, appointment, timeZone) => {
+export const createGoogleEvent = async (doctor, appointment, timeZone) => {
     const oauth2Client = new google.auth.OAuth2(
         process.env.GOOGLE_CLIENT_ID,
         process.env.GOOGLE_CLIENT_SECRET,

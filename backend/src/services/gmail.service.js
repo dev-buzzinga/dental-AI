@@ -1,12 +1,19 @@
 
 import { google } from "googleapis";
+import { DateTime } from "luxon";
 import { config } from "../config/env.js";
 import { supabase } from "../config/database.js";
 import { sendEmailWithApi } from "../utils/email.js";
 import path from "path";
 import { fileURLToPath } from "url";
 import { promises as fs } from "fs";
-import { validateReferral } from "./anthropic.service.js";
+import {
+    validateReferral,
+    isAppointmentEmail,
+    matchDoctorForAppointment,
+    extractRequestedSlot,
+} from "./anthropic.service.js";
+import { createGoogleEvent } from "./appointment.service.js";
 import {
     formatMessageForChat,
     getAttachmentsFromMessage,
@@ -158,19 +165,25 @@ const getGmailClient = (accessToken) => {
     return google.gmail({ version: "v1", auth: oauth2Client });
 };
 
-const fetchLatestMessages = async ({ gmail, maxResults = 50, after }) => {
-    let q = "";
+const fetchLatestMessages = async ({ gmail, maxResults = 50, after, q }) => {
+    let query = "";
+
+    if (typeof q === "string" && q.trim()) {
+        query = q.trim();
+    }
+
     if (after) {
         const ts = Math.floor(new Date(after).getTime() / 1000);
         if (!Number.isNaN(ts)) {
-            q = `after:${ts}`;
+            const afterFilter = `after:${ts}`;
+            query = query ? `${query} ${afterFilter}` : afterFilter;
         }
     }
 
     const response = await gmail.users.messages.list({
         userId: "me",
         maxResults,
-        q,
+        q: query,
     });
 
     const messages = response.data.messages || [];
@@ -652,6 +665,765 @@ export const sendReply = async (userId, threadId, payload) => {
         threadId: sendRes.data.threadId || threadId,
     };
 };
+
+// ---------- Helpers for appointment auto-booking from email ----------
+
+const getPracticeTimezone = async (userId) => {
+    try {
+        const { data, error } = await supabase
+            .from("practice_details")
+            .select("address")
+            .eq("user_id", userId)
+            .single();
+        if (error) throw error;
+        return data?.address?.time_zone ?? null;
+    } catch (error) {
+        console.error("Error fetching practice timezone for appointment cron:", error);
+        return null;
+    }
+};
+
+const timeToMinutes = (timeStr) => {
+    if (!timeStr || typeof timeStr !== "string") return 0;
+    const match12 = timeStr.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (match12) {
+        let h = parseInt(match12[1], 10);
+        const m = parseInt(match12[2], 10);
+        const period = match12[3].toUpperCase();
+        if (period === "PM" && h !== 12) h += 12;
+        if (period === "AM" && h === 12) h = 0;
+        return h * 60 + m;
+    }
+    const match24 = timeStr.trim().match(/^(\d{1,2}):(\d{2})$/);
+    if (match24) {
+        const h = parseInt(match24[1], 10);
+        const m = parseInt(match24[2], 10);
+        return h * 60 + m;
+    }
+    return 0;
+};
+
+const getDayName = (dt) => {
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    return days[dt.weekday % 7];
+};
+
+const isDoctorOnLeaveOnDate = (doctor, dateStr) => {
+    const off_days = doctor.off_days || [];
+    for (const item of off_days) {
+        let od;
+        try {
+            od = typeof item === "string" ? JSON.parse(item) : item;
+        } catch {
+            continue;
+        }
+        const from = od?.from;
+        const to = od?.to;
+        if (!from || !to) continue;
+        if (dateStr >= from && dateStr <= to) {
+            return true;
+        }
+    }
+    return false;
+};
+
+const isSlotFree = async (doctorId, startUTC, endUTC) => {
+    const { data: existing, error } = await supabase
+        .from("doctors_appointments")
+        .select("id")
+        .eq("doctor_id", doctorId)
+        .lt("start_time", endUTC)
+        .gt("end_time", startUTC);
+
+    if (error) {
+        console.error("Error checking appointment conflict for slot:", error);
+        // On error, be conservative and treat as not free so we don't double-book.
+        return false;
+    }
+
+    return !(existing && existing.length > 0);
+};
+
+const generateAvailableSlotsForDoctor = async ({
+    doctor,
+    userId,
+    practiceTimezone,
+    days = 7,
+    slotMinutes = 60,
+}) => {
+    const weekly = doctor.weekly_availability || {};
+    const tz = practiceTimezone || "UTC";
+    const now = DateTime.now().setZone(tz);
+
+    const results = [];
+
+    for (let i = 0; i < days; i++) {
+        const day = now.plus({ days: i });
+        const dateStr = day.toFormat("yyyy-MM-dd");
+        const dayName = getDayName(day);
+
+        const avail = weekly[dayName];
+        if (!avail || !avail.enabled) continue;
+
+        if (isDoctorOnLeaveOnDate(doctor, dateStr)) continue;
+
+        const slotStartMinutes = timeToMinutes(avail.start);
+        const slotEndMinutes = timeToMinutes(avail.end);
+        if (slotEndMinutes - slotStartMinutes < slotMinutes) continue;
+
+        const slots = [];
+
+        let startMinutes = slotStartMinutes;
+        if (i === 0) {
+            const nowMinutes = day.hour * 60 + day.minute;
+            if (nowMinutes > startMinutes) {
+                startMinutes = nowMinutes;
+            }
+        }
+
+        for (
+            let m = startMinutes;
+            m + slotMinutes <= slotEndMinutes;
+            m += slotMinutes
+        ) {
+            const startLocal = day.set({
+                hour: Math.floor(m / 60),
+                minute: m % 60,
+                second: 0,
+                millisecond: 0,
+            });
+            const endLocal = startLocal.plus({ minutes: slotMinutes });
+
+            const startUTC = startLocal.toUTC().toISO();
+            const endUTC = endLocal.toUTC().toISO();
+
+            const free = await isSlotFree(doctor.id, startUTC, endUTC);
+            if (!free) continue;
+
+            slots.push({
+                date: dateStr,
+                weekday: dayName,
+                start_local: startLocal.toFormat("HH:mm"),
+                end_local: endLocal.toFormat("HH:mm"),
+                startUTC,
+                endUTC,
+            });
+        }
+
+        if (slots.length > 0) {
+            results.push({
+                date: dateStr,
+                weekday: dayName,
+                slots,
+            });
+        }
+    }
+
+    console.log(
+        `Calculated ${results.reduce(
+            (acc, d) => acc + d.slots.length,
+            0
+        )} available slots for doctor`,
+        { doctorId: doctor.id, userId }
+    );
+
+    return results;
+};
+
+const formatTime12h = (time) => {
+    if (!time || typeof time !== "string") return time || "";
+    const [hStr, mStr = "00"] = time.split(":");
+    let h = parseInt(hStr, 10);
+    if (Number.isNaN(h)) return time;
+    const minutes = mStr.padStart(2, "0");
+    const ampm = h >= 12 ? "PM" : "AM";
+    if (h === 0) h = 12;
+    else if (h > 12) h -= 12;
+    return `${h}:${minutes} ${ampm}`;
+};
+
+const formatSlotSummaryForEmail = (doctorName, slotsByDay) => {
+    if (!Array.isArray(slotsByDay) || slotsByDay.length === 0) {
+        return `Dr. ${doctorName} currently has no available 1-hour slots in the next 7 days. Please reply if you would like us to suggest alternative options.`;
+    }
+
+    const lines = [];
+    lines.push(`Dr. ${doctorName} has the following available slots this week:`);
+
+    for (const day of slotsByDay) {
+        const dateLabel = `${day.weekday}, ${day.date}`;
+        const slotStrings = day.slots.map((s) => {
+            const start = formatTime12h(s.start_local);
+            const end = formatTime12h(s.end_local);
+            return `${start} - ${end}`;
+        });
+        lines.push(`- ${dateLabel}: ${slotStrings.join(", ")}`);
+    }
+
+    lines.push(
+        "Please reply with your preferred slot to confirm your appointment."
+    );
+    return lines.join("\n");
+};
+
+const formatNoMatchDoctorEmailBody = (doctors) => {
+    const lines = [];
+    lines.push(
+        "We couldn't find a matching doctor for your request. Here are our available doctors:"
+    );
+
+    for (const doc of doctors) {
+        lines.push(
+            `- Dr. ${doc.name} (Specialty: ${doc.specialty || "General Dentist"})`
+        );
+    }
+
+    lines.push(
+        "Please let us know which doctor you'd prefer or describe your requirement."
+    );
+
+    return lines.join("\n");
+};
+
+const findMatchingSlot = (availableSlots, requestedSlot) => {
+    if (
+        !requestedSlot ||
+        !requestedSlot.date ||
+        !requestedSlot.start_time ||
+        !requestedSlot.end_time
+    ) {
+        return null;
+    }
+
+    for (const day of availableSlots || []) {
+        if (day.date !== requestedSlot.date) continue;
+        const slot = day.slots.find(
+            (s) =>
+                s.start_local === requestedSlot.start_time &&
+                s.end_local === requestedSlot.end_time
+        );
+        if (slot) {
+            return {
+                ...slot,
+                date: day.date,
+                weekday: day.weekday,
+            };
+        }
+    }
+
+    return null;
+};
+
+const upsertPatientFromEmail = async ({
+    userId,
+    senderName,
+    senderEmail,
+    nextAppointmentDate,
+}) => {
+    try {
+        const { data: existing, error: fetchError } = await supabase
+            .from("patients")
+            .select("*")
+            .eq("user_id", userId)
+            .eq("email", senderEmail)
+            .maybeSingle();
+
+        if (fetchError && fetchError.code !== "PGRST116") {
+            console.error("Error fetching existing patient from email:", fetchError);
+        }
+
+        if (existing) {
+            const { data: updated, error: updateError } = await supabase
+                .from("patients")
+                .update({
+                    next_appointment: nextAppointmentDate,
+                })
+                .eq("id", existing.id)
+                .select()
+                .maybeSingle();
+
+            if (updateError) {
+                console.error("Error updating patient next_appointment:", updateError);
+                throw new Error(updateError.message);
+            }
+
+            return updated || existing;
+        }
+
+        const insertPayload = {
+            user_id: userId,
+            name: senderName || senderEmail,
+            email: senderEmail,
+            gender: null,
+            next_appointment: nextAppointmentDate,
+        };
+
+        const { data: inserted, error: insertError } = await supabase
+            .from("patients")
+            .insert(insertPayload)
+            .select()
+            .single();
+
+        if (insertError) {
+            console.error("Error inserting patient from email:", insertError);
+            throw new Error(insertError.message);
+        }
+
+        return inserted;
+    } catch (error) {
+        console.error("upsertPatientFromEmail unexpected error:", error);
+        throw error;
+    }
+};
+
+const createAppointmentFromSlot = async ({
+    userId,
+    doctor,
+    patient,
+    slot,
+    practiceTimezone,
+}) => {
+    const timezone = practiceTimezone || "UTC";
+
+    const meeting_date = DateTime.fromISO(slot.startUTC, {
+        zone: "utc",
+    }).toFormat("yyyy-MM-dd");
+
+    const patient_details = {
+        name: patient?.name || "",
+        email: patient?.email || "",
+        patient_id: patient?.id || null,
+    };
+
+    const { data: appointment, error: insertError } = await supabase
+        .from("doctors_appointments")
+        .insert({
+            user_id: userId,
+            timezone,
+            meeting_date,
+            start_time: slot.startUTC,
+            end_time: slot.endUTC,
+            appointment_type_id: null,
+            doctor_id: doctor.id,
+            patient_details,
+            notes: "Auto-booked from email",
+        })
+        .select()
+        .single();
+
+    if (insertError) {
+        console.error("Error inserting auto-booked appointment:", insertError);
+        throw new Error(insertError.message);
+    }
+
+    const eventTimezone = practiceTimezone || timezone || "UTC";
+
+    if (doctor?.calendar_connected) {
+        try {
+            await createGoogleEvent(doctor, appointment, eventTimezone);
+        } catch (googleError) {
+            console.error(
+                "Error creating Google Calendar event for auto-booked appointment:",
+                googleError
+            );
+        }
+    }
+
+    return appointment;
+};
+
+const hasAppointmentMessageBeenProcessed = async (userId, messageId) => {
+    try {
+        const { data, error } = await supabase
+            .from("gmail_appointment_messages")
+            .select("id")
+            .eq("user_id", userId)
+            .eq("message_id", messageId)
+            .maybeSingle();
+
+        if (error && error.code !== "PGRST116") {
+            console.error(
+                "Error checking processed gmail_appointment_messages row:",
+                error
+            );
+        }
+
+        return !!data;
+    } catch (error) {
+        console.error(
+            "Unexpected error checking gmail_appointment_messages:",
+            error
+        );
+        return false;
+    }
+};
+
+const markAppointmentMessageProcessed = async (userId, messageId) => {
+    try {
+        const { error } = await supabase
+            .from("gmail_appointment_messages")
+            .upsert(
+                {
+                    user_id: userId,
+                    message_id: messageId,
+                    processed_at: new Date().toISOString(),
+                },
+                {
+                    onConflict: "user_id,message_id",
+                }
+            );
+
+        if (error) {
+            console.error(
+                "Error marking gmail appointment message as processed:",
+                error
+            );
+        }
+    } catch (error) {
+        console.error(
+            "Unexpected error marking gmail appointment message processed:",
+            error
+        );
+    }
+};
+
+const processAppointmentEmailsForAccount = async (account) => {
+    const userId = account.user_id;
+
+    console.log("Processing Gmail appointment emails for user", {
+        userId,
+        gmail_email: account.gmail_email,
+    });
+
+    if (!account.is_active) {
+        console.log("Skipping inactive Gmail account for user", userId);
+        return;
+    }
+
+    const updatedAccount = await refreshAccessTokenIfNeeded(account);
+    const gmail = getGmailClient(updatedAccount.access_token);
+
+    const messages = await fetchLatestMessages({
+        gmail,
+        maxResults: 50,
+        q: "is:unread",
+    });
+
+    console.log(
+        `Fetched ${messages.length} unread Gmail messages for appointment scanning`,
+    );
+
+    for (const messageMeta of messages) {
+        const messageId = messageMeta.id;
+
+        try {
+            if (await hasAppointmentMessageBeenProcessed(userId, messageId)) {
+                continue;
+            }
+
+            const message = await getMessageDetails({
+                gmail,
+                messageId,
+            });
+
+            const subject = extractSubject(message);
+            const bodyText = extractBodyText(message);
+            const { senderName, senderEmail } = extractSender(message);
+            const threadId = message.threadId;
+
+            if (!subject && !bodyText) {
+                await markAppointmentMessageProcessed(userId, messageId);
+                continue;
+            }
+
+            const isAppt = await isAppointmentEmail({
+                subject,
+                body: bodyText,
+            });
+
+            if (!isAppt) {
+                await markAppointmentMessageProcessed(userId, messageId);
+                continue;
+            }
+
+            console.log("Detected appointment-related email", {
+                userId,
+                messageId,
+                subject,
+            });
+
+            const { data: doctors, error: doctorsError } = await supabase
+                .from("doctors")
+                .select(
+                    "id, user_id, name, specialty, services, weekly_availability, off_days, calendar_connected"
+                )
+                .eq("user_id", userId);
+
+            if (doctorsError) {
+                console.error(
+                    "Error fetching doctors for appointment email processing:",
+                    doctorsError
+                );
+                await markAppointmentMessageProcessed(userId, messageId);
+                continue;
+            }
+
+            if (!doctors || doctors.length === 0) {
+                console.warn(
+                    "No doctors configured for user when processing appointment email",
+                    { userId }
+                );
+                try {
+                    const body =
+                        "We couldn't find any doctors configured in this dental practice yet. Please contact the clinic directly to schedule your appointment.";
+                    await sendReply(userId, threadId, { body });
+                } catch (err) {
+                    console.error(
+                        "Failed to send no-doctors reply for appointment email:",
+                        err
+                    );
+                }
+                await markAppointmentMessageProcessed(userId, messageId);
+                continue;
+            }
+
+            const doctorsForAI = doctors.map((d) => ({
+                name: d.name,
+                specialty: d.specialty || "",
+                services: Array.isArray(d.services) ? d.services : [],
+            }));
+
+            const matchedName = await matchDoctorForAppointment({
+                subject,
+                body: bodyText,
+                doctors: doctorsForAI,
+            });
+
+            const matchedDoctor =
+                matchedName && matchedName !== "NO_MATCH"
+                    ? doctors.find(
+                        (d) =>
+                            d.name &&
+                            d.name.toLowerCase() ===
+                            matchedName.toLowerCase()
+                    )
+                    : null;
+
+            if (!matchedDoctor) {
+                try {
+                    const body = formatNoMatchDoctorEmailBody(doctors);
+                    await sendReply(userId, threadId, { body });
+                } catch (err) {
+                    console.error(
+                        "Failed to send NO_MATCH doctor reply:",
+                        err
+                    );
+                }
+                await markAppointmentMessageProcessed(userId, messageId);
+                continue;
+            }
+
+            const practiceTimezone = await getPracticeTimezone(userId);
+
+            const availableSlots = await generateAvailableSlotsForDoctor({
+                doctor: matchedDoctor,
+                userId,
+                practiceTimezone,
+                days: 7,
+                slotMinutes: 60,
+            });
+
+            if (!availableSlots || availableSlots.length === 0) {
+                try {
+                    const body = `Dr. ${matchedDoctor.name} currently has no available 1-hour slots in the next 7 days. Please reply if you would like us to suggest alternative options.`;
+                    await sendReply(userId, threadId, { body });
+                } catch (err) {
+                    console.error(
+                        "Failed to send no-availability reply for appointment email:",
+                        err
+                    );
+                }
+                await markAppointmentMessageProcessed(userId, messageId);
+                continue;
+            }
+
+            const requestedSlot = await extractRequestedSlot({
+                body: bodyText,
+                practiceTimezone: practiceTimezone || "UTC",
+            });
+
+            if (!requestedSlot) {
+                const body = formatSlotSummaryForEmail(
+                    matchedDoctor.name,
+                    availableSlots
+                );
+                try {
+                    await sendReply(userId, threadId, { body });
+                } catch (err) {
+                    console.error(
+                        "Failed to send slot suggestion reply:",
+                        err
+                    );
+                }
+                await markAppointmentMessageProcessed(userId, messageId);
+                continue;
+            }
+
+            const chosenSlot = findMatchingSlot(availableSlots, requestedSlot);
+
+            if (!chosenSlot) {
+                const body = [
+                    "The requested time is not available.",
+                    "",
+                    formatSlotSummaryForEmail(
+                        matchedDoctor.name,
+                        availableSlots
+                    ),
+                ].join("\n");
+
+                try {
+                    await sendReply(userId, threadId, { body });
+                } catch (err) {
+                    console.error(
+                        "Failed to send updated slot suggestion reply:",
+                        err
+                    );
+                }
+
+                await markAppointmentMessageProcessed(userId, messageId);
+                continue;
+            }
+
+            let patient;
+            try {
+                patient = await upsertPatientFromEmail({
+                    userId,
+                    senderName,
+                    senderEmail,
+                    nextAppointmentDate: chosenSlot.date,
+                });
+            } catch (error) {
+                console.error(
+                    "Failed to upsert patient from appointment email:",
+                    error
+                );
+                await markAppointmentMessageProcessed(userId, messageId);
+                continue;
+            }
+
+            let appointment;
+            try {
+                appointment = await createAppointmentFromSlot({
+                    userId,
+                    doctor: matchedDoctor,
+                    patient,
+                    slot: chosenSlot,
+                    practiceTimezone,
+                });
+            } catch (error) {
+                console.error(
+                    "Failed to create appointment from email slot:",
+                    error
+                );
+                await markAppointmentMessageProcessed(userId, messageId);
+                continue;
+            }
+
+            try {
+                const bodyLines = [
+                    "Your appointment has been successfully booked!",
+                    "",
+                    `Doctor: Dr. ${matchedDoctor.name}`,
+                    `Date: ${chosenSlot.date}`,
+                    `Time: ${chosenSlot.start_local} - ${chosenSlot.end_local}`,
+                    "",
+                    "We look forward to seeing you.",
+                ];
+                await sendReply(userId, threadId, {
+                    body: bodyLines.join("\n"),
+                });
+            } catch (err) {
+                console.error(
+                    "Failed to send appointment confirmation email reply:",
+                    err
+                );
+            }
+
+            console.log("Auto-booked appointment from email", {
+                userId,
+                doctorId: matchedDoctor.id,
+                patientId: patient?.id,
+                appointmentId: appointment?.id,
+            });
+
+            await markAppointmentMessageProcessed(userId, messageId);
+        } catch (error) {
+            console.error(
+                "Error processing Gmail message for appointments",
+                {
+                    userId,
+                    messageId,
+                    error: error.message,
+                }
+            );
+
+            try {
+                await markAppointmentMessageProcessed(userId, messageId);
+            } catch {
+                // ignore
+            }
+        }
+    }
+};
+
+/**
+ * Top-level cron entrypoint: scan all users with active Gmail connections
+ * and process their unread emails for appointment auto-booking.
+ */
+export const processAppointmentEmailsCron = async () => {
+    console.log("Starting appointment email cron run");
+
+    try {
+        const { data: accounts, error } = await supabase
+            .from("user_gmail_accounts")
+            .select("*")
+            .eq("is_active", true);
+
+        if (error) {
+            console.error(
+                "Error fetching user_gmail_accounts for appointment cron:",
+                error
+            );
+            return;
+        }
+
+        if (!accounts || accounts.length === 0) {
+            console.log(
+                "No active Gmail accounts found for appointment cron run."
+            );
+            return;
+        }
+        console.log("1 start accounts.length=>", accounts.length);
+        for (const account of accounts) {
+            try {
+                await processAppointmentEmailsForAccount(account);
+            } catch (error) {
+                console.error(
+                    "Error in per-account appointment processing:",
+                    {
+                        userId: account.user_id,
+                        error: error.message,
+                    }
+                );
+            }
+        }
+
+        console.log("Appointment email cron run completed.");
+    } catch (error) {
+        console.error("Unexpected error in appointment email cron:", error);
+    }
+};
+
 
 // export const gmailCallback = async (req, res) => {
 

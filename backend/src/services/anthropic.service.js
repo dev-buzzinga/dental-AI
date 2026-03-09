@@ -6,7 +6,6 @@ const anthropic = new Anthropic({
 });
 
 export const validateReferral = async ({ subject, body }) => {
-    // console.log("validateReferral");
     if (!config.ANTHROPIC_API_KEY) {
         console.warn("Anthropic API key is not configured. Skipping referral validation.");
         return false;
@@ -64,4 +63,262 @@ export const validateReferral = async ({ subject, body }) => {
         return false;
     }
 };
+
+/**
+ * Check if an email is requesting a doctor appointment.
+ * Returns boolean: true = appointment-related, false = not.
+ */
+export const isAppointmentEmail = async ({ subject, body }) => {
+    if (!config.ANTHROPIC_API_KEY) {
+        console.warn("Anthropic API key is not configured. Skipping appointment intent check.");
+        return false;
+    }
+
+    try {
+        const prompt = `You are analyzing an email to determine if a patient is trying to book, reschedule, or ask for a doctor appointment.
+
+Email Subject: ${subject}
+
+Email Body:
+${body}
+
+Question: Is this email requesting or discussing a doctor appointment for a specific person (including booking, rescheduling, or confirming an appointment)?
+
+Respond with ONLY one word:
+YES
+or
+NO
+
+Response:`;
+
+        const response = await anthropic.messages.create({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 50,
+            messages: [
+                {
+                    role: "user",
+                    content: prompt,
+                },
+            ],
+        });
+
+        const rawText =
+            response?.content?.[0]?.text ||
+            (Array.isArray(response?.content)
+                ? response.content.map((c) => c.text || "").join(" ")
+                : "");
+
+        const answer = (rawText || "").trim().toLowerCase();
+        if (!answer) return false;
+
+        if (answer.startsWith("yes")) return true;
+        if (answer.startsWith("no")) return false;
+
+        if (answer.includes("yes")) return true;
+        if (answer.includes("no")) return false;
+
+        return false;
+    } catch (error) {
+        console.error("Anthropic isAppointmentEmail error:", error?.response?.data || error.message);
+        return false;
+    }
+};
+
+/**
+ * Ask AI to pick the best-matching doctor for this email
+ * from a provided list, or return "NO_MATCH".
+ *
+ * @param {object} params
+ * @param {string} params.subject
+ * @param {string} params.body
+ * @param {Array<{ name: string, specialty?: string, services?: string[] }>} params.doctors
+ * @returns {Promise<string>} doctor name exactly as in list, or "NO_MATCH"
+ */
+export const matchDoctorForAppointment = async ({ subject, body, doctors }) => {
+    if (!config.ANTHROPIC_API_KEY) {
+        console.warn("Anthropic API key is not configured. Skipping doctor match.");
+        return "NO_MATCH";
+    }
+
+    if (!Array.isArray(doctors) || doctors.length === 0) {
+        return "NO_MATCH";
+    }
+
+    try {
+        const doctorsDescription = doctors
+            .map((d, idx) => {
+                const services = Array.isArray(d.services) ? d.services.join(", ") : "";
+                const specialty = d.specialty || "";
+                return `${idx + 1}. Name: ${d.name}\n   Specialty: ${specialty}\n   Services: ${services}`;
+            })
+            .join("\n\n");
+
+        const prompt = `You are helping assign a patient email to the most suitable doctor from the list below.
+
+Only use the fields provided: name, specialty, services. Do NOT assume anything about weekly availability.
+
+Patient Email Subject: ${subject}
+
+Patient Email Body:
+${body}
+
+Available Doctors:
+${doctorsDescription}
+
+Task:
+- Decide which ONE doctor from the list best matches the patient's request.
+- If none of the doctors are a good fit, respond with exactly: NO_MATCH
+
+Respond with EXACTLY ONE LINE, with no extra text:
+- Either the doctor's name exactly as shown in the list above
+- Or the word: NO_MATCH
+
+Response:`;
+
+        const response = await anthropic.messages.create({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 100,
+            messages: [
+                {
+                    role: "user",
+                    content: prompt,
+                },
+            ],
+        });
+
+        const rawText =
+            response?.content?.[0]?.text ||
+            (Array.isArray(response?.content)
+                ? response.content.map((c) => c.text || "").join(" ")
+                : "");
+
+        if (!rawText) return "NO_MATCH";
+
+        const answer = rawText.trim();
+        const lower = answer.toLowerCase();
+
+        if (lower === "no_match" || lower === "no match" || lower.includes("no_match")) {
+            return "NO_MATCH";
+        }
+
+        // Try exact (case-insensitive) match to any doctor name
+        for (const d of doctors) {
+            if (!d?.name) continue;
+            if (answer.toLowerCase() === d.name.toLowerCase()) {
+                return d.name;
+            }
+        }
+
+        // Fallback: substring match
+        for (const d of doctors) {
+            if (!d?.name) continue;
+            if (lower.includes(d.name.toLowerCase())) {
+                return d.name;
+            }
+        }
+
+        return "NO_MATCH";
+    } catch (error) {
+        console.error("Anthropic matchDoctorForAppointment error:", error?.response?.data || error.message);
+        return "NO_MATCH";
+    }
+};
+
+/**
+ * Try to detect if the patient has requested a specific slot (date + time)
+ * in their email body. If so, return a normalized slot object; otherwise null.
+ *
+ * Returned shape (when not null):
+ * { date: "YYYY-MM-DD", start_time: "HH:mm", end_time: "HH:mm" }
+ */
+export const extractRequestedSlot = async ({ body, practiceTimezone }) => {
+    if (!config.ANTHROPIC_API_KEY) {
+        console.warn("Anthropic API key is not configured. Skipping slot extraction.");
+        return null;
+    }
+
+    try {
+        const tzInfo = practiceTimezone || "the doctor's local timezone";
+
+        const prompt = `You are helping interpret a patient's email to see if they are asking for a specific appointment date and time.
+
+Email Body:
+${body}
+
+Instructions:
+- Determine if the patient is clearly requesting a specific appointment slot (a concrete date AND time range).
+- If they mention something vague like "next week" or "any morning", treat it as NO specific slot.
+- Assume all dates and times are in ${tzInfo}.
+
+Respond in STRICT JSON with this exact shape, and NOTHING else:
+{
+  "has_slot": true or false,
+  "date": "YYYY-MM-DD or null",
+  "start_time": "HH:mm or null",
+  "end_time": "HH:mm or null"
+}
+
+Examples:
+- If the patient writes "Can I come on March 10 at 3pm for one hour?", you might respond:
+  {"has_slot": true, "date": "2026-03-10", "start_time": "15:00", "end_time": "16:00"}
+- If the patient does NOT specify a concrete time, respond:
+  {"has_slot": false, "date": null, "start_time": null, "end_time": null}
+`;
+
+        const response = await anthropic.messages.create({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 200,
+            messages: [
+                {
+                    role: "user",
+                    content: prompt,
+                },
+            ],
+        });
+
+        let rawText =
+            response?.content?.[0]?.text ||
+            (Array.isArray(response?.content)
+                ? response.content.map((c) => c.text || "").join(" ")
+                : "");
+
+        if (!rawText) return null;
+
+        rawText = rawText.trim();
+
+        // Try to extract JSON object from the response
+        const startIdx = rawText.indexOf("{");
+        const endIdx = rawText.lastIndexOf("}");
+        if (startIdx === -1 || endIdx === -1 || endIdx <= startIdx) {
+            return null;
+        }
+
+        const jsonStr = rawText.slice(startIdx, endIdx + 1);
+
+        let parsed;
+        try {
+            parsed = JSON.parse(jsonStr);
+        } catch {
+            return null;
+        }
+
+        if (!parsed || parsed.has_slot === false) {
+            return null;
+        }
+
+        const date = typeof parsed.date === "string" ? parsed.date : null;
+        const start_time = typeof parsed.start_time === "string" ? parsed.start_time : null;
+        const end_time = typeof parsed.end_time === "string" ? parsed.end_time : null;
+
+        if (!date || !start_time || !end_time) {
+            return null;
+        }
+
+        return { date, start_time, end_time };
+    } catch (error) {
+        console.error("Anthropic extractRequestedSlot error:", error?.response?.data || error.message);
+        return null;
+    }
+};
+
 
