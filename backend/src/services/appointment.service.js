@@ -254,6 +254,30 @@ export const createAppointment = async (req, res) => {
             });
         }
 
+        // Also record entry in patients_appointment_history
+        try {
+            const patientId =
+                patient_details?.patient_id ??
+                (typeof appointment?.patient_id === "number"
+                    ? appointment.patient_id
+                    : null);
+
+            await supabase.from("patients_appointment_history").insert({
+                patient_id: patientId,
+                purpose: notes || "Manual appointment created",
+                doctor_id,
+                status: "scheduled",
+                user_id,
+                date: meeting_date,
+            });
+        } catch (historyError) {
+            console.error(
+                "Error inserting patients_appointment_history for manual appointment:",
+                historyError
+            );
+            // Do not fail the whole flow if history insert fails
+        }
+
         const eventTimezone = practiceTimezone || timezone || "UTC";
 
         if (doctor?.calendar_connected) {

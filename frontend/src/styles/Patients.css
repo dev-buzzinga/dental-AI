@@ -507,8 +507,8 @@
     white-space: nowrap;
 }
 
-.status-upcoming {
-    background: #E0E7FF;
+.status-scheduled {
+    background: var(--primary-light);
     color: var(--primary);
 }
 

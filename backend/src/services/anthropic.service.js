@@ -76,21 +76,33 @@ export const isAppointmentEmail = async ({ subject, body }) => {
     }
 
     try {
-        const prompt = `You are analyzing an email to determine if a patient is trying to book, reschedule, or ask for a doctor appointment.
+        const prompt = `You are analyzing an email to determine if a PATIENT (or someone acting on behalf of a patient, like a family member or caretaker) is trying to book, reschedule, cancel, or confirm a doctor appointment directly with this clinic.
 
-Email Subject: ${subject}
-
-Email Body:
-${body}
-
-Question: Is this email requesting or discussing a doctor appointment for a specific person (including booking, rescheduling, or confirming an appointment)?
-
-Respond with ONLY one word:
-YES
-or
-NO
-
-Response:`;
+        Email Subject: ${subject}
+        
+        Email Body:
+        ${body}
+        
+        Rules for answering YES:
+        - A patient or their representative is requesting a new appointment
+        - A patient is rescheduling or canceling an existing appointment
+        - A patient is confirming or asking about their appointment details
+        
+        Rules for answering NO:
+        - The email is a referral from another doctor or clinic (doctor-to-doctor communication)
+        - The email is from insurance, pharmacy, or a third-party provider
+        - The email is about test results, prescriptions, or general medical inquiries (not appointment booking)
+        - The email is a newsletter, promotional, or automated notification
+        - The email is spam or unrelated to appointments
+        
+        Question: Is this email a direct appointment request or appointment management action from a patient (or their representative)?
+        
+        Respond with ONLY one word:
+        YES
+        or
+        NO
+        
+        Response:`;
 
         const response = await anthropic.messages.create({
             model: "claude-sonnet-4-20250514",

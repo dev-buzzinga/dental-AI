@@ -8,7 +8,7 @@ const AddAppointmentModal = ({ isOpen, onClose, onSave, patientId, userId, appoi
         patient_id: "",
         purpose: "",
         date: "",
-        status: "Upcoming"
+        status: "scheduled"
     });
 
     const [loading, setLoading] = useState(false);
@@ -31,7 +31,7 @@ const AddAppointmentModal = ({ isOpen, onClose, onSave, patientId, userId, appoi
                     patient_id: patientId || "",
                     purpose: "",
                     date: "",
-                    status: "Upcoming"
+                    status: "scheduled"
                 });
             }
         }
@@ -150,7 +150,7 @@ const AddAppointmentModal = ({ isOpen, onClose, onSave, patientId, userId, appoi
                                     onChange={handleChange}
                                     required
                                 >
-                                    <option value="Upcoming">Upcoming</option>
+                                    <option value="scheduled">scheduled</option>
                                     <option value="In Progress">In Progress</option>
                                     <option value="Completed">Completed</option>
                                     <option value="Cancelled">Cancelled</option>

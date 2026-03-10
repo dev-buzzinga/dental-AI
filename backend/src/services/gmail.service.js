@@ -1142,6 +1142,30 @@ const createAppointmentFromSlot = async ({
         throw new Error(insertError.message);
     }
 
+    // Also record entry in patients_appointment_history
+    try {
+        const patientId =
+            patient?.id ??
+            (typeof appointment?.patient_id === "number"
+                ? appointment.patient_id
+                : patient_details.patient_id);
+
+        await supabase.from("patients_appointment_history").insert({
+            patient_id: patientId,
+            purpose: "Auto-booked from email",
+            doctor_id: doctor.id,
+            status: "scheduled",
+            user_id: userId,
+            date: meeting_date,
+        });
+    } catch (historyError) {
+        console.error(
+            "Error inserting patients_appointment_history for auto-booked appointment:",
+            historyError
+        );
+        // Do not fail the whole flow if history insert fails
+    }
+
     const eventTimezone = practiceTimezone || timezone || "UTC";
 
     if (doctor?.calendar_connected) {
@@ -1583,7 +1607,6 @@ const processAppointmentEmailsForAccount = async (account) => {
                 userId,
                 doctorId: matchedDoctor.id,
                 patientId: patient?.id,
-                appointmentId: appointment?.id,
             });
 
             await markAppointmentMessageProcessed(userId, messageId);
@@ -1654,78 +1677,4 @@ export const processAppointmentEmailsCron = async () => {
         console.error("Unexpected error in appointment email cron:", error);
     }
 };
-
-
-// export const gmailCallback = async (req, res) => {
-
-//     try {
-//         const { code, state } = req.query;
-//         const userId = state;
-//         if (!code || !userId) {
-//             return res.status(400).json({
-//                 success: false,
-//                 message: "Authorization code or user ID missing",
-//             });
-//         }
-
-//         // // Exchange code for tokens
-//         const { tokens } = await oauth2Client.getToken(code);
-//         oauth2Client.setCredentials(tokens);
-
-//         const gmail = google.gmail({ version: "v1", auth: oauth2Client });
-
-//         // Get user Gmail email
-//         const profile = await gmail.users.getProfile({
-//             userId: "me",
-//         });
-
-//         const gmailEmail = profile.data.emailAddress;
-
-//         // test
-//         // const { error } = await supabase
-//         //     .from("user_gmail_accounts")
-//         //     .upsert({
-//         //         user_id: "0e874433-ea14-49c1-80d1-41b8d86c3300",
-//         //         gmail_email: "test@gmail.com",
-//         //         access_token: "test",
-//         //         refresh_token: "test",
-//         //         token_expiry: new Date(),
-//         //         is_active: true,
-//         //         updated_at: new Date(),
-//         //     });
-//         console.log("gmailEmail==>", gmailEmail);
-//         console.log("tokens==>", tokens);
-//         const { error } = await supabase
-//             .from("user_gmail_accounts")
-//             .upsert({
-//                 user_id: userId,
-//                 gmail_email: gmailEmail,
-//                 access_token: tokens.access_token,
-//                 refresh_token: tokens.refresh_token,
-//                 token_expiry: tokens.expiry_date
-//                     ? new Date(tokens.expiry_date)
-//                     : null,
-//                 is_active: true,
-//                 updated_at: new Date(),
-//             });
-
-//         if (error) {
-//             console.log("error==>", error);
-//             return res.status(500).json({
-//                 success: false,
-//                 message: error.message,
-//             });
-//         }
-//         return res.status(200).json({
-//             success: true,
-//             message: "Gmail connected successfully",
-//         });
-//     } catch (error) {
-//         console.error("Error connecting Gmail:", error);
-//         return res.status(500).json({
-//             success: false,
-//             message: error.message,
-//         });
-//     }
-// };
 
