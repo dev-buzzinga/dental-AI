@@ -50,6 +50,7 @@ const EmailPage = () => {
     const [refreshingChat, setRefreshingChat] = useState(false);
     const [viewingAttachmentKey, setViewingAttachmentKey] = useState(null); // 'messageId-filename' when loading
     const replyFileInputRef = useRef(null);
+    const threadHistoryLoadIdRef = useRef(0);
 
     useEffect(() => {
         const checkGmailConnection = async () => {
@@ -62,7 +63,7 @@ const EmailPage = () => {
             try {
                 const { data, error } = await supabase
                     .from('user_gmail_accounts')
-                    .select('is_active')
+                    .select('is_active, ai_auto_reply')
                     .eq('user_id', user.id)
                     .maybeSingle();
 
@@ -71,6 +72,7 @@ const EmailPage = () => {
                     setIsGmailActive(false);
                 } else {
                     setIsGmailActive(Boolean(data?.is_active));
+                    setAiAutoReply(data?.ai_auto_reply !== false);
                 }
             } catch (err) {
                 console.error('Unexpected error checking Gmail connection:', err);
@@ -83,7 +85,7 @@ const EmailPage = () => {
         if (!authLoading) {
             checkGmailConnection();
         }
-    }, [authLoading]);
+    }, [authLoading, user?.id]);
 
     const loadExistingThreads = async () => {
         if (!isGmailActive) return;
@@ -105,6 +107,28 @@ const EmailPage = () => {
         }
     };
 
+    const loadThreadHistoryForThread = async (threadId) => {
+        if (!threadId || !isGmailActive) return;
+        const loadId = ++threadHistoryLoadIdRef.current;
+        setLoadingThreadHistory(true);
+        setThreadHistoryError(null);
+        try {
+            const res = await gmailService.getThreadHistory(threadId);
+            if (loadId === threadHistoryLoadIdRef.current && res?.data) {
+                setThreadHistory(res.data);
+            }
+        } catch (err) {
+            if (loadId === threadHistoryLoadIdRef.current) {
+                setThreadHistoryError(err?.response?.data?.message || 'Failed to load thread');
+                setThreadHistory(null);
+            }
+        } finally {
+            if (loadId === threadHistoryLoadIdRef.current) {
+                setLoadingThreadHistory(false);
+            }
+        }
+    };
+
     const syncReferralEmails = async () => {
         if (!isGmailActive) return;
 
@@ -113,6 +137,9 @@ const EmailPage = () => {
             const response = await gmailService.getReferralEmails();
             const data = response?.data || [];
             setThreads(data);
+            if (activeThreadId) {
+                await loadThreadHistoryForThread(activeThreadId);
+            }
         } catch (error) {
             console.error('Failed to sync referral emails', error);
         } finally {
@@ -138,29 +165,7 @@ const EmailPage = () => {
             setThreadHistoryError(null);
             return;
         }
-
-        let cancelled = false;
-
-        const loadThreadHistory = async () => {
-            setLoadingThreadHistory(true);
-            setThreadHistoryError(null);
-            try {
-                const res = await gmailService.getThreadHistory(activeThreadId);
-                if (!cancelled && res?.data) {
-                    setThreadHistory(res.data);
-                }
-            } catch (err) {
-                if (!cancelled) {
-                    setThreadHistoryError(err?.response?.data?.message || 'Failed to load thread');
-                    setThreadHistory(null);
-                }
-            } finally {
-                if (!cancelled) setLoadingThreadHistory(false);
-            }
-        };
-
-        loadThreadHistory();
-        return () => { cancelled = true; };
+        loadThreadHistoryForThread(activeThreadId);
     }, [activeThreadId, isGmailActive]);
 
     const fileToBase64 = (file) =>
@@ -307,6 +312,24 @@ const EmailPage = () => {
 
     const activeThread = filtered.find((t) => t.thread_id === activeThreadId) || filtered[0];
 
+    const handleAiAutoReplyToggle = async (newValue) => {
+        if (!user?.id) return;
+        setAiAutoReply(newValue);
+        try {
+            const { error } = await supabase
+                .from('user_gmail_accounts')
+                .update({ ai_auto_reply: newValue })
+                .eq('user_id', user.id);
+            if (error) {
+                console.error('Error updating ai_auto_reply:', error);
+                setAiAutoReply(!newValue);
+            }
+        } catch (err) {
+            console.error('Unexpected error updating ai_auto_reply:', err);
+            setAiAutoReply(!newValue);
+        }
+    };
+
     return (
         <div className="sms-page">
             {/* Left Panel */}
@@ -315,8 +338,8 @@ const EmailPage = () => {
                     <div className="sms-sidebar-top">
                         <h2 className="sms-sidebar-title">Email Inbox</h2>
                         <div className="sms-ai-toggle">
-                            {/* <span className="sms-ai-label">AI Auto-Reply</span>
-                            <Toggle on={aiAutoReply} onToggle={() => setAiAutoReply(!aiAutoReply)} size="sm" /> */}
+                            <span className="sms-ai-label">AI Auto-Reply</span>
+                            <Toggle on={aiAutoReply} onToggle={() => handleAiAutoReplyToggle(!aiAutoReply)} size="sm" />
                             <button
                                 type="button"
                                 onClick={syncReferralEmails}

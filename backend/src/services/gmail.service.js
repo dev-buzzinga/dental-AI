@@ -358,7 +358,7 @@ export const fetchReferralEmails = async (userId) => {
     const updatedAccount = await refreshAccessTokenIfNeeded(account);
 
     const gmail = getGmailClient(updatedAccount.access_token);
-
+    console.log("account.updated_at==>", account.updated_at);
     const messages = await fetchLatestMessages({
         gmail,
         maxResults: 50,
@@ -1501,9 +1501,9 @@ const processAppointmentEmailsForAccount = async (account) => {
                         typeof aiTypeId === "number"
                             ? types.find((t) => t.id === aiTypeId)
                             : types.find(
-                                  (t) =>
-                                      String(t.id) === String(aiTypeId)
-                              );
+                                (t) =>
+                                    String(t.id) === String(aiTypeId)
+                            );
 
                     if (matchedType) {
                         appointmentTypeId = matchedType.id;
@@ -1617,7 +1617,8 @@ export const processAppointmentEmailsCron = async () => {
         const { data: accounts, error } = await supabase
             .from("user_gmail_accounts")
             .select("*")
-            .eq("is_active", true);
+            .eq("is_active", true)
+            .eq("ai_auto_reply", true)
 
         if (error) {
             console.error(

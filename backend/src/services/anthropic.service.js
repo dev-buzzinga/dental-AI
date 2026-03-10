@@ -69,6 +69,7 @@ export const validateReferral = async ({ subject, body }) => {
  * Returns boolean: true = appointment-related, false = not.
  */
 export const isAppointmentEmail = async ({ subject, body }) => {
+    console.log("check by AI isAppointmentEmail==>");
     if (!config.ANTHROPIC_API_KEY) {
         console.warn("Anthropic API key is not configured. Skipping appointment intent check.");
         return false;
