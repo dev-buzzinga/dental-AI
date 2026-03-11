@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from 'react';
+import { useState, useEffect, useContext, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../config/supabase';
 import { AuthContext } from '../../context/AuthContext';
@@ -126,11 +126,19 @@ const PatientDetail = () => {
         }
     };
 
-    // Pagination Logic
+    // Sort by date descending (newest first), then paginate
+    const sortedAppointments = useMemo(
+        () =>
+            [...appointments].sort(
+                (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
+            ),
+        [appointments]
+    );
+
     const indexOfLastItem = currentPage * itemsPerPage;
     const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentAppointments = appointments.slice(indexOfFirstItem, indexOfLastItem);
-    const totalPages = Math.ceil(appointments.length / itemsPerPage);
+    const currentAppointments = sortedAppointments.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(sortedAppointments.length / itemsPerPage);
 
     const formatDateBlock = (dateStr) => {
         const date = new Date(dateStr);
