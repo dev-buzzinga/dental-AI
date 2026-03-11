@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.78.0",
+    "node-cron": "^3.0.3",
     "@supabase/supabase-js": "^2.97.0",
     "axios": "^1.13.6",
     "cors": "^2.8.5",

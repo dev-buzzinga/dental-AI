@@ -49,8 +49,9 @@ const EmailPage = () => {
     const [markingRead, setMarkingRead] = useState(false);
     const [refreshingChat, setRefreshingChat] = useState(false);
     const [viewingAttachmentKey, setViewingAttachmentKey] = useState(null); // 'messageId-filename' when loading
-    const replyFileInputRef = useRef(null);
     const threadHistoryLoadIdRef = useRef(0);
+    const replyFileInputRef = useRef(null);
+    const messagesEndRef = useRef(null);
 
     useEffect(() => {
         const checkGmailConnection = async () => {
@@ -167,6 +168,16 @@ const EmailPage = () => {
         }
         loadThreadHistoryForThread(activeThreadId);
     }, [activeThreadId, isGmailActive]);
+
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    useEffect(() => {
+        if (threadHistory?.messages?.length > 0) {
+            scrollToBottom();
+        }
+    }, [threadHistory]);
 
     const fileToBase64 = (file) =>
         new Promise((resolve, reject) => {
@@ -565,6 +576,7 @@ const EmailPage = () => {
                                     No messages in this thread.
                                 </div>
                             )}
+                            <div ref={messagesEndRef} />
                         </div>
 
                         <div className="sms-compose-wrap">

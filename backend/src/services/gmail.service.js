@@ -1657,7 +1657,7 @@ export const processAppointmentEmailsCron = async () => {
             );
             return;
         }
-        console.log("1 start accounts.length=>", accounts.length);
+        console.log("start accounts.length=>", accounts.length);
         for (const account of accounts) {
             try {
                 await processAppointmentEmailsForAccount(account);
