@@ -7,7 +7,7 @@ import * as gmailService from "../services/gmail.service.js";
  */
 export const startCronJobs = () => {
     // Every 1 hour at minute 0 (e.g. 1:00, 2:00, 3:00)
-    cron.schedule("*/5 * * * *", async () => {
+    cron.schedule("0 * * * *", async () => {
         try {
             console.log("Cron job [appointment-emails] started");
             await gmailService.processAppointmentEmailsCron();
