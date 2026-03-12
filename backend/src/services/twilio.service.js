@@ -65,7 +65,7 @@ export const generateTwilioToken = async (req, res) => {
                 message: "Twilio config not found",
             });
         }
-        console.log("data==>", data);
+        
         const account_sid = data.account_sid;
         const auth_token = data.auth_token;
         const app_sid = data.app_sid;

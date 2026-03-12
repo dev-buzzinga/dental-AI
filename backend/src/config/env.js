@@ -3,6 +3,7 @@ dotenv.config();
 
 export const config = {
     PORT: process.env.PORT || 5000,
+    BASE_URL: process.env.BASE_URL,
     NODE_ENV: process.env.NODE_ENV,
     // TWILIO_ACCOUNT_SID: process.env.TWILIO_ACCOUNT_SID,
     // TWILIO_API_KEY: process.env.TWILIO_API_KEY,

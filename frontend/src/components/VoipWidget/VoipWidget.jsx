@@ -1,14 +1,16 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useContext } from 'react';
 import { useLocation } from 'react-router-dom';
 import { dialpadKeys } from '../../data/dummyData';
 import { SearchInput } from '../common/SearchInput';
 import twilioService from '../../service/twilio';
 import outgoingService from '../../service/outgoing';
 import { Device } from '@twilio/voice-sdk';
+import { AuthContext } from '../../context/AuthContext';
 import './VoipWidget.css';
 
 const VoipWidget = () => {
     const location = useLocation();
+    const { user } = useContext(AuthContext);
     const [isOpen, setIsOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('incoming');
     const [callSeconds, setCallSeconds] = useState(0);
@@ -20,7 +22,7 @@ const VoipWidget = () => {
     const [deviceReady, setDeviceReady] = useState(false);
     const [incomingCall, setIncomingCall] = useState(null);
     const [activeCallConnection, setActiveCallConnection] = useState(null);
-    
+
     const timerRef = useRef(null);
     const deviceRef = useRef(null);
     const tokenRef = useRef(null);
@@ -28,7 +30,11 @@ const VoipWidget = () => {
     // Fetch Twilio token from backend
     const fetchTwilioToken = useCallback(async () => {
         try {
-            const response = await twilioService.generateTwilioToken('user-' + Date.now());
+            if (!user?.id) {
+                console.error('User not available for Twilio token');
+                return null;
+            }
+            const response = await twilioService.generateTwilioToken(user.id);
             return response.data.token;
         } catch (error) {
             console.error('Error fetching token:', error);
@@ -40,7 +46,7 @@ const VoipWidget = () => {
     const initializeTwilioDevice = useCallback(async () => {
         try {
             const token = await fetchTwilioToken();
-            console.log("token==>", token);
+            // console.log("token==>", token);
             if (!token) {
                 console.error('Could not get Twilio token');
                 return;
@@ -145,6 +151,10 @@ const VoipWidget = () => {
             return;
         }
 
+        // Cleanup any previous call/microphone
+        // deviceRef.current.disconnectAll();
+        // await new Promise(resolve => setTimeout(resolve, 500));
+
         try {
             // Get user's active phone number
             const numbersResponse = await twilioService.getActiveNumbers();
@@ -159,9 +169,13 @@ const VoipWidget = () => {
             });
 
             setActiveCallConnection(outgoingConnection);
-            startTimer(true);
             setActiveTab('active');
             setDialInput('');
+            // startTimer(true);
+            // Start timer only after call is actually accepted
+            outgoingConnection.on('accept', () => {
+                startTimer(true);
+            });
 
             // Handle call end
             outgoingConnection.on('disconnect', () => {
@@ -187,6 +201,9 @@ const VoipWidget = () => {
             activeCallConnection.disconnect();
             setActiveCallConnection(null);
         }
+        // if (deviceRef.current) {
+        //     deviceRef.current.disconnectAll();
+        // }
         stopTimer();
         setActiveTab('incoming');
     };
@@ -310,7 +327,7 @@ const VoipWidget = () => {
                         </div>
                         <span className="voip-timer">{formatTime(callSeconds)}</span>
                     </div>
-                    <div className="voip-call-info">
+                    {/* <div className="voip-call-info">
                         <div className="voip-call-info-row">
                             <span className="voip-call-info-label">Appt Type</span>
                             <span className="voip-call-info-value">General Checkup</span>
@@ -319,7 +336,7 @@ const VoipWidget = () => {
                             <div className="voip-doctor-avatar">R</div>
                             <span style={{ fontSize: 12 }}>Dr. Rama</span>
                         </div>
-                    </div>
+                    </div> */}
                     <div className="voip-controls">
                         <button className={`voip-control-btn ${controls.mute ? 'active' : ''}`} onClick={() => toggleControl('mute')}>
                             <i className="fas fa-microphone-slash" />
