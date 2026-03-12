@@ -22,6 +22,7 @@ import CalendarPage from './pages/Calendar/index';
 import Login from './pages/auth/login';
 import Signup from './pages/auth/signup';
 import ConnectGoogleGmail from './pages/Settings/ConnectGoogleGmail';
+import ConfigureTwilioPage from './pages/Settings/ConfigureTwilioPage';
 
 
 
@@ -62,6 +63,7 @@ const AppContent = () => {
                 <Route path="/settings/connect-google-calendar" element={<ConnectGoogleCalender />} />
                 <Route path="/settings/connect-google-gmail" element={<ConnectGoogleGmail />} />
                 <Route path="/settings/practice-details" element={<PracticeDetails />} />
+                <Route path="/settings/configure-twilio" element={<ConfigureTwilioPage />} />
                 <Route path="*" element={<Navigate to="/calls" replace />} />
               </Routes>
             </div>

@@ -1,30 +1,90 @@
-import { useState } from 'react';
+import { useState, useEffect, useContext } from 'react';
 import { useToast } from '../../components/Toast/Toast';
+import { AuthContext } from '../../context/AuthContext';
+import { supabase } from '../../config/supabase';
 import '../../styles/Settings.css';
 
 const ConfigureTwilioPage = () => {
+    const { user } = useContext(AuthContext);
     const [accountSid, setAccountSid] = useState('');
     const [authToken, setAuthToken] = useState('');
-    const [twilioNumber, setTwilioNumber] = useState('');
-    const [webhookUrl] = useState('https://dental-ai.com/api/twilio/webhook');
-    const [testing, setTesting] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
     const showToast = useToast();
 
-    const handleTest = () => {
-        setTesting(true);
-        setTimeout(() => {
-            setTesting(false);
-            showToast('Connection successful!', 'success');
-        }, 2000);
-    };
+    useEffect(() => {
+        if (!user) return;
 
-    const handleSave = () => {
-        showToast('Configuration saved successfully', 'success');
-    };
+        const fetchConfig = async () => {
+            try {
+                setLoading(true);
+                const { data, error } = await supabase
+                    .from('twilio_config')
+                    .select('account_sid, auth_token')
+                    .eq('user_id', user.id)
+                    .maybeSingle();
 
-    const handleCopy = () => {
-        navigator.clipboard?.writeText(webhookUrl);
-        showToast('Webhook URL copied to clipboard', 'success');
+                if (error) {
+                    showToast('Failed to load Twilio config', 'error');
+                    return;
+                }
+                if (data) {
+                    setAccountSid(data.account_sid || '');
+                    setAuthToken(data.auth_token || '');
+                }
+            } catch (err) {
+                showToast('Failed to load Twilio config', 'error');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchConfig();
+    }, []);
+
+    const handleSave = async () => {
+        if (!user) return;
+        try {
+            setSaving(true);
+            const { data: existing } = await supabase
+                .from('twilio_config')
+                .select('user_id')
+                .eq('user_id', user.id)
+                .maybeSingle();
+
+            if (existing) {
+                const { error } = await supabase
+                    .from('twilio_config')
+                    .update({
+                        account_sid: accountSid,
+                        auth_token: authToken,
+                    })
+                    .eq('user_id', user.id);
+
+                if (error) {
+                    showToast(error.message || 'Failed to save', 'error');
+                    return;
+                }
+            } else {
+                const { error } = await supabase
+                    .from('twilio_config')
+                    .insert({
+                        account_sid: accountSid,
+                        auth_token: authToken,
+                        user_id: user.id,
+                    });
+
+                if (error) {
+                    showToast(error.message || 'Failed to save', 'error');
+                    return;
+                }
+            }
+            showToast('Configuration saved successfully', 'success');
+        } catch (err) {
+            showToast('Failed to save configuration', 'error');
+        } finally {
+            setSaving(false);
+        }
     };
 
     return (
@@ -37,59 +97,53 @@ const ConfigureTwilioPage = () => {
             </div>
 
             <div className="twilio-card">
-                <div className="twilio-form-group">
-                    <label className="twilio-label">Account SID</label>
-                    <input
-                        className="twilio-input"
-                        value={accountSid}
-                        onChange={(e) => setAccountSid(e.target.value)}
-                        placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                    />
-                </div>
+                {loading ? (
+                    <p className="settings-subtitle">Loading...</p>
+                ) : (
+                    <>
+                        <div className="twilio-form-group">
+                            <label className="twilio-label">Account SID</label>
+                            <input
+                                className="twilio-input"
+                                type="text"
+                                name="twilio_account_sid"
+                                autoComplete="off"
+                                data-form-type="other"
+                                value={accountSid}
+                                onChange={(e) => setAccountSid(e.target.value)}
+                                placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                            />
+                        </div>
 
-                <div className="twilio-form-group">
-                    <label className="twilio-label">Auth Token</label>
-                    <input
-                        className="twilio-input"
-                        type="password"
-                        value={authToken}
-                        onChange={(e) => setAuthToken(e.target.value)}
-                        placeholder="Your Auth Token"
-                    />
-                </div>
+                        <div className="twilio-form-group">
+                            <label className="twilio-label">Auth Token</label>
+                            <input
+                                className="twilio-input"
+                                type="password"
+                                name="twilio_auth_token"
+                                autoComplete="new-password"
+                                data-form-type="other"
+                                value={authToken}
+                                onChange={(e) => setAuthToken(e.target.value)}
+                                placeholder="Your Auth Token"
+                            />
+                        </div>
 
-                <div className="twilio-form-group">
-                    <label className="twilio-label">Default Twilio Number</label>
-                    <input
-                        className="twilio-input"
-                        value={twilioNumber}
-                        onChange={(e) => setTwilioNumber(e.target.value)}
-                        placeholder="+1 234 567 8900"
-                    />
-                </div>
-
-                <div className="twilio-form-group">
-                    <label className="twilio-label">Webhook URL</label>
-                    <div className="twilio-input-with-copy">
-                        <input className="twilio-input" value={webhookUrl} readOnly style={{ background: '#F9FAFB' }} />
-                        <button className="twilio-copy-btn" onClick={handleCopy}>
-                            <i className="fas fa-copy" />
-                        </button>
-                    </div>
-                </div>
-
-                <div className="twilio-actions">
-                    <button className="twilio-test-btn" onClick={handleTest} disabled={testing}>
-                        {testing ? (
-                            <><i className="fas fa-spinner fa-spin" /> Testing...</>
-                        ) : (
-                            <><i className="fas fa-plug" /> Test Connection</>
-                        )}
-                    </button>
-                    <button className="btn-primary" onClick={handleSave}>
-                        <i className="fas fa-save" /> Save Configuration
-                    </button>
-                </div>
+                        <div className="twilio-actions">
+                            <button
+                                className="btn-primary"
+                                onClick={handleSave}
+                                disabled={saving}
+                            >
+                                {saving ? (
+                                    <><i className="fas fa-spinner fa-spin" /> Saving...</>
+                                ) : (
+                                    <><i className="fas fa-save" /> Save Configuration</>
+                                )}
+                            </button>
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );
