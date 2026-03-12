@@ -3,6 +3,7 @@ import { supabase } from '../../config/supabase';
 import { AuthContext } from '../../context/AuthContext';
 import { useToast } from '../../components/Toast/Toast';
 import SearchableDropdown from '../../components/common/SearchableDropdown';
+import twilioService from '../../service/twilio';
 import '../../styles/Settings.css';
 
 const PRACTICE_TYPE_OPTIONS = [
@@ -77,6 +78,7 @@ const PracticeDetails = () => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+    const [activePhoneNumbers, setActivePhoneNumbers] = useState([]);
 
     const hasChanges = JSON.stringify(formData) !== JSON.stringify(originalData);
 
@@ -85,6 +87,19 @@ const PracticeDetails = () => {
             console.log("user=>", user);
             fetchPracticeDetails();
         }
+    }, []);
+
+    useEffect(() => {
+        const fetchActiveNumbers = async () => {
+            try {
+                const response = await twilioService.getActiveNumbers();
+                const numbers = response?.data?.data ?? [];
+                setActivePhoneNumbers(Array.isArray(numbers) ? numbers : []);
+            } catch (err) {
+                setActivePhoneNumbers([]);
+            }
+        };
+        fetchActiveNumbers();
     }, []);
 
     const fetchPracticeDetails = async () => {
@@ -492,13 +507,13 @@ const PracticeDetails = () => {
                             <div className="practice-card-body">
                                 <div className="practice-form-grid">
                                     <div className="practice-form-group">
-                                        <label className="practice-label">Phone</label>
-                                        <input
-                                            type="text"
-                                            className="practice-input"
+                                        <SearchableDropdown
+                                            label="Phone"
+                                            placeholder="Select phone number"
+                                            options={activePhoneNumbers.map((num) => ({ id: num, name: num }))}
                                             value={formData.contact_information.phone}
-                                            onChange={(e) => handleContactChange('phone', e.target.value)}
-                                            placeholder="Practice phone number"
+                                            onChange={(opt) => handleContactChange('phone', opt.id)}
+                                            searchKeys={['name']}
                                         />
                                     </div>
 
