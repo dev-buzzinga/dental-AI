@@ -9,6 +9,8 @@ const ConfigureTwilioPage = () => {
     const [accountSid, setAccountSid] = useState('');
     const [authToken, setAuthToken] = useState('');
     const [appSid, setAppSid] = useState('');
+    const [apiKeySid, setApiKeySid] = useState('');
+    const [apiKeySecret, setApiKeySecret] = useState('');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const showToast = useToast();
@@ -21,7 +23,7 @@ const ConfigureTwilioPage = () => {
                 setLoading(true);
                 const { data, error } = await supabase
                     .from('twilio_config')
-                    .select('account_sid, auth_token, app_sid')
+                    .select('account_sid, auth_token, app_sid, api_key_sid, api_key_secret')
                     .eq('user_id', user.id)
                     .maybeSingle();
 
@@ -33,6 +35,8 @@ const ConfigureTwilioPage = () => {
                     setAccountSid(data.account_sid || '');
                     setAuthToken(data.auth_token || '');
                     setAppSid(data.app_sid || '');
+                    setApiKeySid(data.api_key_sid || '');
+                    setApiKeySecret(data.api_key_secret || '');
                 }
             } catch (err) {
                 showToast('Failed to load Twilio config', 'error');
@@ -61,6 +65,8 @@ const ConfigureTwilioPage = () => {
                         account_sid: accountSid,
                         auth_token: authToken,
                         app_sid: appSid || '',
+                        api_key_sid: apiKeySid || '',
+                        api_key_secret: apiKeySecret || '',
                     })
                     .eq('user_id', user.id);
 
@@ -75,6 +81,8 @@ const ConfigureTwilioPage = () => {
                         account_sid: accountSid,
                         auth_token: authToken,
                         app_sid: appSid || '',
+                        api_key_sid: apiKeySid || '',
+                        api_key_secret: apiKeySecret || '',
                         user_id: user.id,
                     });
 
@@ -147,6 +155,33 @@ const ConfigureTwilioPage = () => {
                             />
                         </div>
 
+                        <div className="twilio-form-group">
+                            <label className="twilio-label">API Key SID</label>
+                            <input
+                                className="twilio-input"
+                                type="text"
+                                name="twilio_api_key_sid"
+                                autoComplete="off"
+                                data-form-type="other"
+                                value={apiKeySid}
+                                onChange={(e) => setApiKeySid(e.target.value)}
+                                placeholder="API Key SID"
+                            />
+                        </div>
+
+                        <div className="twilio-form-group">
+                            <label className="twilio-label">API Key Secret</label>
+                            <input
+                                className="twilio-input"
+                                type="password"
+                                name="twilio_api_key_secret"
+                                autoComplete="new-password"
+                                data-form-type="other"
+                                value={apiKeySecret}
+                                onChange={(e) => setApiKeySecret(e.target.value)}
+                                placeholder="API Key Secret"
+                            />
+                        </div>
                         <div className="twilio-actions">
                             <button
                                 className="btn-primary"

@@ -4,6 +4,7 @@ import { dialpadKeys } from '../../data/dummyData';
 import { SearchInput } from '../common/SearchInput';
 import twilioService from '../../service/twilio';
 import outgoingService from '../../service/outgoing';
+import { Device } from '@twilio/voice-sdk';
 import './VoipWidget.css';
 
 const VoipWidget = () => {
@@ -38,14 +39,8 @@ const VoipWidget = () => {
     // Initialize Twilio Device
     const initializeTwilioDevice = useCallback(async () => {
         try {
-            // Check if Twilio SDK is loaded
-            if (!window.Twilio || !window.Twilio.Device) {
-                console.error('Twilio SDK not loaded');
-                setTimeout(() => initializeTwilioDevice(), 2000);
-                return;
-            }
-
             const token = await fetchTwilioToken();
+            console.log("token==>", token);
             if (!token) {
                 console.error('Could not get Twilio token');
                 return;
@@ -53,9 +48,9 @@ const VoipWidget = () => {
 
             tokenRef.current = token;
 
-            // Create and setup device using window.Twilio
-            const device = new window.Twilio.Device(token, {
-                debug: true,
+            // Create and setup device using Twilio Voice SDK
+            const device = new Device(token, {
+                logLevel: 1,
                 codecPreferences: ['opus', 'pcmu'],
             });
 
@@ -71,13 +66,13 @@ const VoipWidget = () => {
             });
 
             // Handle device ready
-            device.on('ready', () => {
+            device.on('registered', () => {
                 console.log('Twilio Device is ready');
                 setDeviceReady(true);
             });
 
             // Handle device offline
-            device.on('offline', () => {
+            device.on('unregistered', () => {
                 console.log('Twilio Device is offline');
                 setDeviceReady(false);
             });
@@ -160,7 +155,7 @@ const VoipWidget = () => {
 
             // Initiate call via Twilio SDK
             const outgoingConnection = await deviceRef.current.connect({
-                To: dialInput,
+                params: { To: dialInput },
             });
 
             setActiveCallConnection(outgoingConnection);

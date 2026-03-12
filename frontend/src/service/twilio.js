@@ -6,7 +6,7 @@ const getActiveNumbers = async () => {
 };
 
 const generateTwilioToken = async (identity) => {
-    return await authAxiosInstance.post("/twilio/generate", {
+    return await authAxiosInstance.post("/twilio/generate/token", {
         identity,
     });
 };

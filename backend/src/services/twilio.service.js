@@ -1,4 +1,4 @@
-import { generateToken } from "../utils/generateToken.js";
+
 import twilio from "twilio";
 import { supabase } from "../config/database.js";
 const getTwilioClient = async (user_id) => {
@@ -65,16 +65,33 @@ export const generateTwilioToken = async (req, res) => {
                 message: "Twilio config not found",
             });
         }
-
-        const accountSid = data.account_sid;
-        const authToken = data.auth_token;
+        console.log("data==>", data);
+        const account_sid = data.account_sid;
+        const auth_token = data.auth_token;
         const app_sid = data.app_sid;
+
+        const api_key_sid = data.api_key_sid;
+        const api_key_secret = data.api_key_secret;
+
 
         const AccessToken = twilio.jwt.AccessToken;
         const VoiceGrant = AccessToken.VoiceGrant;
+        const VoiceResponse = twilio.twiml.VoiceResponse;
+        // Access token for Twilio Programmable Voice JS SDK.
+        // Must be created with Account SID, API Key SID, and API Key Secret.
+        const token = new AccessToken(
+            account_sid,           // AC... (same)
+            data.api_key_sid,     // SK... ← NAYA
+            data.api_key_secret,  // secret ← NAYA
+            { identity: identity, ttl: 3600 }
+        );
 
-        const token = new AccessToken(accountSid, identity, authToken);
-        token.addGrant(new VoiceGrant({ outgoingApplicationSid: app_sid }));
+        const voiceGrant = new VoiceGrant({
+            outgoingApplicationSid: app_sid,
+            incomingAllow: false, // abhi sirf outgoing
+        });
+
+        token.addGrant(voiceGrant);
 
         return res.status(200).json({
             success: true,
@@ -83,6 +100,7 @@ export const generateTwilioToken = async (req, res) => {
         });
     }
     catch (error) {
+        console.log("error==>", error);
         return res.status(500).json({
             success: false,
             message: error.message,
