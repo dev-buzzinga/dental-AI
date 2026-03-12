@@ -2,6 +2,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { dialpadKeys } from '../../data/dummyData';
 import { SearchInput } from '../common/SearchInput';
+import twilioService from '../../service/twilio';
+import outgoingService from '../../service/outgoing';
 import './VoipWidget.css';
 
 const VoipWidget = () => {
@@ -14,7 +16,95 @@ const VoipWidget = () => {
     const [noteOpen, setNoteOpen] = useState(false);
     const [controls, setControls] = useState({ mute: false, hold: false, record: false });
     const [searchTerm, setSearchTerm] = useState('');
+    const [deviceReady, setDeviceReady] = useState(false);
+    const [incomingCall, setIncomingCall] = useState(null);
+    const [activeCallConnection, setActiveCallConnection] = useState(null);
+    
     const timerRef = useRef(null);
+    const deviceRef = useRef(null);
+    const tokenRef = useRef(null);
+
+    // Fetch Twilio token from backend
+    const fetchTwilioToken = useCallback(async () => {
+        try {
+            const response = await twilioService.generateTwilioToken('user-' + Date.now());
+            return response.data.token;
+        } catch (error) {
+            console.error('Error fetching token:', error);
+            return null;
+        }
+    }, []);
+
+    // Initialize Twilio Device
+    const initializeTwilioDevice = useCallback(async () => {
+        try {
+            // Check if Twilio SDK is loaded
+            if (!window.Twilio || !window.Twilio.Device) {
+                console.error('Twilio SDK not loaded');
+                setTimeout(() => initializeTwilioDevice(), 2000);
+                return;
+            }
+
+            const token = await fetchTwilioToken();
+            if (!token) {
+                console.error('Could not get Twilio token');
+                return;
+            }
+
+            tokenRef.current = token;
+
+            // Create and setup device using window.Twilio
+            const device = new window.Twilio.Device(token, {
+                debug: true,
+                codecPreferences: ['opus', 'pcmu'],
+            });
+
+            // Handle incoming calls
+            device.on('incoming', (connection) => {
+                console.log('Incoming call from:', connection.parameters.From);
+                setIncomingCall({
+                    connection,
+                    from: connection.parameters.From,
+                    name: 'Tim Johnson', // This should come from the call metadata
+                    timeReceived: new Date(),
+                });
+            });
+
+            // Handle device ready
+            device.on('ready', () => {
+                console.log('Twilio Device is ready');
+                setDeviceReady(true);
+            });
+
+            // Handle device offline
+            device.on('offline', () => {
+                console.log('Twilio Device is offline');
+                setDeviceReady(false);
+            });
+
+            // Handle errors
+            device.on('error', (error) => {
+                console.error('Device error:', error);
+            });
+
+            // Register the device to listen for incoming calls
+            await device.register();
+            deviceRef.current = device;
+        } catch (error) {
+            console.error('Error initializing Twilio:', error);
+        }
+    }, [fetchTwilioToken]);
+
+    // Initialize on component mount
+    useEffect(() => {
+        initializeTwilioDevice();
+        return () => {
+            if (deviceRef.current) {
+                deviceRef.current.unregister();
+                deviceRef.current.destroy();
+            }
+        };
+    }, [initializeTwilioDevice]);
 
     const startTimer = useCallback((reset = true) => {
         if (timerRef.current) clearInterval(timerRef.current);
@@ -38,11 +128,89 @@ const VoipWidget = () => {
         return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
     };
 
-    const answerCall = () => { startTimer(true); setActiveTab('active'); };
-    const startCall = () => { startTimer(true); setActiveTab('active'); };
-    const endCall = () => { stopTimer(); setActiveTab('incoming'); };
+    const answerCall = () => {
+        if (incomingCall?.connection) {
+            incomingCall.connection.accept();
+            setActiveCallConnection(incomingCall.connection);
+            setIncomingCall(null);
+            startTimer(true);
+            setActiveTab('active');
 
-    const toggleControl = (key) => setControls((prev) => ({ ...prev, [key]: !prev[key] }));
+            // Handle call end
+            incomingCall.connection.on('disconnect', () => {
+                setActiveCallConnection(null);
+                stopTimer();
+            });
+        }
+    };
+
+    const startCall = async () => {
+        if (!deviceRef.current || !dialInput) {
+            alert('Enter a phone number');
+            return;
+        }
+
+        try {
+            // Get user's active phone number
+            const numbersResponse = await twilioService.getActiveNumbers();
+            const userPhoneNumber = numbersResponse.data.data[0] || '+1234567890';
+
+            // Notify backend of outgoing call
+            await outgoingService.makeOutgoingCall(dialInput, userPhoneNumber);
+
+            // Initiate call via Twilio SDK
+            const outgoingConnection = await deviceRef.current.connect({
+                To: dialInput,
+            });
+
+            setActiveCallConnection(outgoingConnection);
+            startTimer(true);
+            setActiveTab('active');
+            setDialInput('');
+
+            // Handle call end
+            outgoingConnection.on('disconnect', () => {
+                setActiveCallConnection(null);
+                stopTimer();
+                setActiveTab('dialpad');
+            });
+
+            outgoingConnection.on('error', (error) => {
+                console.error('Call error:', error);
+                alert('Call failed: ' + error.message);
+                setActiveCallConnection(null);
+                stopTimer();
+            });
+        } catch (error) {
+            console.error('Error starting call:', error);
+            alert('Failed to start call: ' + error.message);
+        }
+    };
+
+    const endCall = () => {
+        if (activeCallConnection) {
+            activeCallConnection.disconnect();
+            setActiveCallConnection(null);
+        }
+        stopTimer();
+        setActiveTab('incoming');
+    };
+
+    const toggleControl = (key) => {
+        setControls((prev) => ({ ...prev, [key]: !prev[key] }));
+
+        if (key === 'mute' && activeCallConnection) {
+            activeCallConnection.mute(!controls.mute);
+        }
+    };
+
+    const declineCall = () => {
+        if (incomingCall?.connection) {
+            incomingCall.connection.reject();
+            setIncomingCall(null);
+        }
+        setActiveTab('dialpad');
+    };
 
     const searchResults = searchTerm.length > 0
         ? [{ name: 'Tim Johnson', number: '+61421671766', initials: 'TJ' }].filter((p) =>
@@ -60,7 +228,7 @@ const VoipWidget = () => {
                 <div className="voip-fab-btn">
                     <i className="fas fa-phone" />
                     <span>VoIP</span>
-                    <div className="voip-fab-badge">2</div>
+                    <div className="voip-fab-badge">{incomingCall ? '1' : '0'}</div>
                 </div>
             </div>
         );
@@ -70,7 +238,7 @@ const VoipWidget = () => {
         <div className={widgetClassName}>
             {/* Header */}
             <div className="voip-header">
-                <span>DENTALAIASSIST</span>
+                <span>DENTALAIASSIST {!deviceReady && <span style={{ color: '#ff6b6b', fontSize: '10px' }}>● Offline</span>}</span>
                 <button onClick={() => setIsOpen(false)}><i className="fas fa-minus" /></button>
             </div>
 
@@ -90,42 +258,50 @@ const VoipWidget = () => {
             {/* Incoming Tab */}
             {activeTab === 'incoming' && (
                 <div className="fade-in">
-                    <div className="voip-incoming-header">
-                        <div className="left">
-                            <i className="fas fa-phone-volume animate-pulse-custom" style={{ color: '#fff' }} />
-                            <span style={{ color: '#fff', fontWeight: 700 }}>Incoming Call</span>
+                    {incomingCall ? (
+                        <>
+                            <div className="voip-incoming-header">
+                                <div className="left">
+                                    <i className="fas fa-phone-volume animate-pulse-custom" style={{ color: '#fff' }} />
+                                    <span style={{ color: '#fff', fontWeight: 700 }}>Incoming Call</span>
+                                </div>
+                                <button onClick={() => declineCall()} style={{ color: 'rgba(255,255,255,0.8)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                                    <i className="fas fa-xmark" />
+                                </button>
+                            </div>
+                            <div className="voip-caller-info">
+                                <div className="voip-avatar">TJ</div>
+                                <div className="voip-caller-name">Tim Johnson</div>
+                                <div className="voip-caller-badge">Existing Patient</div>
+                            </div>
+                            <div className="voip-patient-stats">
+                                <div>
+                                    <p className="voip-stat-label">Next Appt</p>
+                                    <p className="voip-stat-value">Feb 24</p>
+                                </div>
+                                <div className="voip-stat-divider">
+                                    <p className="voip-stat-label">Last Visit</p>
+                                    <p className="voip-stat-value">Jan 10</p>
+                                </div>
+                                <div>
+                                    <p className="voip-stat-label">Balance</p>
+                                    <p className="voip-stat-value">$120</p>
+                                </div>
+                            </div>
+                            <div className="voip-actions">
+                                <button className="voip-btn voip-btn-answer" onClick={answerCall}>
+                                    <i className="fas fa-phone" /> Answer
+                                </button>
+                                <button className="voip-btn voip-btn-decline" onClick={() => declineCall()}>
+                                    <i className="fas fa-phone-slash" /> Decline
+                                </button>
+                            </div>
+                        </>
+                    ) : (
+                        <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                            <p>No incoming calls</p>
                         </div>
-                        <button onClick={() => setActiveTab('dialpad')} style={{ color: 'rgba(255,255,255,0.8)', background: 'none', border: 'none', cursor: 'pointer' }}>
-                            <i className="fas fa-xmark" />
-                        </button>
-                    </div>
-                    <div className="voip-caller-info">
-                        <div className="voip-avatar">TJ</div>
-                        <div className="voip-caller-name">Tim Johnson</div>
-                        <div className="voip-caller-badge">Existing Patient</div>
-                    </div>
-                    <div className="voip-patient-stats">
-                        <div>
-                            <p className="voip-stat-label">Next Appt</p>
-                            <p className="voip-stat-value">Feb 24</p>
-                        </div>
-                        <div className="voip-stat-divider">
-                            <p className="voip-stat-label">Last Visit</p>
-                            <p className="voip-stat-value">Jan 10</p>
-                        </div>
-                        <div>
-                            <p className="voip-stat-label">Balance</p>
-                            <p className="voip-stat-value">$120</p>
-                        </div>
-                    </div>
-                    <div className="voip-actions">
-                        <button className="voip-btn voip-btn-answer" onClick={answerCall}>
-                            <i className="fas fa-phone" /> Answer
-                        </button>
-                        <button className="voip-btn voip-btn-decline" onClick={() => setActiveTab('dialpad')}>
-                            <i className="fas fa-phone-slash" /> Decline
-                        </button>
-                    </div>
+                    )}
                 </div>
             )}
 
@@ -183,9 +359,9 @@ const VoipWidget = () => {
                     <div className="voip-dialpad-header"><span>Dialpad</span></div>
                     <div className="voip-dialpad-search" style={{ position: 'relative' }}>
                         <SearchInput
-                            placeholder="Search..."
-                            value={searchTerm}
-                            onChange={(v) => { setSearchTerm(v); setDialInput(v); }}
+                            placeholder="Search or dial..."
+                            value={dialInput}
+                            onChange={(v) => { setDialInput(v); setSearchTerm(v); }}
                         />
                         {searchResults.length > 0 && (
                             <div className="voip-search-results">
@@ -215,8 +391,11 @@ const VoipWidget = () => {
                         ))}
                     </div>
                     <div className="voip-call-fab">
-                        <button onClick={startCall}><i className="fas fa-phone" /></button>
+                        <button onClick={startCall} disabled={!deviceReady || !dialInput}>
+                            <i className="fas fa-phone" />
+                        </button>
                     </div>
+                    {!deviceReady && <div style={{ textAlign: 'center', color: '#ff6b6b', fontSize: '12px', marginTop: '10px' }}>Waiting for device connection...</div>}
                 </div>
             )}
         </div>
