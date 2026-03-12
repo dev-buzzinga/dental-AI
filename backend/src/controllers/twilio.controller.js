@@ -1,4 +1,4 @@
-import { generateTwilioToken } from "../services/twilioToken.service.js";
+import { generateTwilioToken } from "../services/twilio.service.js";
 
 export const generateToken = async (req, res) => {
     try {

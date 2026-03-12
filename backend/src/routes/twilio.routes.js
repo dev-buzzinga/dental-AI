@@ -1,5 +1,5 @@
 import express from 'express';
-import { generateToken } from '../controllers/twilio-token.controller.js';
+import { generateToken } from '../controllers/twilio.controller.js';
 
 const router = express.Router();
 
