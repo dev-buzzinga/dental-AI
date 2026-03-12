@@ -8,6 +8,7 @@ const ConfigureTwilioPage = () => {
     const { user } = useContext(AuthContext);
     const [accountSid, setAccountSid] = useState('');
     const [authToken, setAuthToken] = useState('');
+    const [appSid, setAppSid] = useState('');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const showToast = useToast();
@@ -20,7 +21,7 @@ const ConfigureTwilioPage = () => {
                 setLoading(true);
                 const { data, error } = await supabase
                     .from('twilio_config')
-                    .select('account_sid, auth_token')
+                    .select('account_sid, auth_token, app_sid')
                     .eq('user_id', user.id)
                     .maybeSingle();
 
@@ -31,6 +32,7 @@ const ConfigureTwilioPage = () => {
                 if (data) {
                     setAccountSid(data.account_sid || '');
                     setAuthToken(data.auth_token || '');
+                    setAppSid(data.app_sid || '');
                 }
             } catch (err) {
                 showToast('Failed to load Twilio config', 'error');
@@ -58,6 +60,7 @@ const ConfigureTwilioPage = () => {
                     .update({
                         account_sid: accountSid,
                         auth_token: authToken,
+                        app_sid: appSid || '',
                     })
                     .eq('user_id', user.id);
 
@@ -71,6 +74,7 @@ const ConfigureTwilioPage = () => {
                     .insert({
                         account_sid: accountSid,
                         auth_token: authToken,
+                        app_sid: appSid || '',
                         user_id: user.id,
                     });
 
@@ -126,6 +130,20 @@ const ConfigureTwilioPage = () => {
                                 value={authToken}
                                 onChange={(e) => setAuthToken(e.target.value)}
                                 placeholder="Your Auth Token"
+                            />
+                        </div>
+
+                        <div className="twilio-form-group">
+                            <label className="twilio-label">App SID (Voice)</label>
+                            <input
+                                className="twilio-input"
+                                type="text"
+                                name="twilio_app_sid"
+                                autoComplete="off"
+                                data-form-type="other"
+                                value={appSid}
+                                onChange={(e) => setAppSid(e.target.value)}
+                                placeholder="App SID"
                             />
                         </div>
 
