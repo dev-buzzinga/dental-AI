@@ -13,6 +13,7 @@ const ConfigureTwilioPage = () => {
     const [apiKeySecret, setApiKeySecret] = useState('');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [initialValues, setInitialValues] = useState(null);
     const showToast = useToast();
 
     useEffect(() => {
@@ -32,11 +33,21 @@ const ConfigureTwilioPage = () => {
                     return;
                 }
                 if (data) {
-                    setAccountSid(data.account_sid || '');
-                    setAuthToken(data.auth_token || '');
-                    setAppSid(data.app_sid || '');
-                    setApiKeySid(data.api_key_sid || '');
-                    setApiKeySecret(data.api_key_secret || '');
+                    const vals = {
+                        accountSid: data.account_sid || '',
+                        authToken: data.auth_token || '',
+                        appSid: data.app_sid || '',
+                        apiKeySid: data.api_key_sid || '',
+                        apiKeySecret: data.api_key_secret || '',
+                    };
+                    setAccountSid(vals.accountSid);
+                    setAuthToken(vals.authToken);
+                    setAppSid(vals.appSid);
+                    setApiKeySid(vals.apiKeySid);
+                    setApiKeySecret(vals.apiKeySecret);
+                    setInitialValues(vals);
+                } else {
+                    setInitialValues({ accountSid: '', authToken: '', appSid: '', apiKeySid: '', apiKeySecret: '' });
                 }
             } catch (err) {
                 showToast('Failed to load Twilio config', 'error');
@@ -47,6 +58,14 @@ const ConfigureTwilioPage = () => {
 
         fetchConfig();
     }, []);
+
+    const hasChanges = initialValues
+        ? accountSid !== initialValues.accountSid ||
+        authToken !== initialValues.authToken ||
+        appSid !== initialValues.appSid ||
+        apiKeySid !== initialValues.apiKeySid ||
+        apiKeySecret !== initialValues.apiKeySecret
+        : false;
 
     const handleSave = async () => {
         if (!user) return;
@@ -91,6 +110,7 @@ const ConfigureTwilioPage = () => {
                     return;
                 }
             }
+            setInitialValues({ accountSid, authToken, appSid, apiKeySid, apiKeySecret });
             showToast('Configuration saved successfully', 'success');
         } catch (err) {
             showToast('Failed to save configuration', 'error');
@@ -186,7 +206,7 @@ const ConfigureTwilioPage = () => {
                             <button
                                 className="btn-primary"
                                 onClick={handleSave}
-                                disabled={saving}
+                                disabled={saving || !hasChanges}
                             >
                                 {saving ? (
                                     <><i className="fas fa-spinner fa-spin" /> Saving...</>

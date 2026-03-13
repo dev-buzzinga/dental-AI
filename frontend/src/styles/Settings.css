@@ -220,6 +220,19 @@
     margin-top: 24px;
 }
 
+.twilio-actions .btn-primary:disabled {
+    background-color: #D1D5DB;
+    color: #9CA3AF;
+    cursor: not-allowed;
+    border-color: #D1D5DB;
+    opacity: 0.6;
+}
+
+.twilio-actions .btn-primary:disabled:hover {
+    background-color: #D1D5DB;
+    color: #9CA3AF;
+}
+
 .twilio-test-btn {
     padding: 10px 20px;
     border: 2px solid var(--primary);
