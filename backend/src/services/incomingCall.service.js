@@ -59,8 +59,12 @@ export const incomingCallVoiceService = async (req, res) => {
         // statusCallback is on <Dial> tag because we are dialing a Client, not a Number
         const dial = twiml.dial({});
 
-        dial.client(userId);
-
+        // dial.client(userId);
+        dial.client({
+            statusCallbackEvent: 'initiated ringing answered completed',
+            statusCallback: `${config.BASE_URL}/api/incoming-call/status-callback`,
+            statusCallbackMethod: 'POST'
+        }, userId);
         const twimlString = twiml.toString();
         console.log("Incoming TwiML =>", twimlString);
         res.type("text/xml");
@@ -77,7 +81,7 @@ export const incomingCallVoiceService = async (req, res) => {
 };
 
 /**
- * POST /api/incoming-call/status-callback
+ * POST /api/incoming-call/status-callback new
  * Handles status updates for incoming calls (same pattern as outgoing).
  */
 export const incomingCallStatusCallbackService = async (req, res) => {
@@ -122,7 +126,7 @@ export const incomingCallStatusCallbackService = async (req, res) => {
         });
 
         // Only process the child leg (outbound-dial to Client) for DB updates
-        if (Direction == "outbound-dial" || Direction == "outbound-api") {
+        if (Direction == "inbound-dial" || Direction == "inbound-dial" || Direction == "inbound-api") {
 
             if (CallStatus == "ringing" || CallStatus == "initiated") {
                 // Check if record already exists

@@ -280,7 +280,7 @@ const VoipWidget = () => {
         <div className={widgetClassName}>
             {/* Header */}
             <div className="voip-header">
-                <span>DENTALAIASSIST {deviceReady ? <span style={{ color: '#4ade80', fontSize: '10px' }}>● Online</span> : <span style={{ color: '#ff6b6b', fontSize: '10px' }}>● Offline</span>}</span>
+                <span>DENTALAIASSIST {deviceReady ? <span style={{ color: '#4ade80', fontSize: '10px' }}>● Connected</span> : <span style={{ color: '#ff6b6b', fontSize: '10px' }}>● Not Connected</span>}</span>
                 <button onClick={() => setIsOpen(false)}><i className="fas fa-minus" /></button>
             </div>
 
