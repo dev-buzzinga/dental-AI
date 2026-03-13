@@ -65,7 +65,7 @@ export const generateTwilioToken = async (req, res) => {
                 message: "Twilio config not found",
             });
         }
-        
+
         const account_sid = data.account_sid;
         const auth_token = data.auth_token;
         const app_sid = data.app_sid;
@@ -81,14 +81,14 @@ export const generateTwilioToken = async (req, res) => {
         // Must be created with Account SID, API Key SID, and API Key Secret.
         const token = new AccessToken(
             account_sid,           // AC... (same)
-            data.api_key_sid,     // SK... ← NAYA
-            data.api_key_secret,  // secret ← NAYA
+            data.api_key_sid,     // SK... ← new
+            data.api_key_secret,  // secret ← new
             { identity: identity, ttl: 3600 }
         );
 
         const voiceGrant = new VoiceGrant({
             outgoingApplicationSid: app_sid,
-            incomingAllow: false, // abhi sirf outgoing
+            incomingAllow: true,
         });
 
         token.addGrant(voiceGrant);

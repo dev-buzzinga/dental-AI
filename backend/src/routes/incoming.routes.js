@@ -1,6 +1,9 @@
 import express from 'express';
-import { makeIncomingCall } from '../controllers/incoming-call.controller.js';
+import { voiceResponse, callStatusCallback } from '../controllers/incoming-call.controller.js';
+
 const router = express.Router();
 
-router.post('/make-call', makeIncomingCall);
+router.post('/voice', voiceResponse);
+router.post('/status-callback', callStatusCallback);
+
 export default router;

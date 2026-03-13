@@ -376,8 +376,55 @@
     font-weight: 700;
 }
 
-.voip-dialpad-search {
-    padding: 12px;
+.voip-dial-input-wrapper {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--border);
+    background: #F9FAFB;
+}
+
+.voip-dial-input-icon {
+    color: var(--primary);
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+.voip-dial-input {
+    flex: 1;
+    border: none;
+    outline: none;
+    background: transparent;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    color: var(--text-primary);
+    font-family: inherit;
+}
+
+.voip-dial-input::placeholder {
+    font-size: 14px;
+    font-weight: 400;
+    letter-spacing: 0;
+    color: #9CA3AF;
+}
+
+.voip-dial-clear-btn {
+    background: none;
+    border: none;
+    color: #9CA3AF;
+    cursor: pointer;
+    padding: 4px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.15s;
+}
+
+.voip-dial-clear-btn:hover {
+    color: var(--danger);
 }
 
 .voip-dialpad-grid {
@@ -479,4 +526,22 @@
 
 .voip-widget--raised {
     bottom: 96px;
+}
+
+/* Ringing animation for FAB when incoming call */
+.voip-fab-ringing {
+    background: var(--success) !important;
+    animation: fab-ring-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes fab-ring-pulse {
+
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.6);
+    }
+
+    50% {
+        box-shadow: 0 0 0 12px rgba(74, 222, 128, 0);
+    }
 }
