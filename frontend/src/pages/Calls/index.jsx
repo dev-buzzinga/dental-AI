@@ -95,10 +95,11 @@ const CallsPage = () => {
                                 <div className="call-name">{call.patients_name || 'Unknown'}</div>
                                 <div className="call-number">{call.to_number || call.from_number || '—'}</div>
                             </div>
-                            {/* <div className="call-badge">
+                            <div className="call-badge">
                                 <i className="fas fa-circle" />
-                                {getDisplayDuration(call)}
-                            </div> */}
+                                {/* {getDisplayDuration(call)} */}
+                                {formatCallDate(call.created_at || call.started_at)}
+                            </div>
                         </div>
                     ))}
                 </div>

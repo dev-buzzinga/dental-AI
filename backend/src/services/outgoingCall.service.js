@@ -406,7 +406,17 @@ export const callStatusCallbackService = async (req, res) => {
 
 export const getCallLogsService = async (req, res) => {
     try {
+
+        const user_id = req.user?.id;
         const csvPath = path.join(process.cwd(), "call_logs.csv");
+
+        // If user is not authenticated, don't return any data
+        if (!user_id) {
+            return res.status(401).json({
+                success: false,
+                message: "Unauthorized: user not found in request"
+            });
+        }
 
         if (!fs.existsSync(csvPath)) {
             return res.json({ success: true, data: [] });
@@ -444,7 +454,10 @@ export const getCallLogsService = async (req, res) => {
             };
         });
 
-        return res.json({ success: true, data: rows });
+        // Filter rows so that only the current user's records are returned
+        const filteredRows = rows.filter((row) => String(row.user_id) === String(user_id));
+
+        return res.json({ success: true, data: filteredRows });
     } catch (err) {
         console.error("Error reading call_logs.csv:", err);
         return res.status(500).json({ success: false, message: "Failed to load calls" });
