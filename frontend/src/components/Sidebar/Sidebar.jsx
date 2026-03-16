@@ -12,6 +12,7 @@ const Sidebar = () => {
     const [settingsOpen, setSettingsOpen] = useState(true);
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const [scribeOpen, setScribeOpen] = useState(true);
 
     const handleLogout = async () => {
         setIsLoggingOut(true);
@@ -87,6 +88,30 @@ const Sidebar = () => {
                         {item.badge && <div className="sidebar-badge">{item.badge}</div>}
                     </div>
                 ))}
+
+                {/* <div className="sidebar-divider" />
+                <p className="sidebar-section-label">AI - Scribe</p> */}
+
+                <div
+                    className="sidebar-settings-header"
+                    onClick={() => setScribeOpen(!scribeOpen)}
+                >
+                    <div className="left">
+                        <i className="fas fa-robot" style={{ width: 20, textAlign: 'center' }} />
+                        <span style={{ fontSize: 14, fontWeight: 500 }}>AI - Scribe</span>
+                    </div>
+                    <i className={`fas fa-chevron-up chevron ${!scribeOpen ? 'collapsed' : ''}`} />
+                </div>
+
+                <div className={`sidebar-submenu ${scribeOpen ? 'expanded' : 'collapsed'}`}>
+                    <div
+                        className={`sidebar-sub-item ${isActive('/voice-notes') ? 'active' : ''}`}
+                        onClick={() => navigate('/voice-notes')}
+                    >
+                        <i className="fas fa-microphone-lines" />
+                        <span>Voice Notes</span>
+                    </div>
+                </div>
 
                 <div className="sidebar-divider" />
                 <p className="sidebar-section-label">Settings</p>

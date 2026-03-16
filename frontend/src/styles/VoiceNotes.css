@@ -1,0 +1,438 @@
+/* === VOICE NOTES PAGE === */
+.voice-notes-page {
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.voice-notes-header {
+    padding: 20px 24px;
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.voice-notes-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.voice-notes-title {
+    font-weight: 700;
+    font-size: 20px;
+}
+
+.voice-notes-header-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.voice-notes-content {
+    flex: 1;
+    padding: 0;
+    overflow: auto;
+    background: #fff;
+}
+
+.voice-notes-empty-state {
+    height: 100%;
+    border-radius: var(--radius-card);
+    border: 1px dashed var(--border);
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+.voice-notes-empty-state i {
+    font-size: 32px;
+    color: var(--primary);
+    margin-bottom: 4px;
+}
+
+.voice-notes-empty-state h3 {
+    font-size: 18px;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.voice-notes-empty-state p {
+    margin: 0;
+    font-size: 14px;
+}
+
+/* === ADD VOICE NOTES MODAL === */
+.voice-notes-modal {
+    width: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    background: #fff;
+    border-radius: 0;
+    box-shadow: none;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.voice-notes-modal .modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.voice-notes-modal .modal-header h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 18px;
+}
+
+.voice-notes-modal .modal-header h2 i {
+    color: var(--primary);
+}
+
+.voice-notes-modal .modal-body {
+    padding: 24px 48px 32px;
+    overflow: auto;
+    flex: 1;
+}
+
+.voice-notes-top-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.voice-notes-field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-secondary);
+}
+
+.voice-notes-field select,
+.voice-notes-field input[type="date"],
+.voice-notes-field textarea {
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    padding: 10px 12px;
+    font-size: 14px;
+    outline: none;
+    box-sizing: border-box;
+}
+
+.voice-notes-field input[type="date"] {
+    font-size: 13px;
+    height: 40px;
+}
+
+.voice-notes-field select:focus,
+.voice-notes-field input[type="date"]:focus,
+.voice-notes-field textarea:focus {
+    box-shadow: 0 0 0 1px var(--primary);
+}
+
+.voice-notes-description {
+    margin-bottom: 20px;
+}
+
+.voice-notes-description textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.voice-notes-main-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 16px;
+    align-items: stretch;
+}
+
+.voice-panel {
+    background: #fff;
+    border-radius: var(--radius-card);
+    border: 1px solid var(--border);
+    padding: 14px 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.voice-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.voice-panel-title {
+    font-weight: 600;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.voice-panel-title i {
+    color: var(--primary);
+}
+
+.voice-panel-body {
+    flex: 1;
+    min-height: 160px;
+}
+
+.voice-panel-textarea {
+    width: 100%;
+    height: 100%;
+    border-radius: 10px;
+    border: 1px dashed var(--border);
+    padding: 10px 12px;
+    font-size: 13px;
+    resize: none;
+    background: #F9FAFB;
+    outline: none;
+}
+
+.voice-panel-textarea::placeholder {
+    color: var(--text-secondary);
+}
+
+.voice-record-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: 999px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
+.voice-record-btn.recording {
+    background: #FEE2E2;
+    color: #B91C1C;
+}
+
+.voice-record-btn i {
+    font-size: 12px;
+}
+
+.ai-summary-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+}
+
+.ai-summary-action-btn {
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: #fff;
+    font-size: 11px;
+    padding: 6px 10px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+
+.ai-summary-action-btn.primary {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.ai-summary-box {
+    border-radius: 10px;
+    border: 1px dashed var(--border);
+    padding: 10px 12px;
+    background: #F9FAFB;
+    font-size: 13px;
+    color: var(--text-secondary);
+    min-height: 160px;
+}
+
+.voice-notes-modal .modal-footer {
+    padding: 12px 20px 14px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+@media (max-width: 1024px) {
+    .voice-notes-main-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* === ADD TEMPLATE MODAL === */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.add-template-modal {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.3);
+    width: 90%;
+    max-width: 500px;
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+    overflow: hidden;
+}
+
+.template-modal-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.template-modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-primary);
+}
+
+.template-modal-header h3 i {
+    color: var(--primary);
+    font-size: 20px;
+}
+
+.template-modal-header .close-btn {
+    background: none;
+    border: none;
+    font-size: 28px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.template-modal-header .close-btn:hover {
+    background: var(--background);
+    color: var(--text-primary);
+}
+
+.template-modal-body {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.template-form-group {
+    margin-bottom: 20px;
+}
+
+.template-form-group:last-child {
+    margin-bottom: 0;
+}
+
+.template-form-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--text-primary);
+}
+
+.template-input,
+.template-textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 14px;
+    font-family: inherit;
+    color: var(--text-primary);
+    transition: all 0.2s ease;
+}
+
+.template-input:focus,
+.template-textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.template-textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.template-modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    background: var(--background);
+}
+
+@media (max-width: 768px) {
+    .voice-notes-header {
+        padding: 16px 16px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .voice-notes-content {
+        padding: 16px;
+    }
+
+    .voice-notes-modal {
+        width: 100%;
+        max-width: 100%;
+        max-height: 100vh;
+        border-radius: 0;
+    }
+
+    .voice-notes-top-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .add-template-modal {
+        width: 95%;
+        max-width: 95vw;
+    }
+}
+
