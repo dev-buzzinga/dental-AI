@@ -57,7 +57,7 @@ const AddVoiceNotePage = () => {
                             .eq('user_id', user.id),
                         supabase
                             .from('voice_notes_template')
-                            .select('id, name')
+                            .select('id, name, details')
                             .eq('user_id', user.id),
                     ]);
 
@@ -149,7 +149,7 @@ const AddVoiceNotePage = () => {
                     name: newTemplateName.trim(),
                     details: newTemplateDetails.trim() || null,
                 })
-                .select('id, name')
+                .select('id, name, details')
                 .single();
 
             if (error) {
@@ -244,6 +244,8 @@ const AddVoiceNotePage = () => {
                                             display: 'flex',
                                             alignItems: 'center',
                                             padding: '4px 10px',
+                                            color: 'var(--primary)',
+                                            backgroundColor: 'var(--primary-light)',
                                         }}
                                         onClick={() => setIsAddingTemplate(true)}
                                     >
@@ -256,7 +258,13 @@ const AddVoiceNotePage = () => {
                                     placeholder={isLoadingDropdowns ? 'Loading templates...' : 'Select template'}
                                     options={templates}
                                     value={templateId}
-                                    onChange={(opt) => setTemplateId(opt?.id || '')}
+                                    onChange={(opt) => {
+                                        const id = opt?.id || '';
+                                        setTemplateId(id);
+                                        if (id && opt?.details) {
+                                            setDescription(opt.details);
+                                        }
+                                    }}
                                     searchKeys={['name']}
                                 />
                             </div>

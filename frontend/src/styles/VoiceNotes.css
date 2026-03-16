@@ -26,6 +26,16 @@
     font-size: 20px;
 }
 
+.voice-notes-page .btn-outline {
+    color: var(--primary);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.voice-notes-page .btn-outline i {
+    font-size: 14px;
+}
+
 .voice-notes-header-actions {
     display: flex;
     gap: 8px;
