@@ -550,4 +550,73 @@ Only valid JSON array.`;
         console.error('❌ Error extracting booking slots:', error.message);
         return null;
     }
-}
+};
+
+/**
+ * Generate AI summary from voice note transcript
+ * 
+ * @param {object} params
+ * @param {string} params.transcript - The voice note transcript
+ * @param {string} params.patient_name - Patient name
+ * @param {string} params.doctor_name - Doctor name
+ * @param {string} params.template - Template structure for summary
+ * @returns {Promise<string>} Generated summary
+ */
+export const generateAISummary = async ({ transcript, patient_name, doctor_name, template }) => {
+    if (!config.ANTHROPIC_API_KEY) {
+        console.warn("Anthropic API key is not configured. Returning basic summary.");
+        return `Summary based on transcript: ${transcript.substring(0, 200)}...`;
+    }
+
+    try {
+        const prompt = `# Dental Summary Generation Prompt
+
+You are a dental expert analyzing patient consultation transcripts.
+Generate clinical summaries using the provided template structure.
+
+## Core Instructions:
+- STRICTLY follow the provided template format
+- ONLY include clinically relevant information for dental care
+- If information is missing, indicate "Not documented"
+- Use professional dental terminology
+- Focus on dental health and treatment elements only
+- ALWAYS use proper line breaks for readability
+
+## Input Information:
+- Transcript: "${transcript}"
+- Patient Name: ${patient_name || 'Not documented'}
+- Doctor Name: ${doctor_name || 'Not documented'}
+- Date: ${new Date().toLocaleDateString()}
+
+## Template to Follow:
+${template || 'Please provide a comprehensive dental summary including chief complaint, history, examination findings, diagnosis, and treatment plan.'}
+
+Generate the summary now:`;
+
+        const response = await anthropic.messages.create({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 2000,
+            messages: [
+                {
+                    role: "user",
+                    content: prompt,
+                },
+            ],
+        });
+
+        const summary =
+            response?.content?.[0]?.text ||
+            (Array.isArray(response?.content)
+                ? response.content.map((c) => c.text || "").join("\n")
+                : "");
+
+        if (!summary) {
+            return `Summary could not be generated. Transcript: ${transcript.substring(0, 200)}...`;
+        }
+
+        return summary.trim();
+    } catch (error) {
+        console.error("Anthropic generateAISummary error:", error?.response?.data || error.message);
+        return `Summary generation failed. Transcript excerpt: ${transcript.substring(0, 200)}...`;
+    }
+};

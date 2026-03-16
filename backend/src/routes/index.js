@@ -4,6 +4,7 @@ import outgoingCallRoutes from "./outgoing.routes.js";
 import incomingCallRoutes from "./incoming.routes.js";
 import appointmentRoutes from "./appointment.routes.js";
 import gmailRoutes from "./gmail.routes.js";
+import aiScribeRoutes from "./ai-scribe.routes.js";
 
 
 const router = express.Router();
@@ -13,4 +14,5 @@ router.use("/outgoing-call", outgoingCallRoutes);
 router.use("/incoming-call", incomingCallRoutes);
 router.use("/appointment", appointmentRoutes);
 router.use("/gmail", gmailRoutes);
+router.use("/ai-scribe", aiScribeRoutes);
 export default router;

@@ -26,4 +26,7 @@ export const config = {
     LOGO_URL: process.env.LOGO_URL,
     // ================================================
     ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+    
+    // Deepgram API for transcription
+    DEEPGRAM_API_KEY: process.env.DEEPGRAM_API_KEY,
 }
