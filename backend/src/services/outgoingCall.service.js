@@ -232,7 +232,7 @@ export const voiceResponseService = async (req, res) => {
 
             console.log("📞 callStore saved ==>", callStore.get(CallSid));
 
-            const dial = twiml.dial({ callerId });
+            const dial = twiml.dial({ callerId, answerOnBridge: true });
             dial.number({
                 statusCallbackEvent: 'initiated ringing answered completed',
                 statusCallback: `${config.BASE_URL}/api/outgoing-call/status-callback`,
@@ -403,7 +403,7 @@ export const callStatusCallbackService = async (req, res) => {
         return res.status(500).send("Error");
     }
 };
-
+// list of calls for a user
 export const getCallLogsService = async (req, res) => {
     try {
 
