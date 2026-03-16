@@ -44,7 +44,9 @@ const AddVoiceNotePage = () => {
 
     const liveTranscriptRef = useRef(transcript);
     const recordingIntervalRef = useRef(null);
-    const shouldUploadOnStopRef = useRef(true);
+    const shouldUploadOnStopRef = useRef(false);
+    const mediaRecorderRef = useRef(null);
+    const wsConnectionRef = useRef(null);
 
     const selectedPatient = useMemo(
         () => patients.find((p) => p.id === patientId),
@@ -122,33 +124,59 @@ const AddVoiceNotePage = () => {
             }
 
             const wsUrl = `${import.meta.env.VITE_BACKEND_URL.replace('http', 'ws')}/ws/transcribe?voiceNoteId=${newVoiceNoteId}`;
+            console.log('📡 Connecting to:', wsUrl);
             const ws = new WebSocket(wsUrl);
 
+            let connectionTimeout = setTimeout(() => {
+                if (ws.readyState !== WebSocket.OPEN) {
+                    console.error('⏱️ WebSocket connection timeout');
+                    ws.close();
+                    reject('Connection timeout');
+                }
+            }, 10000); // 10 second timeout
+
             ws.onopen = () => {
-                console.log('✅ WebSocket connected');
+                clearTimeout(connectionTimeout);
+                console.log('✅ WebSocket connected successfully');
                 setIsConnected(true);
                 setWsConnection(ws);
+                wsConnectionRef.current = ws;
                 resolve(ws);
             };
 
             ws.onerror = (error) => {
+                clearTimeout(connectionTimeout);
                 console.error('❌ WebSocket error:', error);
                 reject(error);
             };
 
-            ws.onclose = () => {
-                console.log('🔌 WebSocket closed');
+            ws.onclose = (event) => {
+                console.log('🔌 WebSocket closed:', {
+                    code: event.code,
+                    reason: event.reason,
+                    wasClean: event.wasClean
+                });
                 setIsConnected(false);
+
+                // Warning but don't stop recording - user can still save the audio
+                console.warn('⚠️ WebSocket closed - Live transcription unavailable, but recording continues');
             };
 
             ws.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
-                    if (data.type === 'transcript' && data.text) {
-                        setTranscript((prev) => {
-                            const newTranscript = prev ? `${prev} ${data.text}` : data.text;
-                            return newTranscript;
-                        });
+
+                    if (data.type === 'connected') {
+                        console.log('✅ Transcription service connected');
+                    } else if (data.type === 'transcript') {
+                        // Use accumulated transcript (already cleaned by backend)
+                        // Backend sends accumulated text with only final transcripts
+                        if (data.accumulated) {
+                            console.log('📝 Final transcript:', data.accumulated);
+                            setTranscript(data.accumulated);
+                        }
+                    } else if (data.type === 'error') {
+                        console.error('❌ Server error:', data.message);
                     }
                 } catch (err) {
                     console.error('❌ Error parsing ws message:', err);
@@ -158,8 +186,11 @@ const AddVoiceNotePage = () => {
     };
 
     const disconnectWebSocket = () => {
-        if (wsConnection) {
-            wsConnection.close();
+        const ws = wsConnectionRef.current;
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            console.log('🔌 Manually closing WebSocket');
+            ws.close();
+            wsConnectionRef.current = null;
             setWsConnection(null);
             setIsConnected(false);
         }
@@ -204,17 +235,48 @@ const AddVoiceNotePage = () => {
 
         setVoiceNoteId(newVoiceNoteId);
 
+        // Reset flag - don't upload until user explicitly saves
+        shouldUploadOnStopRef.current = false;
+
         try {
             // Step 1: Connect WebSocket for live transcription
+            console.log('📡 Step 1: Connecting WebSocket for voiceNoteId:', newVoiceNoteId);
             const ws = await connectWebSocket(newVoiceNoteId);
+            console.log('✅ Step 1 Complete: WebSocket connected and ready');
+
+            // Wait a bit for Deepgram to be ready on backend
+            await new Promise(resolve => setTimeout(resolve, 500));
+            console.log('⏱️ Waited for backend setup');
 
             // Step 2: Get microphone access
+            console.log('🎤 Step 2: Requesting microphone access...');
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            const recorder = new MediaRecorder(stream, {
-                mimeType: 'audio/webm;codecs=opus'
-            });
+            console.log('✅ Step 2 Complete: Microphone access granted');
+            // Step 3: Create MediaRecorder
+            console.log('🎙️ Step 3: Creating MediaRecorder...');
+            let recorder;
+            let mimeType = 'audio/webm;codecs=opus';
+
+            try {
+                if (!MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                    console.warn('⚠️ audio/webm;codecs=opus not supported');
+                    mimeType = 'audio/webm';
+                    if (!MediaRecorder.isTypeSupported('audio/webm')) {
+                        throw new Error('Browser does not support audio/webm recording');
+                    }
+                }
+
+                recorder = new MediaRecorder(stream, { mimeType });
+                console.log('✅ Step 3 Complete: MediaRecorder created with', mimeType);
+            } catch (err) {
+                console.error('❌ MediaRecorder creation failed:', err);
+                ws.close();
+                stream.getTracks().forEach(track => track.stop());
+                throw new Error(`MediaRecorder not supported: ${err.message}`);
+            }
 
             const chunks = [];
+            console.log('📦 Audio chunks array initialized');
 
             // Step 3: On each audio chunk, send to server via WebSocket
             recorder.ondataavailable = async (event) => {
@@ -232,50 +294,118 @@ const AddVoiceNotePage = () => {
                             }));
                         };
                         reader.readAsDataURL(event.data);
+                    } else {
+                        console.warn('⚠️ WebSocket not open, state:', ws.readyState);
                     }
+                } else {
+                    console.warn('⚠️ Audio data size is 0');
                 }
+            };
+
+            recorder.onerror = (error) => {
+                console.error('❌ MediaRecorder error:', error);
+            };
+
+            recorder.onstart = () => {
+                console.log('▶️ MediaRecorder started');
             };
 
             // Step 4: When recording stops
             recorder.onstop = () => {
+                console.log('🛑 Recording stopped');
+                console.log('📊 MediaRecorder state:', recorder.state);
+                console.log('📦 Total chunks collected:', chunks.length);
+
                 const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+                console.log('💾 Audio blob size:', audioBlob.size, 'bytes');
+
                 setAudioChunks(chunks);
                 setAudioBlob(audioBlob);
 
-                // Generate AI summary with the complete transcript
-                if (shouldUploadOnStopRef.current) {
+                // Only upload and generate summary if user explicitly saved (green tick)
+                if (shouldUploadOnStopRef.current && chunks.length > 0) {
+                    console.log('✅ User saved - uploading audio and generating summary');
                     uploadAudioAndGenerateSummary(audioBlob, newVoiceNoteId);
+                } else {
+                    console.log('❌ Recording cancelled or no audio. Chunks:', chunks.length, ', Should upload:', shouldUploadOnStopRef.current);
                 }
+
+                // Stop all tracks
+                stream.getTracks().forEach(track => {
+                    track.stop();
+                    console.log('🛑 Track stopped:', track.kind);
+                });
             };
 
             // Step 5: Start recording
-            recorder.start(1000); // Capture data every 1 second
+            console.log('▶️ Step 5: Starting MediaRecorder...');
+            try {
+                recorder.start(1000); // Capture data every 1 second
+                console.log('✅ recorder.start() called successfully');
+            } catch (startError) {
+                console.error('❌ recorder.start() failed:', startError);
+                ws.close();
+                stream.getTracks().forEach(track => track.stop());
+                throw startError;
+            }
+
+            mediaRecorderRef.current = recorder;
             setMediaRecorder(recorder);
             setIsRecording(true);
             setRecordingTime(0);
+
+            console.log('🎤 Step 5 Complete: Recording started successfully');
+            console.log('📊 MediaRecorder state:', recorder.state);
 
             // Timer for recording duration
             recordingIntervalRef.current = setInterval(() => {
                 setRecordingTime(prev => prev + 1);
             }, 1000);
 
+            console.log('✅ ALL STEPS COMPLETE - Recording in progress!');
+
         } catch (error) {
-            console.error('Error starting recording:', error);
-            alert('Failed to start recording. Check microphone permissions.');
+            console.error('❌ RECORDING START FAILED');
+            console.error('Error name:', error.name);
+            console.error('Error message:', error.message);
+            console.error('Error stack:', error.stack);
+
+            // Cleanup
+            disconnectWebSocket();
+            setIsRecording(false);
+            setIsSavingNote(false);
+
+            // User-friendly error message
+            let errorMsg = 'Failed to start recording.';
+            if (error.name === 'NotAllowedError') {
+                errorMsg = 'Microphone permission denied. Please allow microphone access.';
+            } else if (error.name === 'NotFoundError') {
+                errorMsg = 'No microphone found. Please connect a microphone.';
+            } else if (error.message.includes('MediaRecorder')) {
+                errorMsg = 'Your browser does not support audio recording.';
+            } else if (error.message.includes('WebSocket')) {
+                errorMsg = 'Failed to connect to transcription service.';
+            } else {
+                errorMsg = `Error: ${error.message}`;
+            }
+
+            alert(errorMsg);
         }
     };
 
     const pauseRecording = () => {
-        if (mediaRecorder && mediaRecorder.state === 'recording') {
-            mediaRecorder.pause();
+        const recorder = mediaRecorderRef.current;
+        if (recorder && recorder.state === 'recording') {
+            recorder.pause();
             setIsPaused(true);
             clearInterval(recordingIntervalRef.current);
         }
     };
 
     const resumeRecording = () => {
-        if (mediaRecorder && mediaRecorder.state === 'paused') {
-            mediaRecorder.resume();
+        const recorder = mediaRecorderRef.current;
+        if (recorder && recorder.state === 'paused') {
+            recorder.resume();
             setIsPaused(false);
             recordingIntervalRef.current = setInterval(() => {
                 setRecordingTime(prev => prev + 1);
@@ -284,14 +414,36 @@ const AddVoiceNotePage = () => {
     };
 
     const stopRecording = () => {
-        if (mediaRecorder) {
-            mediaRecorder.stop();
-            mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        console.log('🛑 Stopping recording...');
+        const recorder = mediaRecorderRef.current;
+        if (recorder && recorder.state !== 'inactive') {
+            console.log('📊 Current MediaRecorder state:', recorder.state);
+            recorder.stop();
             setIsRecording(false);
             setIsPaused(false);
             clearInterval(recordingIntervalRef.current);
             disconnectWebSocket();
+        } else {
+            console.warn('⚠️ MediaRecorder is null or already inactive');
         }
+    };
+
+    // Stop and Save - Green Tick
+    const stopAndSaveRecording = () => {
+        console.log('💾 User clicked save (green tick)');
+        shouldUploadOnStopRef.current = true;
+        stopRecording();
+    };
+
+    // Stop and Cancel - Red Tick
+    const stopAndCancelRecording = () => {
+        console.log('🗑️ User clicked cancel (red tick)');
+        shouldUploadOnStopRef.current = false;
+        stopRecording();
+        // Clear transcript and audio
+        setTranscript('');
+        setAudioChunks([]);
+        setAudioBlob(null);
     };
 
     const handleToggleRecording = () => {
@@ -307,7 +459,12 @@ const AddVoiceNotePage = () => {
     const uploadAudioAndGenerateSummary = async (blob, noteId) => {
         const currentVoiceNoteId = noteId || voiceNoteId;
 
-        if (!blob || !currentVoiceNoteId) return;
+        if (!blob || !currentVoiceNoteId) {
+            console.error('❌ Cannot upload - missing blob or voiceNoteId');
+            return;
+        }
+
+        console.log('📤 Starting upload and summary generation...');
 
         // Upload audio
         setIsUploadingAudio(true);
@@ -395,19 +552,33 @@ const AddVoiceNotePage = () => {
         }
     };
 
-    // Cleanup on unmount
+    // Cleanup on unmount ONLY - no dependencies to prevent premature cleanup
     useEffect(() => {
         return () => {
-            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-                mediaRecorder.stop();
-                mediaRecorder.stream.getTracks().forEach(track => track.stop());
+            console.log('🧹 Component unmounting - cleanup started');
+
+            // Stop recording if active
+            const recorder = mediaRecorderRef.current;
+            if (recorder && recorder.state !== 'inactive') {
+                console.log('🛑 Stopping active recorder on unmount');
+                recorder.stop();
+                recorder.stream.getTracks().forEach(track => track.stop());
             }
-            disconnectWebSocket();
+
+            // Disconnect WebSocket
+            const ws = wsConnectionRef.current;
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                console.log('🔌 Disconnecting WebSocket on unmount');
+                ws.close();
+            }
+
+            // Clear timer
             if (recordingIntervalRef.current) {
+                console.log('⏱️ Clearing recording timer on unmount');
                 clearInterval(recordingIntervalRef.current);
             }
         };
-    }, [mediaRecorder, wsConnection]);
+    }, []); // Empty dependency array - cleanup ONLY on unmount
 
     const handleCopySummary = () => {
         if (!summary) return;
@@ -461,10 +632,17 @@ const AddVoiceNotePage = () => {
         }
     };
 
+    const handleBack = () => {
+        navigate('/voice-notes');
+    };
+
     return (
         <div className="voice-notes-page">
             <div className="voice-notes-header">
                 <div className="voice-notes-header-left">
+                    <button className="patient-detail-back" onClick={handleBack}>
+                        <i className="fas fa-arrow-left" />
+                    </button>
                     <h2 className="voice-notes-title">Add Voice Notes</h2>
                 </div>
             </div>
@@ -574,7 +752,10 @@ const AddVoiceNotePage = () => {
                                 transcript={transcript}
                                 onTranscriptChange={setTranscript}
                                 isRecording={isRecording}
+                                recordingTime={recordingTime}
                                 onToggleRecording={handleToggleRecording}
+                                onSaveRecording={stopAndSaveRecording}
+                                onCancelRecording={stopAndCancelRecording}
                             />
                             <AISummaryPanel
                                 summary={summary}
