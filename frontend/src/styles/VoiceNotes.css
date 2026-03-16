@@ -37,7 +37,7 @@
 }
 
 .voice-notes-page .btn-outline i {
-    font-size: 14px;
+    font-size: 14px !important;
 }
 
 .voice-notes-page .voice-notes-header-actions {
