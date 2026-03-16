@@ -1,0 +1,2 @@
+user_id,patients_name,call_sid,child_call_sid,to_number,from_number,status,direction,timestamp,created_at,started_at,ended_at,duration
+a6d729d6-efb6-4121-9c19-83ade5236b9e,due john,CAad22c1b47b780ffe11bd407036357caf,CA2b1d936a06c24113ff42ba6aa0f79653,+919687568041,+13205950694,completed,outbound-dial,Mon, 16 Mar 2026 04:56:19 +0000, 16 Mar 2026 04:56:13 +0000, 16 Mar 2026 04:56:01 +0000",2026-03-16T04:56:19.733Z,6,,

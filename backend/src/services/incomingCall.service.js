@@ -1,6 +1,145 @@
 import { supabase } from "../config/database.js";
 import twilio from "twilio";
 import { config } from "../config/env.js";
+import fs from "fs";
+import path from "path";
+
+// CSV helpers (same structure as outgoing, but upsert key = call_sid)
+const callLogsCsvPath = path.join(process.cwd(), "call_logs.csv");
+const CALL_LOGS_HEADER = [
+    "user_id",
+    "patients_name",
+    "call_sid",
+    "child_call_sid",
+    "to_number",
+    "from_number",
+    "status",
+    "direction",
+    "timestamp",
+    "created_at",
+    "started_at",
+    "ended_at",
+    "duration"
+];
+
+const ensureCallLogsCsvHeader = () => {
+    if (!fs.existsSync(callLogsCsvPath)) {
+        const headerLine = CALL_LOGS_HEADER.join(",") + "\n";
+        fs.writeFileSync(callLogsCsvPath, headerLine, "utf8");
+    }
+};
+
+const escapeCsvValue = (value) => {
+    if (value === null || value === undefined) return "";
+    const str = String(value);
+    if (str.includes('"') || str.includes(",") || str.includes("\n")) {
+        return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+};
+
+const serializeCsvRow = (row) => {
+    return [
+        escapeCsvValue(row.user_id),
+        escapeCsvValue(row.patients_name),
+        escapeCsvValue(row.call_sid),
+        escapeCsvValue(row.child_call_sid),
+        escapeCsvValue(row.to_number),
+        escapeCsvValue(row.from_number),
+        escapeCsvValue(row.status),
+        escapeCsvValue(row.direction),
+        escapeCsvValue(row.timestamp),
+        escapeCsvValue(row.created_at),
+        escapeCsvValue(row.started_at),
+        escapeCsvValue(row.ended_at),
+        escapeCsvValue(row.duration)
+    ].join(",");
+};
+
+const loadCallLogsCsv = () => {
+    ensureCallLogsCsvHeader();
+    const content = fs.readFileSync(callLogsCsvPath, "utf8");
+    const lines = content.split("\n").filter(Boolean);
+
+    // first line is header, rest are data rows
+    const rows = lines.slice(1).map(line => line.split(","));
+    return rows;
+};
+
+const saveCallLogsCsv = (rows) => {
+    const headerLine = CALL_LOGS_HEADER.join(",");
+    const bodyLines = rows.map(cols => cols.join(","));
+    const all = [headerLine, ...bodyLines].join("\n") + "\n";
+    fs.writeFileSync(callLogsCsvPath, all, "utf8");
+};
+
+// Incoming side: upsert key is call_sid (index 2)
+const upsertIncomingCallLogCsv = (row) => {
+    const rows = loadCallLogsCsv();
+
+    const callSid = row.call_sid || "";
+    let updated = false;
+
+    for (let i = 0; i < rows.length; i++) {
+        const cols = rows[i];
+        const existingCallSid = cols[2] || ""; // index 2 => call_sid
+
+        if (existingCallSid === callSid && callSid) {
+            cols[0] = row.user_id ?? cols[0];
+            cols[1] = row.patients_name ?? cols[1];
+            cols[2] = row.call_sid ?? cols[2];
+            cols[3] = row.child_call_sid ?? cols[3];
+            cols[4] = row.to_number ?? cols[4];
+            cols[5] = row.from_number ?? cols[5];
+            cols[6] = row.status ?? cols[6];
+            cols[7] = row.direction ?? cols[7];
+            cols[8] = row.timestamp ?? cols[8];
+            cols[9] = row.created_at ?? cols[9];
+            cols[10] = row.started_at ?? cols[10];
+            cols[11] = row.ended_at ?? cols[11];
+            cols[12] = (row.duration !== undefined ? String(row.duration) : cols[12]);
+
+            rows[i] = cols;
+            updated = true;
+            break;
+        }
+    }
+
+    if (!updated) {
+        const serialized = serializeCsvRow(row);
+        const cols = serialized.split(",");
+        rows.push(cols);
+    }
+
+    saveCallLogsCsv(rows);
+};
+
+const getPatientNameFromIncomingNumber = async (userId, fromNumber) => {
+    try {
+        if (!userId || !fromNumber) return fromNumber;
+
+        const { data, error } = await supabase
+            .from("patients")
+            .select("name")
+            .eq("user_id", userId)
+            .eq("phone", fromNumber)
+            .maybeSingle();
+
+        if (error) {
+            console.error("Error fetching patient name (incoming):", error);
+            return fromNumber;
+        }
+
+        if (data?.name) {
+            return data.name;
+        }
+
+        return fromNumber;
+    } catch (err) {
+        console.error("Unexpected error fetching patient name (incoming):", err);
+        return fromNumber;
+    }
+};
 
 // Temporary store for incoming call data (same pattern as outgoing)
 const callStore = new Map();
@@ -125,63 +264,90 @@ export const incomingCallStatusCallbackService = async (req, res) => {
             Timestamp,
         });
 
-        // Only process the child leg (outbound-dial to Client) for DB updates
-        if (Direction == "inbound-dial" || Direction == "inbound-dial" || Direction == "inbound-api") {
+        // Only process the child leg (outbound-dial to Client) for CSV updates
+        if (Direction == "inbound-dial" || Direction == "inbound-api") {
+            const nowIso = new Date().toISOString();
+            // For incoming call, patient ka number From hota hai
+            const patientsName = await getPatientNameFromIncomingNumber(userId, fromNumber);
 
             if (CallStatus == "ringing" || CallStatus == "initiated") {
-                // Check if record already exists
-                const { data: existing } = await supabase
-                    .from("call_logs")
-                    .select("id")
-                    .eq("call_sid", parentCallSid)
-                    .single();
-
-                if (!existing) {
-                    await supabase.from("call_logs").insert({
-                        user_id: userId,
-                        call_sid: parentCallSid,
-                        child_call_sid: CallSid,
-                        to_number: toNumber,       // Twilio number (our number)
-                        from_number: fromNumber,    // Caller's number
-                        status: "ringing",
-                        created_at: new Date().toISOString(),
-                    });
-                    console.log("🔔 Incoming call - ringing record created");
-                }
+                // Insert-like behavior if not exists, update if already there
+                upsertIncomingCallLogCsv({
+                    user_id: userId,
+                    patients_name: patientsName,
+                    call_sid: parentCallSid,
+                    child_call_sid: CallSid,
+                    to_number: toNumber,       // Twilio number (our number)
+                    from_number: fromNumber,   // Caller's number
+                    status: "ringing",
+                    direction: Direction,
+                    timestamp: Timestamp || nowIso,
+                    created_at: nowIso,
+                    started_at: "",
+                    ended_at: "",
+                    duration: ""
+                });
+                console.log("🔔 Incoming call - ringing CSV record created/updated");
 
             } else if (CallStatus == "in-progress") {
-                await supabase
-                    .from("call_logs")
-                    .update({
-                        status: "in-progress",
-                        started_at: new Date().toISOString(),
-                    })
-                    .eq("call_sid", parentCallSid);
+                upsertIncomingCallLogCsv({
+                    user_id: userId,
+                    patients_name: patientsName,
+                    call_sid: parentCallSid,
+                    child_call_sid: CallSid,
+                    to_number: toNumber,
+                    from_number: fromNumber,
+                    status: "in-progress",
+                    direction: Direction,
+                    timestamp: Timestamp || nowIso,
+                    created_at: undefined,
+                    started_at: nowIso,
+                    ended_at: "",
+                    duration: ""
+                });
 
-                console.log("🟢 Incoming call answered! Timer started - UserId:", userId);
+                console.log("🟢 Incoming call answered! Timer started - CSV row updated - UserId:", userId);
                 // TODO: WebSocket → frontend timer start
 
             } else if (CallStatus == "no-answer" || CallStatus == "failed" || CallStatus == "busy") {
-                await supabase
-                    .from("call_logs")
-                    .update({ status: CallStatus })
-                    .eq("call_sid", parentCallSid);
+                upsertIncomingCallLogCsv({
+                    user_id: userId,
+                    patients_name: patientsName,
+                    call_sid: parentCallSid,
+                    child_call_sid: CallSid,
+                    to_number: toNumber,
+                    from_number: fromNumber,
+                    status: CallStatus,
+                    direction: Direction,
+                    timestamp: Timestamp || nowIso,
+                    created_at: undefined,
+                    started_at: undefined,
+                    ended_at: nowIso,
+                    duration: ""
+                });
 
                 callStore.delete(parentCallSid);
-                console.log("📵 Incoming call - no answer / failed - UserId:", userId);
+                console.log("📵 Incoming call - no answer / failed - CSV row updated - UserId:", userId);
 
             } else if (CallStatus == "completed") {
-                await supabase
-                    .from("call_logs")
-                    .update({
-                        status: "completed",
-                        ended_at: new Date().toISOString(),
-                        duration: CallDuration || 0,
-                    })
-                    .eq("call_sid", parentCallSid);
+                upsertIncomingCallLogCsv({
+                    user_id: userId,
+                    patients_name: patientsName,
+                    call_sid: parentCallSid,
+                    child_call_sid: CallSid,
+                    to_number: toNumber,
+                    from_number: fromNumber,
+                    status: "completed",
+                    direction: Direction,
+                    timestamp: Timestamp || nowIso,
+                    created_at: undefined,
+                    started_at: undefined,
+                    ended_at: nowIso,
+                    duration: CallDuration || 0
+                });
 
                 callStore.delete(parentCallSid);
-                console.log("🔴 Incoming call ended. Timer stop - UserId:", userId);
+                console.log("🔴 Incoming call ended. Timer stop - CSV row updated - UserId:", userId);
                 // TODO: WebSocket → frontend timer stop
             }
         }

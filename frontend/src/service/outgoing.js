@@ -7,6 +7,11 @@ const makeOutgoingCall = async (to, from) => {
     });
 };
 
+const getCallLogs = async () => {
+    return await authAxiosInstance.get("/outgoing-call/call-logs");
+};
+
 export default {
     makeOutgoingCall,
+    getCallLogs,
 };

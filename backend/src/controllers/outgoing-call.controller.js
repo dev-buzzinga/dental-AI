@@ -1,4 +1,4 @@
-import { outgoingCall, voiceResponseService, callStatusCallbackService } from "../services/outgoingCall.service.js";
+import { outgoingCall, voiceResponseService, callStatusCallbackService, getCallLogsService } from "../services/outgoingCall.service.js";
 
 export const makeOutgoingCall = async (req, res) => {
     try {
@@ -24,6 +24,16 @@ export const voiceResponse = async (req, res) => {
 export const callStatusCallback = async (req, res) => {
     try {
         return await callStatusCallbackService(req, res);
+    } catch (error) {
+        return res.status(500).json({
+            success: false,
+            message: error,
+        });
+    }
+};
+export const getCallLogs = async (req, res) => {
+    try {
+        return await getCallLogsService(req, res);
     } catch (error) {
         return res.status(500).json({
             success: false,
