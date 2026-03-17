@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { config } from "../config/env.js";
 import { generateAISummary } from "./anthropic.service.js";
+import { readFileSync } from "fs";
 
 const supabase = createClient(config.SUPABASE_URL, config.SUPABASE_SERVICE_ROLE_KEY);
 
@@ -134,16 +135,35 @@ export const deleteAiScribe = async (id) => {
 export const uploadAudio = async (id, audioFile, duration) => {
     try {
         const filename = `scribe_${id}_${Date.now()}.webm`;
+        
+        // Validate file - check for data buffer or temp file
+        if (!audioFile.data && !audioFile.tempFilePath) {
+            throw new Error('Audio file data is missing - neither data buffer nor temp file found');
+        }
+
+        if (audioFile.size === 0) {
+            throw new Error('Audio file is empty (size: 0 bytes)');
+        }
+
+        // Use data buffer (when useTempFiles: false) or read from temp file
+        const fileBuffer = audioFile.data || readFileSync(audioFile.tempFilePath);
+        
+        // console.log('📦 Using file buffer of size:', fileBuffer.length, 'bytes');
 
         // Upload to Supabase Storage
         const { data, error } = await supabase.storage
             .from("audio")
-            .upload(filename, audioFile.data, {
+            .upload(filename, fileBuffer, {
                 contentType: audioFile.mimetype || "audio/webm",
                 upsert: false,
             });
 
-        if (error) throw error;
+        if (error) {
+            console.error('❌ Supabase upload error:', error);
+            throw error;
+        }
+
+        // console.log('✅ File uploaded to Supabase:', data);
 
         // Get public URL
         const { data: publicUrlData } = supabase.storage
@@ -151,6 +171,7 @@ export const uploadAudio = async (id, audioFile, duration) => {
             .getPublicUrl(filename);
 
         const publicUrl = publicUrlData.publicUrl;
+        console.log('🔗 Public URL generated:', publicUrl);
 
         // Update scribe with audio URL
         await updateAiScribe(id, {
@@ -167,75 +188,75 @@ export const uploadAudio = async (id, audioFile, duration) => {
 
 
 
-export const generateSummary = async (id, payload) => {
-    try {
-        const { transcript, patient_name, doctor_name, template } = payload;
+// export const generateSummary = async (id, payload) => {
+//     try {
+//         const { transcript, patient_name, doctor_name, template } = payload;
 
-        // 1. Store transcript in Supabase Storage
-        const transcriptFilename = `transcript_${id}_${Date.now()}.txt`;
-        const { data: transcriptData, error: transcriptError } = await supabase.storage
-            .from("transcripts")
-            .upload(transcriptFilename, transcript, {
-                contentType: "text/plain",
-                upsert: false,
-            });
+//         // 1. Store transcript in Supabase Storage
+//         const transcriptFilename = `transcript_${id}_${Date.now()}.txt`;
+//         const { data: transcriptData, error: transcriptError } = await supabase.storage
+//             .from("transcripts")
+//             .upload(transcriptFilename, transcript, {
+//                 contentType: "text/plain",
+//                 upsert: false,
+//             });
 
-        if (transcriptError) throw transcriptError;
+//         if (transcriptError) throw transcriptError;
 
-        const { data: transcriptUrlData } = supabase.storage
-            .from("transcripts")
-            .getPublicUrl(transcriptFilename);
+//         const { data: transcriptUrlData } = supabase.storage
+//             .from("transcripts")
+//             .getPublicUrl(transcriptFilename);
 
-        const transcriptUrl = transcriptUrlData.publicUrl;
+//         const transcriptUrl = transcriptUrlData.publicUrl;
 
-        // 2. Update scribe with transcript
-        await updateAiScribe(id, {
-            live_transcript: transcript,
-            transcript_url: transcriptUrl,
-        });
+//         // 2. Update scribe with transcript
+//         await updateAiScribe(id, {
+//             live_transcript: transcript,
+//             transcript_url: transcriptUrl,
+//         });
 
-        // 3. Generate AI summary using Anthropic
-        const aiSummary = await generateAISummary({
-            transcript,
-            patient_name,
-            doctor_name,
-            template,
-        });
+//         // 3. Generate AI summary using Anthropic
+//         const aiSummary = await generateAISummary({
+//             transcript,
+//             patient_name,
+//             doctor_name,
+//             template,
+//         });
 
-        // 4. Store summary in Supabase Storage
-        const summaryFilename = `summary_${id}_${Date.now()}.txt`;
-        const { data: summaryData, error: summaryError } = await supabase.storage
-            .from("transcripts")
-            .upload(summaryFilename, aiSummary, {
-                contentType: "text/plain",
-                upsert: false,
-            });
+//         // 4. Store summary in Supabase Storage
+//         const summaryFilename = `summary_${id}_${Date.now()}.txt`;
+//         const { data: summaryData, error: summaryError } = await supabase.storage
+//             .from("transcripts")
+//             .upload(summaryFilename, aiSummary, {
+//                 contentType: "text/plain",
+//                 upsert: false,
+//             });
 
-        if (summaryError) throw summaryError;
+//         if (summaryError) throw summaryError;
 
-        const { data: summaryUrlData } = supabase.storage
-            .from("transcripts")
-            .getPublicUrl(summaryFilename);
+//         const { data: summaryUrlData } = supabase.storage
+//             .from("transcripts")
+//             .getPublicUrl(summaryFilename);
 
-        const summaryUrl = summaryUrlData.publicUrl;
+//         const summaryUrl = summaryUrlData.publicUrl;
 
-        // 5. Update scribe with summary
-        const updatedScribe = await updateAiScribe(id, {
-            ai_summary: aiSummary,
-            ai_summary_url: summaryUrl,
-        });
+//         // 5. Update scribe with summary
+//         const updatedScribe = await updateAiScribe(id, {
+//             ai_summary: aiSummary,
+//             ai_summary_url: summaryUrl,
+//         });
 
-        return {
-            transcript_url: transcriptUrl,
-            ai_summary: aiSummary,
-            ai_summary_url: summaryUrl,
-            scribe: updatedScribe,
-        };
-    } catch (error) {
-        console.error("Error generating summary:", error);
-        throw error;
-    }
-};
+//         return {
+//             transcript_url: transcriptUrl,
+//             ai_summary: aiSummary,
+//             ai_summary_url: summaryUrl,
+//             scribe: updatedScribe,
+//         };
+//     } catch (error) {
+//         console.error("Error generating summary:", error);
+//         throw error;
+//     }
+// };
 
 export const updateLiveTranscript = async (id, transcript) => {
     try {

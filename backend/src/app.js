@@ -13,8 +13,9 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(fileUpload({
     limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max file size
-    useTempFiles: true,
-    tempFileDir: '/tmp/'
+    useTempFiles: false, // Store in memory for direct buffer access
+    parseNested: true,
+    debug: false
 }));
 
 // Routes

@@ -149,38 +149,38 @@ export const uploadAudio = async (req, res) => {
     }
 };
 
-export const generateSummary = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { transcript, patient_name, doctor_name, template } = req.body;
+// export const generateSummary = async (req, res) => {
+//     try {
+//         const { id } = req.params;
+//         const { transcript, patient_name, doctor_name, template } = req.body;
 
-        if (!transcript) {
-            return res.status(400).json({
-                success: false,
-                message: "Transcript is required",
-            });
-        }
+//         if (!transcript) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "Transcript is required",
+//             });
+//         }
 
-        const result = await aiScribeService.generateSummary(id, {
-            transcript,
-            patient_name,
-            doctor_name,
-            template,
-        });
+//         const result = await aiScribeService.generateSummary(id, {
+//             transcript,
+//             patient_name,
+//             doctor_name,
+//             template,
+//         });
 
-        return res.status(200).json({
-            success: true,
-            data: result,
-            message: "Summary generated successfully",
-        });
-    } catch (error) {
-        console.error("Generate summary error:", error);
-        return res.status(500).json({
-            success: false,
-            message: error.message || "Failed to generate summary",
-        });
-    }
-};
+//         return res.status(200).json({
+//             success: true,
+//             data: result,
+//             message: "Summary generated successfully",
+//         });
+//     } catch (error) {
+//         console.error("Generate summary error:", error);
+//         return res.status(500).json({
+//             success: false,
+//             message: error.message || "Failed to generate summary",
+//         });
+//     }
+// };
 
 // Generate AI summary preview (without voiceNoteId)
 export const generateSummaryPreview = async (req, res) => {

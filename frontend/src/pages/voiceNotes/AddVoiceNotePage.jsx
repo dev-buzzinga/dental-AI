@@ -280,7 +280,7 @@ const AddVoiceNotePage = () => {
                         console.warn('⚠️ WebSocket not open, state:', ws.readyState);
                     }
                 } else {
-                    console.warn('⚠️ Audio data size is 0');
+                    console.warn('⚠️ Audio data size is 0 - No chunk collected!');
                 }
             };
 
@@ -295,11 +295,15 @@ const AddVoiceNotePage = () => {
             // Step 4: When recording stops
             recorder.onstop = () => {
                 console.log('🛑 Recording stopped');
-                console.log('📊 MediaRecorder state:', recorder.state);
-                console.log('📦 Total chunks collected:', chunks.length);
+                // console.log('📊 MediaRecorder state:', recorder.state);
+                // console.log('📦 Total chunks collected:', chunks.length);
+                
+                // // Debug chunk details
+                // chunks.forEach((chunk, idx) => {
+                //     console.log(`  Chunk ${idx}: size=${chunk.size} bytes, type=${chunk.type}`);
+                // });
 
                 const audioBlob = new Blob(chunks, { type: 'audio/webm' });
-                console.log('💾 Audio blob size:', audioBlob.size, 'bytes');
 
                 setAudioChunks(chunks);
                 setAudioBlob(audioBlob);
@@ -350,7 +354,7 @@ const AddVoiceNotePage = () => {
             console.error('❌ RECORDING START FAILED');
             console.error('Error name:', error.name);
             console.error('Error message:', error.message);
-            console.error('Error stack:', error.stack);
+            // console.error('Error stack:', error.stack);
 
             // Cleanup
             disconnectWebSocket();
@@ -399,7 +403,15 @@ const AddVoiceNotePage = () => {
         console.log('🛑 Stopping recording...');
         const recorder = mediaRecorderRef.current;
         if (recorder && recorder.state !== 'inactive') {
-            console.log('📊 Current MediaRecorder state:', recorder.state);
+            
+            // Request final data before stopping (important for capturing last chunk)
+            try {
+                recorder.requestData();
+                console.log('✅ requestData() called - forcing final chunk');
+            } catch (e) {
+                console.warn('⚠️ requestData() failed:', e);
+            }
+            
             recorder.stop();
             setIsRecording(false);
             setIsPaused(false);
@@ -894,25 +906,6 @@ const AddVoiceNotePage = () => {
                             )}
                         </div>
                     </div>
-
-                    {/* <div className="modal-footer">
-                        <button
-                            type="button"
-                            className="btn-cancel"
-                            onClick={handleClose}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="button"
-                            className="btn-save"
-                            onClick={handleSaveCompleteVoiceNote}
-                            disabled={isSavingNote || isUploadingAudio || isGeneratingSummary || !transcript || !audioBlob}
-                        >
-                            <i className="fas fa-check" />
-                            {isSavingNote ? 'Saving...' : 'Save Note'}
-                        </button>
-                    </div> */}
                 </div>
 
                 <AddTemplateModal
