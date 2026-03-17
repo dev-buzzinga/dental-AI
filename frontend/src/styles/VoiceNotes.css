@@ -156,11 +156,16 @@
 }
 
 .voice-notes-page .voice-notes-pagination {
-    margin-top: 12px;
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    gap: 4px;
+    gap: 8px;
+}
+
+.voice-notes-page .voice-notes-pagination-wrapper {
+    margin: 4px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
 }
 
 .voice-notes-page .pagination-page,
@@ -189,6 +194,65 @@
 .voice-notes-page .pagination-nav:disabled {
     opacity: 0.4;
     cursor: default;
+}
+
+.voice-notes-page .pagination-text {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.voice-notes-page .voice-notes-link {
+    border: none;
+    background: none;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--primary);
+    text-decoration: underline;
+}
+
+.voice-notes-page .voice-notes-link:hover {
+    text-decoration: none;
+}
+
+/* Delete confirmation modal */
+.voice-notes-confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1100;
+}
+
+.voice-notes-confirm-modal {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.35);
+    width: 100%;
+    max-width: 420px;
+    padding: 20px 22px 18px;
+}
+
+.voice-notes-confirm-modal h3 {
+    margin: 0 0 8px 0;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.voice-notes-confirm-modal p {
+    margin: 0 0 16px 0;
+    font-size: 14px;
+    color: var(--text-secondary);
+}
+
+.voice-notes-confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
 }
 
 /* === ADD VOICE NOTES MODAL === */

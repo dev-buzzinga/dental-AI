@@ -30,6 +30,7 @@ const VoiceNotesPage = () => {
     const [voiceNotes, setVoiceNotes] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
+    const [noteToDelete, setNoteToDelete] = useState(null);
     const ITEMS_PER_PAGE = 10;
 
     useEffect(() => {
@@ -64,22 +65,29 @@ const VoiceNotesPage = () => {
         return voiceNotes.slice(startIndex, startIndex + ITEMS_PER_PAGE);
     }, [voiceNotes, currentPage]);
 
-    const handleDelete = async (id) => {
-        if (!id) return;
-        // Simple confirmation – can be improved with a custom modal
-        // eslint-disable-next-line no-alert
-        const confirmed = window.confirm('Are you sure you want to delete this voice note?');
-        if (!confirmed) return;
+    const handleDeleteClick = (note) => {
+        if (!note) return;
+        setNoteToDelete(note);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!noteToDelete?.id) return;
 
         try {
-            await aiScribeService.deleteAiScribe(id);
-            setVoiceNotes((prev) => prev.filter((note) => note.id !== id));
+            await aiScribeService.deleteAiScribe(noteToDelete.id);
+            setVoiceNotes((prev) => prev.filter((n) => n.id !== noteToDelete.id));
             showToast('Voice note deleted successfully.', 'success');
         } catch (error) {
             // eslint-disable-next-line no-console
             console.error('Error deleting voice note:', error);
             showToast('Failed to delete voice note.', 'error');
+        } finally {
+            setNoteToDelete(null);
         }
+    };
+
+    const handleCancelDelete = () => {
+        setNoteToDelete(null);
     };
 
     const handleEdit = (id) => {
@@ -97,21 +105,11 @@ const VoiceNotesPage = () => {
     };
 
     const renderPagination = () => {
-        if (totalPages <= 1) return null;
+        if (!voiceNotes.length) return null;
 
-        const pages = [];
-        for (let i = 1; i <= totalPages; i += 1) {
-            pages.push(
-                <button
-                    key={i}
-                    type="button"
-                    className={`pagination-page ${i === currentPage ? 'active' : ''}`}
-                    onClick={() => handlePageChange(i)}
-                >
-                    {i}
-                </button>
-            );
-        }
+        const totalItems = voiceNotes.length;
+        const start = (currentPage - 1) * ITEMS_PER_PAGE + 1;
+        const end = Math.min(currentPage * ITEMS_PER_PAGE, totalItems);
 
         return (
             <div className="voice-notes-pagination">
@@ -123,7 +121,9 @@ const VoiceNotesPage = () => {
                 >
                     <i className="fas fa-chevron-left" />
                 </button>
-                {pages}
+                <span className="pagination-text">
+                    Showing {start}-{end} of {totalItems} voice notes
+                </span>
                 <button
                     type="button"
                     className="pagination-nav"
@@ -187,7 +187,8 @@ const VoiceNotesPage = () => {
                                     <th>Doctor</th>
                                     <th>Date Created</th>
                                     <th>Duration</th>
-                                    <th style={{ textAlign: 'right' }}>Actions</th>
+                                    <th>Summary</th>
+                                    <th style={{ textAlign: 'center' }}>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -197,23 +198,31 @@ const VoiceNotesPage = () => {
                                         <td>{note.doctors?.name || '-'}</td>
                                         <td>{formatDate(note.date_created || note.created_at)}</td>
                                         <td>{formatDuration(note.duration_seconds)}</td>
-                                        
-                                        <td style={{ textAlign: 'right' }}>
-                                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                                        <td>
                                             <button
                                                 type="button"
-                                                className="btn-text"
+                                                className="voice-notes-link"
                                                 onClick={() => navigate(`/voice-notes/${note.id}`)}
                                             >
-                                                <i className="fas fa-edit" />
+                                                Click to view
                                             </button>
-                                            <button
-                                                type="button"
-                                                className="btn-text danger"
-                                                onClick={() => handleDelete(note.id)}
-                                            >
-                                                <i className="fas fa-trash" />
-                                            </button>
+                                        </td>
+                                        <td style={{ textAlign: 'center' }}>
+                                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                                                {/* <button
+                                                    type="button"
+                                                    className="btn-text"
+                                                    onClick={() => handleEdit(note.id)}
+                                                >
+                                                    <i className="fas fa-edit" /> Edit
+                                                </button> */}
+                                                <button
+                                                    type="button"
+                                                    className="btn-text"
+                                                    onClick={() => handleDeleteClick(note)}
+                                                >
+                                                    <i className="fas fa-trash" />
+                                                </button>
                                             </div>
                                         </td>
                                     </tr>
@@ -221,10 +230,41 @@ const VoiceNotesPage = () => {
                             </tbody>
                         </table>
 
-                        {renderPagination()}
+                        <div className="voice-notes-pagination-wrapper">
+                            {renderPagination()}
+                        </div>
                     </div>
                 )}
             </div>
+
+            {noteToDelete && (
+                <div className="voice-notes-confirm-overlay">
+                    <div className="voice-notes-confirm-modal">
+                        <h3>Delete voice note?</h3>
+                        <p>
+                            Are you sure you want to delete this voice note for{' '}
+                            <strong>{noteToDelete.patients?.name || 'this patient'}</strong>? This
+                            action cannot be undone.
+                        </p>
+                        <div className="voice-notes-confirm-actions">
+                            <button
+                                type="button"
+                                className="btn-cancel"
+                                onClick={handleCancelDelete}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className="btn-save"
+                                onClick={handleConfirmDelete}
+                            >
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
