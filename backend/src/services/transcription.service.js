@@ -14,12 +14,11 @@ export const initializeDeepgram = () => {
 
     if (!deepgramClient) {
         try {
-            console.log("🔑 Initializing Deepgram with API key:", config.DEEPGRAM_API_KEY.substring(0, 8) + "...");
             deepgramClient = createClient(config.DEEPGRAM_API_KEY);
             console.log("✅ Deepgram client initialized successfully");
         } catch (error) {
             console.error("❌ Failed to initialize Deepgram client:", error.message);
-            console.error("❌ Stack:", error.stack);
+            // console.error("❌ Stack:", error.stack);
             return null;
         }
     }
@@ -34,7 +33,7 @@ export const setupTranscriptionConnection = async (clientWs, voiceNoteId) => {
     const deepgram = initializeDeepgram();
     
     if (!deepgram) {
-        console.error("❌ Deepgram client not available for voiceNoteId:", voiceNoteId);
+        // console.error("❌ Deepgram client not available for voiceNoteId:", voiceNoteId);
         clientWs.send(JSON.stringify({
             type: 'error',
             message: 'Transcription service not available - check server logs'
@@ -51,12 +50,12 @@ export const setupTranscriptionConnection = async (clientWs, voiceNoteId) => {
     try {
         // Create Deepgram live connection
         // Note: Deepgram can auto-detect encoding from WebM container
-        console.log("📡 Creating Deepgram live connection with config:", {
-            model: "nova-2",
-            language: "en-US",
-            smart_format: true,
-            interim_results: true
-        });
+        // console.log("📡 Creating Deepgram live connection with config:", {
+        //     model: "nova-2",
+        //     language: "en-US",
+        //     smart_format: true,
+        //     interim_results: true
+        // });
         
         deepgramConnection = deepgram.listen.live({
             model: "nova-2",
@@ -73,7 +72,7 @@ export const setupTranscriptionConnection = async (clientWs, voiceNoteId) => {
         // Handle Deepgram connection open
         deepgramConnection.on("open", () => {
             console.log("✅ Connected to Deepgram successfully!");
-            console.log("📊 Deepgram connection state:", deepgramConnection.getReadyState());
+            // console.log("📊 Deepgram connection state:", deepgramConnection.getReadyState());
             console.log("🎧 Waiting for audio data...");
             
             // Send confirmation to client
@@ -123,7 +122,7 @@ export const setupTranscriptionConnection = async (clientWs, voiceNoteId) => {
                             is_final: isFinal,
                             accumulated: accumulatedTranscript
                         };
-                        console.log("📤 Sending to client:", payload);
+                        // console.log("📤 Sending to client:", payload);
                         clientWs.send(JSON.stringify(payload));
                     } else {
                         console.warn("⚠️ Client WebSocket not open, state:", clientWs.readyState);
