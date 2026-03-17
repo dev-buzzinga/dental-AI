@@ -165,6 +165,8 @@ export const uploadAudio = async (id, audioFile, duration) => {
     }
 };
 
+
+
 export const generateSummary = async (id, payload) => {
     try {
         const { transcript, patient_name, doctor_name, template } = payload;

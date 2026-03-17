@@ -1,5 +1,6 @@
 import { useContext, useEffect, useState, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import jsPDF from 'jspdf';
 import '../../styles/VoiceNotes.css';
 import VoiceTranscriptPanel from '../../components/VoiceNotes/VoiceTranscriptPanel';
 import AISummaryPanel from '../../components/VoiceNotes/AISummaryPanel';
@@ -199,7 +200,7 @@ const AddVoiceNotePage = () => {
 
     // Generate a UUID v4 for temporary session
     const generateUUID = () => {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
             const r = Math.random() * 16 | 0;
             const v = c === 'x' ? r : (r & 0x3 | 0x8);
             return v.toString(16);
@@ -504,8 +505,8 @@ const AddVoiceNotePage = () => {
         setIsSavingNote(true);
 
         try {
-            // Step 1: Create voice note entry with transcript from session
-            console.log('💾 Step 1: Creating voice note entry with session transcript...');
+            // Step 1: Create voice note entry with transcript and summary
+            console.log('💾 Step 1: Creating voice note entry with transcript and AI summary...');
             const payload = {
                 sessionId: sessionId, // Backend will get transcript from memory
                 user_id: user.id,
@@ -515,6 +516,7 @@ const AddVoiceNotePage = () => {
                 description: description || null,
                 date_created: dateCreated,
                 transcript: transcript, // Pass transcript explicitly
+                ai_summary: summary || null, // Pass existing AI summary (already generated on green tick)
             };
 
             const response = await aiScribeService.saveCompleteVoiceNote(payload);
@@ -541,24 +543,13 @@ const AddVoiceNotePage = () => {
                 setIsUploadingAudio(false);
             }
 
-            // Step 3: Save AI summary (already generated when green tick was clicked)
+            // Step 3: AI Summary already saved in Step 1
+            // No need to save again - summary was passed in initial payload
+            console.log('✅ Step 3: AI summary already saved with voice note entry (no regeneration)');
             if (summary) {
-                console.log('💾 Step 3: Saving AI summary to database...');
-                setIsGeneratingSummary(true);
-                const summaryPayload = {
-                    transcript: transcript,
-                    patient_name: patients.find(p => p.id === patientId)?.name || '',
-                    doctor_name: doctors.find(d => d.id === doctorId)?.name || '',
-                    template: templates.find(t => t.id === templateId)?.details || description
-                };
-
-                const summaryResponse = await aiScribeService.generateAiScribeSummary(newVoiceNoteId, summaryPayload);
-                if (summaryResponse.data && summaryResponse.data.success) {
-                    console.log('✅ AI summary saved to database successfully');
-                }
-                setIsGeneratingSummary(false);
+                console.log('ℹ️ Summary that was shown to user is now in database');
             } else {
-                console.log('⚠️ No AI summary to save - skipping');
+                console.log('ℹ️ No summary was generated - user can generate later');
             }
 
             // Success!
@@ -639,20 +630,60 @@ const AddVoiceNotePage = () => {
         };
     }, []); // Empty dependency array - cleanup ONLY on unmount
 
-    const handleCopySummary = () => {
+    const handleCopySummary = async () => {
         if (!summary) return;
-        if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(summary).catch(() => {
-                // swallow clipboard errors in placeholder mode
-            });
+        try {
+            if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+                await navigator.clipboard.writeText(summary);
+                showToast('Copied to clipboard!', 'success');
+            } else {
+                showToast('Copy not supported in this browser.', 'error');
+            }
+        } catch {
+            showToast('Failed to copy. Please try again.', 'error');
         }
     };
 
     const handleExportPdf = () => {
-        // Placeholder only – no real export
-        // Could be replaced with real export logic later
-        // eslint-disable-next-line no-alert
-        alert('PDF export is not implemented in this prototype.');
+        if (!summary) {
+            showToast('No AI summary to export.', 'error');
+            return;
+        }
+
+        try {
+            const doc = new jsPDF({
+                unit: 'pt',
+                format: 'a4',
+            });
+
+            const marginLeft = 40;
+            const marginTop = 40;
+            const maxWidth = 515; // A4 width (595pt) - 2 * 40 margin
+            const lineHeight = 18;
+
+            // Use plain text version of the summary
+            const plainSummary = summary.replace(/\r\n/g, '\n');
+            const lines = doc.splitTextToSize(plainSummary, maxWidth);
+
+            let cursorY = marginTop;
+
+            lines.forEach((line) => {
+                if (cursorY > 800) {
+                    doc.addPage();
+                    cursorY = marginTop;
+                }
+                doc.text(line, marginLeft, cursorY);
+                cursorY += lineHeight;
+            });
+
+            const fileName = `dental-summary-${dateCreated || 'note'}.pdf`;
+            doc.save(fileName);
+            showToast('PDF downloaded successfully.', 'success');
+        } catch (error) {
+            // eslint-disable-next-line no-console
+            console.error('PDF export failed:', error);
+            showToast('Failed to export PDF. Please try again.', 'error');
+        }
     };
 
     const handleSaveNewTemplate = async () => {
@@ -861,7 +892,7 @@ const AddVoiceNotePage = () => {
                             disabled={isSavingNote || isUploadingAudio || isGeneratingSummary || !transcript || !audioBlob}
                         >
                             <i className="fas fa-check" />
-                            {isSavingNote || isUploadingAudio || isGeneratingSummary ? 'Saving...' : 'Save Note'}
+                            {isSavingNote ? 'Saving...' : 'Save Note'}
                         </button>
                     </div>
                 </div>
