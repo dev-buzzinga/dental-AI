@@ -4,6 +4,7 @@ import '../../styles/VoiceNotes.css';
 import aiScribeService from '../../service/ai-scribe';
 import { AuthContext } from '../../context/AuthContext';
 import { useToast } from '../../components/Toast/Toast';
+import Table from '../../components/common/Table';
 
 
 const formatDate = (dateString) => {
@@ -99,44 +100,75 @@ const VoiceNotesPage = () => {
         navigate('/add-voice-notes');
     };
 
-    const handlePageChange = (page) => {
-        if (page < 1 || page > totalPages) return;
-        setCurrentPage(page);
-    };
+    // Table columns configuration
+    const columns = [
+        { key: 'id', label: 'ID', align: 'left' },
+        { key: 'patient', label: 'Patient Name', align: 'left' },
+        { key: 'doctor', label: 'Doctor', align: 'left' },
+        { key: 'dateCreated', label: 'Date Created', align: 'left' },
+        { key: 'duration', label: 'Duration', align: 'left' },
+        { key: 'summary', label: 'Summary', align: 'left' },
+        { key: 'actions', label: 'Actions', align: 'center' }
+    ];
 
-    const renderPagination = () => {
-        if (!voiceNotes.length) return null;
+    // Custom cell renderer
+    const renderCell = (column, rowData, index) => {
+        if (column.key === 'id') {
+            const globalIndex = (currentPage - 1) * ITEMS_PER_PAGE + index;
+            const serialNumber = voiceNotes.length - globalIndex;
+            return serialNumber;
+        }
 
-        const totalItems = voiceNotes.length;
-        const start = (currentPage - 1) * ITEMS_PER_PAGE + 1;
-        const end = Math.min(currentPage * ITEMS_PER_PAGE, totalItems);
+        if (column.key === 'patient') {
+            return rowData.patients?.name || '-';
+        }
 
-        return (
-            <div className="voice-notes-pagination">
+        if (column.key === 'doctor') {
+            return rowData.doctors?.name || '-';
+        }
+
+        if (column.key === 'dateCreated') {
+            return formatDate(rowData.date_created || rowData.created_at);
+        }
+
+        if (column.key === 'duration') {
+            return formatDuration(rowData.duration_seconds);
+        }
+
+        if (column.key === 'summary') {
+            return (
                 <button
                     type="button"
-                    className="pagination-nav"
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage === 1}
+                    className="voice-notes-link"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/voice-notes/${rowData.id}`);
+                    }}
                 >
-                    <i className="fas fa-chevron-left" />
+                    Click to view
                 </button>
-                <span className="pagination-text">
-                    Showing {start}-{end} of {totalItems} voice notes
-                </span>
-                <button
-                    type="button"
-                    className="pagination-nav"
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                >
-                    <i className="fas fa-chevron-right" />
-                </button>
-            </div>
-        );
-    };
+            );
+        }
 
-    const hasNotes = voiceNotes.length > 0;
+        if (column.key === 'actions') {
+            return (
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                    <button
+                        type="button"
+                        className="btn-text"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteClick(rowData);
+                        }}
+                    >
+                        <i className="fas fa-trash" />
+                    </button>
+                </div>
+            );
+        }
+
+        return rowData[column.key] || '-';
+    };
 
     return (
         <div className="voice-notes-page">
@@ -156,85 +188,30 @@ const VoiceNotesPage = () => {
             </div>
 
             <div className="voice-notes-content">
-                {isLoading && (
-                    <div className="voice-notes-empty-state">
-                        <i className="fas fa-spinner fa-spin" />
-                        <h3>Loading voice notes...</h3>
-                    </div>
-                )}
-
-                {!isLoading && !hasNotes && (
-                    <div className="voice-notes-empty-state">
-                        <i className="fas fa-microphone" />
-                        <h3>No voice notes yet</h3>
-                        <p>Create a new voice note to get started.</p>
-                        <button
-                            type="button"
-                            className="btn-outline"
-                            onClick={handleAddNew}
-                        >
-                            <i className="fas fa-plus" /> Add Note
-                        </button>
-                    </div>
-                )}
-
-                {!isLoading && hasNotes && (
-                    <div className="voice-notes-table-wrapper">
-                        <table className="voice-notes-table">
-                            <thead>
-                                <tr>
-                                    <th>Patient Name</th>
-                                    <th>Doctor</th>
-                                    <th>Date Created</th>
-                                    <th>Duration</th>
-                                    <th>Summary</th>
-                                    <th style={{ textAlign: 'center' }}>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {paginatedNotes.map((note) => (
-                                    <tr key={note.id}>
-                                        <td>{note.patients?.name || '-'}</td>
-                                        <td>{note.doctors?.name || '-'}</td>
-                                        <td>{formatDate(note.date_created || note.created_at)}</td>
-                                        <td>{formatDuration(note.duration_seconds)}</td>
-                                        <td>
-                                            <button
-                                                type="button"
-                                                className="voice-notes-link"
-                                                onClick={() => navigate(`/voice-notes/${note.id}`)}
-                                            >
-                                                Click to view
-                                            </button>
-                                        </td>
-                                        <td style={{ textAlign: 'center' }}>
-                                            <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                                                {/* <button
-                                                    type="button"
-                                                    className="btn-text"
-                                                    onClick={() => handleEdit(note.id)}
-                                                >
-                                                    <i className="fas fa-edit" /> Edit
-                                                </button> */}
-                                                <button
-                                                    type="button"
-                                                    className="btn-text"
-                                                    onClick={() => handleDeleteClick(note)}
-                                                >
-                                                    <i className="fas fa-trash" />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-
-                        <div className="voice-notes-pagination-wrapper">
-                            {renderPagination()}
-                        </div>
-                    </div>
-                )}
+                <Table
+                    columns={columns}
+                    data={paginatedNotes}
+                    loading={isLoading}
+                    renderCell={renderCell}
+                    pagination={{
+                        enabled: true,
+                        currentPage: currentPage,
+                        totalPages: totalPages,
+                        totalItems: voiceNotes.length,
+                        pageSize: ITEMS_PER_PAGE,
+                        onPageChange: (page) => setCurrentPage(page)
+                    }}
+                    emptyState={{
+                        icon: 'fas fa-microphone',
+                        title: 'No voice notes yet',
+                        description: 'Create a new voice note to get started.',
+                        action: {
+                            icon: 'fas fa-plus',
+                            label: 'Add Note',
+                            onClick: handleAddNew
+                        }
+                    }}
+                />
             </div>
 
             {noteToDelete && (

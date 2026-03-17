@@ -96,3 +96,246 @@
     z-index: 10;
     position: relative;
 }
+
+/* === TABLE COMPONENT === */
+.table-component {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.table-component .table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid var(--border, #E5E7EB);
+    background: #fff;
+}
+
+.table-component .table-wrapper::-webkit-scrollbar {
+    height: 8px;
+}
+
+.table-component .table-wrapper::-webkit-scrollbar-track {
+    background: #F9FAFB;
+    border-radius: 4px;
+}
+
+.table-component .table-wrapper::-webkit-scrollbar-thumb {
+    background: #D1D5DB;
+    border-radius: 4px;
+}
+
+.table-component .table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #9CA3AF;
+}
+
+/* Base table styles */
+.table-component .table-base {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+}
+
+/* Table head */
+.table-component .table-head {
+    background: #F9FAFB;
+    border-bottom: 2px solid var(--border, #E5E7EB);
+}
+
+.table-component .table-header-cell {
+    padding: 12px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6B7280;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+/* Table body */
+.table-component .table-body .table-row {
+    border-bottom: 1px solid var(--border, #E5E7EB);
+    transition: background-color 0.15s ease;
+}
+
+.table-component .table-body .table-row:last-child {
+    border-bottom: none;
+}
+
+.table-component .table-cell {
+    padding: 14px 16px;
+    font-size: 14px;
+    color: var(--text-primary, #1F2937);
+    vertical-align: middle;
+}
+
+/* Table sizes */
+.table-component .table-size-sm .table-header-cell {
+    padding: 8px 12px;
+    font-size: 11px;
+}
+
+.table-component .table-size-sm .table-cell {
+    padding: 10px 12px;
+    font-size: 13px;
+}
+
+.table-component .table-size-lg .table-header-cell {
+    padding: 16px 20px;
+    font-size: 13px;
+}
+
+.table-component .table-size-lg .table-cell {
+    padding: 18px 20px;
+    font-size: 15px;
+}
+
+/* Striped rows */
+.table-component .table-striped .table-body .table-row:nth-child(even) {
+    background: #F9FAFB;
+}
+
+/* Hoverable rows */
+.table-component .table-hoverable .table-body .table-row:hover {
+    background: #F3F4F6;
+}
+
+/* Clickable rows */
+.table-component .table-clickable .table-body .table-row {
+    cursor: pointer;
+}
+
+.table-component .table-clickable .table-body .table-row:active {
+    background: #E5E7EB;
+}
+
+/* Empty state */
+.table-component .table-empty-state {
+    padding: 64px 32px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid var(--border, #E5E7EB);
+}
+
+.table-component .table-empty-icon {
+    font-size: 48px;
+    color: #D1D5DB;
+    margin-bottom: 8px;
+}
+
+.table-component .table-empty-icon.fa-spinner {
+    color: var(--primary, #0066FF);
+}
+
+.table-component .table-empty-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary, #1F2937);
+    margin: 0;
+}
+
+.table-component .table-empty-description {
+    font-size: 14px;
+    color: var(--text-secondary, #6B7280);
+    margin: 0;
+    max-width: 400px;
+}
+
+.table-component .table-empty-action {
+    margin-top: 8px;
+}
+
+/* Pagination */
+.table-component .table-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 16px 0;
+}
+
+.table-component .table-pagination-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--border, #E5E7EB);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--text-primary, #1F2937);
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.table-component .table-pagination-btn:hover:not(:disabled) {
+    background: #F9FAFB;
+    border-color: var(--primary, #0066FF);
+    color: var(--primary, #0066FF);
+}
+
+.table-component .table-pagination-btn:active:not(:disabled) {
+    background: #F3F4F6;
+}
+
+.table-component .table-pagination-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.table-component .table-pagination-info {
+    font-size: 14px;
+    color: var(--text-secondary, #6B7280);
+    font-weight: 500;
+    user-select: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .table-component .table-header-cell {
+        padding: 10px 12px;
+        font-size: 11px;
+    }
+
+    .table-component .table-cell {
+        padding: 12px;
+        font-size: 13px;
+    }
+
+    .table-component .table-empty-state {
+        padding: 48px 24px;
+    }
+
+    .table-component .table-empty-icon {
+        font-size: 40px;
+    }
+
+    .table-component .table-empty-title {
+        font-size: 16px;
+    }
+
+    .table-component .table-empty-description {
+        font-size: 13px;
+    }
+
+    .table-component .table-pagination {
+        padding: 12px 0;
+    }
+
+    .table-component .table-pagination-btn {
+        width: 32px;
+        height: 32px;
+    }
+
+    .table-component .table-pagination-info {
+        font-size: 13px;
+    }
+}
