@@ -39,6 +39,16 @@ const generateAiScribeSummary = async (id, payload) => {
     return await authAxiosInstance.post(`/ai-scribe/${id}/summarize`, payload);
 };
 
+// Generate AI summary preview (without voiceNoteId)
+const generateAiScribeSummaryPreview = async (payload) => {
+    return await authAxiosInstance.post('/ai-scribe/generate-summary-preview', payload);
+};
+
+// Save complete voice note (new - called from Save Note button)
+const saveCompleteVoiceNote = async (payload) => {
+    return await authAxiosInstance.post('/ai-scribe/save-complete', payload);
+};
+
 export default {
     createAiScribe,
     getAiScribeById,
@@ -47,4 +57,6 @@ export default {
     deleteAiScribe,
     uploadAiScribeAudio,
     generateAiScribeSummary,
+    generateAiScribeSummaryPreview,
+    saveCompleteVoiceNote,
 };

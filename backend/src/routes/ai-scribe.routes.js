@@ -6,6 +6,12 @@ const router = express.Router();
 // Create new AI scribe record
 router.post("/", aiScribeController.createAiScribe);
 
+// Generate AI summary preview (without voiceNoteId)
+router.post("/generate-summary-preview", aiScribeController.generateSummaryPreview);
+
+// Save complete voice note (new - called from Save Note button)
+router.post("/save-complete", aiScribeController.saveCompleteVoiceNote);
+
 // Get AI scribe by ID
 router.get("/:id", aiScribeController.getAiScribeById);
 

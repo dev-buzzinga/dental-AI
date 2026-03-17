@@ -181,3 +181,108 @@ export const generateSummary = async (req, res) => {
         });
     }
 };
+
+// Generate AI summary preview (without voiceNoteId)
+export const generateSummaryPreview = async (req, res) => {
+    try {
+        const { transcript, patient_name, doctor_name, template } = req.body;
+
+        if (!transcript) {
+            return res.status(400).json({
+                success: false,
+                message: "Transcript is required",
+            });
+        }
+
+        const summary = await aiScribeService.generateSummaryPreview({
+            transcript,
+            patient_name,
+            doctor_name,
+            template,
+        });
+
+        return res.status(200).json({
+            success: true,
+            data: { ai_summary: summary },
+            message: "Summary generated successfully",
+        });
+    } catch (error) {
+        console.error("Generate summary preview error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to generate summary",
+        });
+    }
+};
+
+// Save complete voice note (called from Save Note button)
+export const saveCompleteVoiceNote = async (req, res) => {
+    try {
+        const {
+            sessionId, // Temporary session ID used during recording
+            user_id,
+            patient_id,
+            doctor_id,
+            template_id,
+            description,
+            date_created,
+            transcript,
+            ai_summary,
+            audio_url,
+            duration
+        } = req.body;
+
+        if (!user_id || !patient_id || !doctor_id) {
+            return res.status(400).json({
+                success: false,
+                message: "user_id, patient_id, and doctor_id are required",
+            });
+        }
+
+        // Get transcript from memory if not provided
+        let finalTranscript = transcript;
+        if (!finalTranscript && sessionId) {
+            finalTranscript = aiScribeService.getTemporaryTranscript(sessionId);
+        }
+
+        // Create the voice note with all data
+        const result = await aiScribeService.createAiScribe({
+            user_id,
+            patient_id,
+            doctor_id,
+            template_id,
+            description,
+            date_created,
+        });
+
+        // Update with transcript, summary, and audio URL
+        if (result && result.id) {
+            const updateData = {};
+            if (finalTranscript) updateData.live_transcript = finalTranscript;
+            if (ai_summary) updateData.ai_summary = ai_summary;
+            if (audio_url) updateData.audio_url = audio_url;
+            if (duration) updateData.duration = duration;
+
+            if (Object.keys(updateData).length > 0) {
+                await aiScribeService.updateAiScribe(result.id, updateData);
+            }
+
+            // Clear temporary transcript from memory
+            if (sessionId) {
+                aiScribeService.clearTemporaryTranscript(sessionId);
+            }
+        }
+
+        return res.status(201).json({
+            success: true,
+            data: result,
+            message: "Voice note saved successfully",
+        });
+    } catch (error) {
+        console.error("Save complete voice note error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || "Failed to save voice note",
+        });
+    }
+};

@@ -275,11 +275,54 @@
 .voice-notes-page .ai-summary-box {
     border-radius: 10px;
     border: 1px dashed var(--border);
-    padding: 10px 12px;
+    padding: 16px 18px;
     background: #F9FAFB;
     font-size: 13px;
     color: var(--text-secondary);
     min-height: 160px;
+    line-height: 1.5;
+}
+
+/* AI Summary Markdown formatting */
+.voice-notes-page .ai-summary-markdown {
+    color: var(--text-primary, #1f2937);
+}
+
+.voice-notes-page .ai-summary-markdown .ai-summary-h1 {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0 0 12px 0;
+    color: var(--text-primary, #111827);
+    border-bottom: none;
+}
+
+.voice-notes-page .ai-summary-markdown .ai-summary-h2 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 16px 0 8px 0;
+    color: var(--text-primary, #374151);
+}
+
+.voice-notes-page .ai-summary-markdown .ai-summary-p {
+    margin: 0 0 10px 0;
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--text-secondary, #4b5563);
+}
+
+.voice-notes-page .ai-summary-markdown .ai-summary-p:last-child {
+    margin-bottom: 0;
+}
+
+.voice-notes-page .ai-summary-markdown .ai-summary-strong {
+    font-weight: 600;
+    color: var(--text-primary, #111827);
+}
+
+.voice-notes-page .ai-summary-markdown .ai-summary-hr {
+    border: none;
+    border-top: 1px solid var(--border, #e5e7eb);
+    margin: 14px 0;
 }
 
 /* === RECORDING ANIMATIONS === */

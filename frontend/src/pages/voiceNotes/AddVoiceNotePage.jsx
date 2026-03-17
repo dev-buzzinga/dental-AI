@@ -8,10 +8,11 @@ import SearchableDropdown from '../../components/common/SearchableDropdown';
 import { supabase } from '../../config/supabase';
 import { AuthContext } from '../../context/AuthContext';
 import aiScribeService from '../../service/ai-scribe';
-
+import { useToast } from '../../components/Toast/Toast';
 const AddVoiceNotePage = () => {
     const navigate = useNavigate();
     const { user } = useContext(AuthContext);
+    const showToast = useToast();
 
     const [patients, setPatients] = useState([]);
     const [doctors, setDoctors] = useState([]);
@@ -37,7 +38,7 @@ const AddVoiceNotePage = () => {
     const [audioUrl, setAudioUrl] = useState('');
     const [wsConnection, setWsConnection] = useState(null);
     const [isConnected, setIsConnected] = useState(false);
-    const [voiceNoteId, setVoiceNoteId] = useState(null);
+    const [sessionId, setSessionId] = useState(null); // Changed from voiceNoteId to sessionId
     const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
     const [isUploadingAudio, setIsUploadingAudio] = useState(false);
     const [isSavingNote, setIsSavingNote] = useState(false);
@@ -115,15 +116,15 @@ const AddVoiceNotePage = () => {
         fetchDropdownData();
     }, [user]);
 
-    const connectWebSocket = (newVoiceNoteId) => {
+    const connectWebSocket = (newSessionId) => {
         return new Promise((resolve, reject) => {
-            if (!newVoiceNoteId) {
-                console.error('❌ No voiceNoteId available');
-                reject('No voiceNoteId');
+            if (!newSessionId) {
+                console.error('❌ No sessionId available');
+                reject('No sessionId');
                 return;
             }
 
-            const wsUrl = `${import.meta.env.VITE_BACKEND_URL.replace('http', 'ws')}/ws/transcribe?voiceNoteId=${newVoiceNoteId}`;
+            const wsUrl = `${import.meta.env.VITE_BACKEND_URL.replace('http', 'ws')}/ws/transcribe?voiceNoteId=${newSessionId}`;
             console.log('📡 Connecting to:', wsUrl);
             const ws = new WebSocket(wsUrl);
 
@@ -196,52 +197,32 @@ const AddVoiceNotePage = () => {
         }
     };
 
-    const handleSaveVoiceNote = async () => {
-        try {
-            const payload = {
-                user_id: user.id,
-                patient_id: patientId,
-                doctor_id: doctorId,
-                template_id: templateId || null,
-                description: description || null,
-                date_created: dateCreated,
-            };
-
-            const response = await aiScribeService.createAiScribe(payload);
-
-            if (response.data && response.data.success && response.data.data) {
-                return response.data.data.id;
-            }
-
-            throw new Error('Failed to create voice note');
-        } catch (error) {
-            console.error('Error saving voice note:', error);
-            alert('Failed to create voice note. Please try again.');
-            return null;
-        }
+    // Generate a UUID v4 for temporary session
+    const generateUUID = () => {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0;
+            const v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
     };
 
     const startRecording = async () => {
-        let newVoiceNoteId = voiceNoteId;
-
-        // Save voice note metadata first if not saved
-        if (!voiceNoteId) {
-            setIsSavingNote(true);
-            newVoiceNoteId = await handleSaveVoiceNote();
-            setIsSavingNote(false);
+        // Generate a temporary session ID (UUID) for this recording
+        // No database entry is created at this point
+        let newSessionId = sessionId;
+        if (!sessionId) {
+            newSessionId = generateUUID();
+            setSessionId(newSessionId);
+            console.log('📝 Generated session ID:', newSessionId);
         }
-
-        if (!newVoiceNoteId) return;
-
-        setVoiceNoteId(newVoiceNoteId);
 
         // Reset flag - don't upload until user explicitly saves
         shouldUploadOnStopRef.current = false;
 
         try {
             // Step 1: Connect WebSocket for live transcription
-            console.log('📡 Step 1: Connecting WebSocket for voiceNoteId:', newVoiceNoteId);
-            const ws = await connectWebSocket(newVoiceNoteId);
+            console.log('📡 Step 1: Connecting WebSocket for sessionId:', newSessionId);
+            const ws = await connectWebSocket(newSessionId);
             console.log('✅ Step 1 Complete: WebSocket connected and ready');
 
             // Wait a bit for Deepgram to be ready on backend
@@ -325,7 +306,7 @@ const AddVoiceNotePage = () => {
                 // Only upload and generate summary if user explicitly saved (green tick)
                 if (shouldUploadOnStopRef.current && chunks.length > 0) {
                     console.log('✅ User saved - uploading audio and generating summary');
-                    uploadAudioAndGenerateSummary(audioBlob, newVoiceNoteId);
+                    uploadAudioAndGenerateSummary(audioBlob, newSessionId);
                 } else {
                     console.log('❌ Recording cancelled or no audio. Chunks:', chunks.length, ', Should upload:', shouldUploadOnStopRef.current);
                 }
@@ -447,45 +428,33 @@ const AddVoiceNotePage = () => {
     };
 
     const handleToggleRecording = () => {
+        // Start recording: validate required dropdowns
         if (!isRecording) {
+            if (!patientId || !doctorId || !templateId) {
+                showToast('Patient Name, Doctor Name, and Select Template are required before recording.', 'error');
+                return;
+            }
             startRecording();
-        } else if (isPaused) {
+            return;
+        }
+
+        // Already recording: toggle pause / resume
+        if (isPaused) {
             resumeRecording();
         } else {
             pauseRecording();
         }
     };
 
-    const uploadAudioAndGenerateSummary = async (blob, noteId) => {
-        const currentVoiceNoteId = noteId || voiceNoteId;
-
-        if (!blob || !currentVoiceNoteId) {
-            console.error('❌ Cannot upload - missing blob or voiceNoteId');
+    const uploadAudioAndGenerateSummary = async (blob, currentSessionId) => {
+        if (!blob || !currentSessionId) {
+            console.error('❌ Cannot upload - missing blob or sessionId');
             return;
         }
 
-        console.log('📤 Starting upload and summary generation...');
+        console.log('🤖 Generating AI Summary after recording stopped...');
 
-        // Upload audio
-        setIsUploadingAudio(true);
-        try {
-            const formData = new FormData();
-            formData.append('audio', blob, 'recording.webm');
-            formData.append('duration', recordingTime.toString());
-
-            const res = await aiScribeService.uploadAiScribeAudio(currentVoiceNoteId, formData);
-
-            if (res.data && res.data.url) {
-                setAudioUrl(res.data.url);
-            }
-        } catch (error) {
-            console.error('Upload audio error:', error);
-            alert('Failed to upload audio');
-        } finally {
-            setIsUploadingAudio(false);
-        }
-
-        // Generate summary
+        // Generate AI summary preview (without saving to database)
         const patient = patients.find(p => p.id === patientId);
         const doctor = doctors.find(d => d.id === doctorId);
         const selectedTemplate = templates.find(t => t.id === templateId);
@@ -499,14 +468,18 @@ const AddVoiceNotePage = () => {
                 template: selectedTemplate ? selectedTemplate.details : description
             };
 
-            const response = await aiScribeService.generateAiScribeSummary(currentVoiceNoteId, payload);
+            console.log('📤 Calling AI Summary API...');
+            const response = await aiScribeService.generateAiScribeSummaryPreview(payload);
 
             if (response.data && response.data.success && response.data.data) {
+                console.log('✅ AI Summary generated successfully');
                 setSummary(response.data.data.ai_summary);
+            } else {
+                console.warn('⚠️ AI Summary response invalid:', response.data);
             }
         } catch (error) {
-            console.error('Failed to generate AI summary:', error);
-            alert('Failed to generate AI summary. Try again.');
+            console.error('❌ Failed to generate AI summary:', error);
+            showToast('Failed to generate AI summary. You can regenerate it later.', 'error');
         } finally {
             setIsGeneratingSummary(false);
         }
@@ -516,13 +489,98 @@ const AddVoiceNotePage = () => {
         navigate('/voice-notes');
     };
 
+    // New function: Save complete voice note to database
+    const handleSaveCompleteVoiceNote = async () => {
+        if (!patientId || !doctorId || !templateId) {
+            showToast('Patient Name, Doctor Name, and Select Template are required.', 'error');
+            return;
+        }
+
+        if (!transcript || !audioBlob) {
+            showToast('Please record audio before saving.', 'error');
+            return;
+        }
+
+        setIsSavingNote(true);
+
+        try {
+            // Step 1: Create voice note entry with transcript from session
+            console.log('💾 Step 1: Creating voice note entry with session transcript...');
+            const payload = {
+                sessionId: sessionId, // Backend will get transcript from memory
+                user_id: user.id,
+                patient_id: patientId,
+                doctor_id: doctorId,
+                template_id: templateId || null,
+                description: description || null,
+                date_created: dateCreated,
+                transcript: transcript, // Pass transcript explicitly
+            };
+
+            const response = await aiScribeService.saveCompleteVoiceNote(payload);
+
+            if (!response.data || !response.data.success || !response.data.data) {
+                throw new Error('Failed to create voice note entry');
+            }
+
+            const newVoiceNoteId = response.data.data.id;
+            console.log('✅ Voice note created with ID:', newVoiceNoteId);
+
+            // Step 2: Upload audio file
+            if (audioBlob) {
+                console.log('📤 Step 2: Uploading audio file...');
+                setIsUploadingAudio(true);
+                const formData = new FormData();
+                formData.append('audio', audioBlob, 'recording.webm');
+                formData.append('duration', recordingTime.toString());
+
+                const audioResponse = await aiScribeService.uploadAiScribeAudio(newVoiceNoteId, formData);
+                if (audioResponse.data && audioResponse.data.url) {
+                    console.log('✅ Audio uploaded successfully');
+                }
+                setIsUploadingAudio(false);
+            }
+
+            // Step 3: Save AI summary (already generated when green tick was clicked)
+            if (summary) {
+                console.log('💾 Step 3: Saving AI summary to database...');
+                setIsGeneratingSummary(true);
+                const summaryPayload = {
+                    transcript: transcript,
+                    patient_name: patients.find(p => p.id === patientId)?.name || '',
+                    doctor_name: doctors.find(d => d.id === doctorId)?.name || '',
+                    template: templates.find(t => t.id === templateId)?.details || description
+                };
+
+                const summaryResponse = await aiScribeService.generateAiScribeSummary(newVoiceNoteId, summaryPayload);
+                if (summaryResponse.data && summaryResponse.data.success) {
+                    console.log('✅ AI summary saved to database successfully');
+                }
+                setIsGeneratingSummary(false);
+            } else {
+                console.log('⚠️ No AI summary to save - skipping');
+            }
+
+            // Success!
+            showToast('Voice note saved successfully!', 'success');
+            navigate('/voice-notes');
+        } catch (error) {
+            console.error('Error saving voice note:', error);
+            showToast('Failed to save voice note. Please try again.', 'error');
+        } finally {
+            setIsSavingNote(false);
+            setIsUploadingAudio(false);
+            setIsGeneratingSummary(false);
+        }
+    };
+
     const handleDeleteSummary = () => {
         setSummary('');
     };
 
     const handleRegenerateSummary = async () => {
-        if (!transcript || !voiceNoteId) {
-            alert('Please record audio first');
+        if (!transcript) {
+            showToast('Please record audio first', 'error');
             return;
         }
 
@@ -539,14 +597,15 @@ const AddVoiceNotePage = () => {
                 template: selectedTemplate ? selectedTemplate.details : description
             };
 
-            const response = await aiScribeService.generateAiScribeSummary(voiceNoteId, payload);
+            const response = await aiScribeService.generateAiScribeSummaryPreview(payload);
 
             if (response.data && response.data.success && response.data.data) {
                 setSummary(response.data.data.ai_summary);
+                showToast('AI Summary regenerated successfully!', 'success');
             }
         } catch (error) {
             console.error('Failed to generate AI summary:', error);
-            alert('Failed to generate AI summary. Try again.');
+            showToast('Failed to generate AI summary. Try again.', 'error');
         } finally {
             setIsGeneratingSummary(false);
         }
@@ -763,6 +822,7 @@ const AddVoiceNotePage = () => {
                                 onRegenerate={handleRegenerateSummary}
                                 onCopy={handleCopySummary}
                                 onExportPdf={handleExportPdf}
+                                isGenerating={isGeneratingSummary}
                             />
                         </div>
 
@@ -797,8 +857,8 @@ const AddVoiceNotePage = () => {
                         <button
                             type="button"
                             className="btn-save"
-                            onClick={handleClose}
-                            disabled={isSavingNote || isUploadingAudio || isGeneratingSummary}
+                            onClick={handleSaveCompleteVoiceNote}
+                            disabled={isSavingNote || isUploadingAudio || isGeneratingSummary || !transcript || !audioBlob}
                         >
                             <i className="fas fa-check" />
                             {isSavingNote || isUploadingAudio || isGeneratingSummary ? 'Saving...' : 'Save Note'}

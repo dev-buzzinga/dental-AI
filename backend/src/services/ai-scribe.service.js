@@ -4,6 +4,9 @@ import { generateAISummary } from "./anthropic.service.js";
 
 const supabase = createClient(config.SUPABASE_URL, config.SUPABASE_SERVICE_ROLE_KEY);
 
+// Store temporary transcripts in memory (for sessions before DB entry is created)
+const temporaryTranscripts = new Map();
+
 export const createAiScribe = async (data) => {
     try {
         const { data: result, error } = await supabase
@@ -234,12 +237,54 @@ export const generateSummary = async (id, payload) => {
 
 export const updateLiveTranscript = async (id, transcript) => {
     try {
-        await updateAiScribe(id, {
-            live_transcript: transcript,
-        });
+        // Check if this is a temporary session ID (UUID format but not in DB yet)
+        // Try to update DB first, if it fails, store in memory
+        const { error } = await supabase
+            .from("ai_scribes")
+            .update({
+                live_transcript: transcript,
+                updated_at: new Date().toISOString(),
+            })
+            .eq("id", id);
+        
+        if (error) {
+            // If update fails (record doesn't exist), store in memory
+            console.log(`💾 Storing transcript in memory for session: ${id}`);
+            temporaryTranscripts.set(id, transcript);
+        }
+        
         return { success: true };
     } catch (error) {
-        console.error("Error updating live transcript:", error);
+        // On any error, store in memory as fallback
+        console.log(`💾 Fallback: Storing transcript in memory for session: ${id}`);
+        temporaryTranscripts.set(id, transcript);
+        return { success: true };
+    }
+};
+
+// Get transcript from memory (for temporary sessions)
+export const getTemporaryTranscript = (sessionId) => {
+    const transcript = temporaryTranscripts.get(sessionId);
+    return transcript || '';
+};
+
+// Clear transcript from memory after it's saved to DB
+export const clearTemporaryTranscript = (sessionId) => {
+    temporaryTranscripts.delete(sessionId);
+};
+
+// Generate AI summary preview (without saving to DB)
+export const generateSummaryPreview = async ({ transcript, patient_name, doctor_name, template }) => {
+    try {
+        const summary = await generateAISummary({
+            transcript,
+            patient_name,
+            doctor_name,
+            template,
+        });
+        return summary;
+    } catch (error) {
+        console.error("Error generating summary preview:", error);
         throw error;
     }
 };
