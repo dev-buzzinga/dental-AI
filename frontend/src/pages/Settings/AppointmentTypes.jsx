@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useContext } from 'react';
 import { supabase } from '../../config/supabase';
 import { AuthContext } from '../../context/AuthContext';
 import { SearchInput } from '../../components/common/SearchInput';
+import Table from '../../components/common/Table';
 import { useToast } from '../../components/Toast/Toast';
 import AppointmentTypeModal from '../../components/Settings/AppointmentTypeModal';
 import '../../styles/Settings.css';
@@ -108,6 +109,50 @@ const AppointmentTypes = () => {
             t.name.toLowerCase().includes(searchTerm.toLowerCase())
         ), [appointmentTypes, searchTerm]);
 
+    const columns = [
+        { key: 'sno', label: 'S.No', align: 'left', width: '80px' },
+        { key: 'name', label: 'Name', align: 'left' },
+        { key: 'duration', label: 'Duration (Mins)', align: 'left' },
+        { key: 'actions', label: 'Actions', align: 'center', width: '140px' }
+    ];
+
+    const renderCell = (column, row, index) => {
+        if (column.key === 'sno') {
+            return <div style={{ fontWeight: 600 }}>{index + 1}</div>;
+        }
+
+        if (column.key === 'name') {
+            return <div style={{ fontWeight: 600 }}>{row.name}</div>;
+        }
+
+        if (column.key === 'duration') {
+            return `${row.duration} mins`;
+        }
+
+        if (column.key === 'actions') {
+            return (
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                    <button
+                        className="btn-outline"
+                        onClick={(e) => handleEditType(row, e)}
+                        style={{ padding: '6px 12px', fontSize: 13 }}
+                    >
+                        <i className="fas fa-edit" />
+                    </button>
+                    <button
+                        className="btn-outline"
+                        onClick={(e) => handleDeleteType(row.id, e)}
+                        style={{ padding: '6px 12px', fontSize: 13 }}
+                    >
+                        <i className="fas fa-trash" />
+                    </button>
+                </div>
+            );
+        }
+
+        return row[column.key] ?? '-';
+    };
+
     return (
         <div className="patients-page">
             <div className="patients-header">
@@ -124,52 +169,19 @@ const AppointmentTypes = () => {
             </div>
 
             <div className="patients-table-container custom-scrollbar">
-                {loading ? (
-                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                        <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', marginBottom: '1rem' }} />
-                        <p>Loading types...</p>
-                    </div>
-                ) : appointmentTypes.length === 0 ? (
-                    <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                        <i className="fas fa-calendar-alt" style={{ fontSize: '3rem', color: '#D1D5DB', marginBottom: '1.5rem' }} />
-                        <h3 style={{ color: 'var(--text-primary)', marginBottom: '0.5rem' }}>No appointment types found</h3>
-                        <p>Add your first appointment type to get started</p>
-                    </div>
-                ) : (
-                    <table className="patients-table">
-                        <thead>
-                            <tr>
-                                <th>S.No</th>
-                                <th>Name</th>
-                                <th>Duration (Mins)</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {filteredTypes.map((t, index) => (
-                                <tr key={t.id}>
-                                    <td>
-                                        <div style={{ fontWeight: 600 }}>{index + 1}</div>
-                                    </td>
-                                    <td>
-                                        <div style={{ fontWeight: 600 }}>{t.name}</div>
-                                    </td>
-                                    <td>{t.duration} mins</td>
-                                    <td>
-                                        <div style={{ display: 'flex', gap: '8px' }}>
-                                            <button className="btn-outline" onClick={(e) => handleEditType(t, e)} style={{ padding: '6px 12px', fontSize: 13 }}>
-                                                <i className="fas fa-edit" />
-                                            </button>
-                                            <button className="btn-outline" onClick={(e) => handleDeleteType(t.id, e)} style={{ padding: '6px 12px', fontSize: 13 }}>
-                                                <i className="fas fa-trash" />
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                )}
+                <Table
+                    columns={columns}
+                    data={filteredTypes}
+                    loading={loading}
+                    renderCell={renderCell}
+                    className="patients-table"
+                    pagination={null}
+                    emptyState={{
+                        icon: 'fas fa-calendar-alt',
+                        title: 'No appointment types found',
+                        description: 'Add your first appointment type to get started'
+                    }}
+                />
             </div>
 
             <AppointmentTypeModal

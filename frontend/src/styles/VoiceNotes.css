@@ -439,6 +439,11 @@
     cursor: pointer;
 }
 
+.voice-notes-page .ai-summary-action-btn:hover {
+    background: var(--primary-light);
+    color: var(--primary);
+}
+
 .voice-notes-page .ai-summary-action-btn.primary {
     border-color: var(--primary);
     color: var(--primary);

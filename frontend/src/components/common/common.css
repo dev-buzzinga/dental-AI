@@ -141,7 +141,7 @@
 /* Table head */
 .table-component .table-head {
     background: #F9FAFB;
-    border-bottom: 2px solid var(--border, #E5E7EB);
+    border-bottom: 1px solid var(--border, #E5E7EB);
 }
 
 .table-component .table-header-cell {

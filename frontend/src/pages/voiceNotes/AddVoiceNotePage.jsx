@@ -115,7 +115,7 @@ const AddVoiceNotePage = () => {
         };
 
         fetchDropdownData();
-    }, [user]);
+    }, []);
 
     const connectWebSocket = (newSessionId) => {
         return new Promise((resolve, reject) => {
