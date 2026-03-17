@@ -735,6 +735,24 @@ const AddVoiceNotePage = () => {
                     </button>
                     <h2 className="voice-notes-title">Add Voice Notes</h2>
                 </div>
+                <div className="voice-notes-header-actions">
+                    <button
+                        type="button"
+                        className="btn-cancel"
+                        onClick={handleClose}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        type="button"
+                        className="btn-save"
+                        onClick={handleSaveCompleteVoiceNote}
+                        disabled={isSavingNote || isUploadingAudio || isGeneratingSummary || !transcript || !audioBlob}
+                    >
+                        <i className="fas fa-check" />
+                        {isSavingNote ? 'Saving...' : 'Save Note'}
+                    </button>
+                </div>
             </div>
             <div className="voice-notes-content" style={{ paddingTop: 0 }}>
                 <div className="voice-notes-modal" onClick={(e) => e.stopPropagation()}>
@@ -877,7 +895,7 @@ const AddVoiceNotePage = () => {
                         </div>
                     </div>
 
-                    <div className="modal-footer">
+                    {/* <div className="modal-footer">
                         <button
                             type="button"
                             className="btn-cancel"
@@ -894,7 +912,7 @@ const AddVoiceNotePage = () => {
                             <i className="fas fa-check" />
                             {isSavingNote ? 'Saving...' : 'Save Note'}
                         </button>
-                    </div>
+                    </div> */}
                 </div>
 
                 <AddTemplateModal

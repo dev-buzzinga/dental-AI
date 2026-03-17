@@ -4,7 +4,7 @@ import * as aiScribeController from "../controllers/ai-scribe.controller.js";
 const router = express.Router();
 
 // Create new AI scribe record
-router.post("/", aiScribeController.createAiScribe);
+// router.post("/", aiScribeController.createAiScribe);
 
 // Generate AI summary preview (without voiceNoteId)
 router.post("/generate-summary-preview", aiScribeController.generateSummaryPreview);
@@ -28,6 +28,6 @@ router.delete("/:id", aiScribeController.deleteAiScribe);
 router.post("/:id/audio", aiScribeController.uploadAudio);
 
 // Generate AI summary
-router.post("/:id/summarize", aiScribeController.generateSummary);
+// router.post("/:id/summarize", aiScribeController.generateSummary);
 
 export default router;
