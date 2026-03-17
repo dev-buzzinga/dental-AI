@@ -25,6 +25,7 @@ import ConnectGoogleGmail from './pages/Settings/ConnectGoogleGmail';
 import ConfigureTwilioPage from './pages/Settings/ConfigureTwilioPage';
 import VoiceNotesPage from './pages/voiceNotes';
 import AddVoiceNotePage from './pages/voiceNotes/AddVoiceNotePage';
+import VoiceNoteDetailPage from './pages/voiceNotes/[id]';
 
 
 
@@ -57,6 +58,7 @@ const AppContent = () => {
                 <Route path="/email" element={<EmailPage />} />
                 <Route path="/calendar" element={<CalendarPage />} />
                 <Route path="/voice-notes" element={<VoiceNotesPage />} />
+                <Route path="/voice-notes/:id" element={<VoiceNoteDetailPage />} />
                 <Route path="/add-voice-notes" element={<AddVoiceNotePage />} />
                 <Route path="/patients/:id" element={<PatientDetail />} />
                 <Route path="/patients" element={<PatientsPage />} />
