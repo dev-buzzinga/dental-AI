@@ -203,7 +203,7 @@ const VoiceNotesPage = () => {
                                             <button
                                                 type="button"
                                                 className="btn-text"
-                                                onClick={() => handleEdit(note.id)}
+                                                onClick={() => navigate(`/voice-notes/${note.id}`)}
                                             >
                                                 <i className="fas fa-edit" />
                                             </button>

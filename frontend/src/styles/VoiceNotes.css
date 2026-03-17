@@ -596,6 +596,12 @@
     background: var(--background);
 }
 
+.voice-notes-page .voice-notes-modal-body {
+    padding: 24px 48px 32px;
+    overflow: auto;
+    flex: 1;
+}
+
 @media (max-width: 768px) {
     .voice-notes-page .voice-notes-header {
         padding: 16px 16px;
