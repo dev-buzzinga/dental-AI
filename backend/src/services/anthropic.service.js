@@ -620,3 +620,44 @@ Generate the summary now:`;
         return `Summary generation failed. Transcript excerpt: ${transcript.substring(0, 200)}...`;
     }
 };
+
+
+export const callAISummary = async (transcript = []) => {
+    if (!config.ANTHROPIC_API_KEY) {
+        console.warn("Anthropic API key is not configured.");
+        return null;
+    }
+
+    try {
+        // Transcript ko readable format mein convert karo
+        const transcriptText = transcript
+            .map((line) => `${line.speaker}: ${line.text}`)
+            .join('\n');
+
+        const prompt = `You are a medical receptionist assistant. Analyze this call transcript and provide a brief summary.
+
+            Transcript:
+            ${transcriptText}
+            
+            Write a 2-3 line plain text summary of what happened in this call. 
+            Focus on: who called, what was discussed, and what was decided.
+            No bullet points, no JSON, no headings. Just a short paragraph.`;
+
+        const response = await anthropic.messages.create({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 500,
+            messages: [{ role: "user", content: prompt }],
+        });
+        console.log("response==>", response?.content?.[0]?.text);
+        const raw = response?.content?.[0]?.text || "";
+        if (!raw) return null;
+
+        // JSON parse karo
+        const clean = raw.replace(/```json|```/g, "").trim();
+        return clean;
+
+    } catch (error) {
+        console.error("callAISummary error:", error.message);
+        return null;
+    }
+};

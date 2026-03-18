@@ -11,6 +11,7 @@ const ConfigureTwilioPage = () => {
     const [appSid, setAppSid] = useState('');
     const [apiKeySid, setApiKeySid] = useState('');
     const [apiKeySecret, setApiKeySecret] = useState('');
+    const [intelligenceServiceSid, setIntelligenceServiceSid] = useState('');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [initialValues, setInitialValues] = useState(null);
@@ -24,7 +25,7 @@ const ConfigureTwilioPage = () => {
                 setLoading(true);
                 const { data, error } = await supabase
                     .from('twilio_config')
-                    .select('account_sid, auth_token, app_sid, api_key_sid, api_key_secret')
+                    .select('account_sid, auth_token, app_sid, api_key_sid, api_key_secret, intelligence_service_sid')
                     .eq('user_id', user.id)
                     .maybeSingle();
 
@@ -39,15 +40,24 @@ const ConfigureTwilioPage = () => {
                         appSid: data.app_sid || '',
                         apiKeySid: data.api_key_sid || '',
                         apiKeySecret: data.api_key_secret || '',
+                        intelligenceServiceSid: data.intelligence_service_sid || '',
                     };
                     setAccountSid(vals.accountSid);
                     setAuthToken(vals.authToken);
                     setAppSid(vals.appSid);
                     setApiKeySid(vals.apiKeySid);
                     setApiKeySecret(vals.apiKeySecret);
+                    setIntelligenceServiceSid(vals.intelligenceServiceSid);
                     setInitialValues(vals);
                 } else {
-                    setInitialValues({ accountSid: '', authToken: '', appSid: '', apiKeySid: '', apiKeySecret: '' });
+                    setInitialValues({
+                        accountSid: '',
+                        authToken: '',
+                        appSid: '',
+                        apiKeySid: '',
+                        apiKeySecret: '',
+                        intelligenceServiceSid: '',
+                    });
                 }
             } catch (err) {
                 showToast('Failed to load Twilio config', 'error');
@@ -64,7 +74,8 @@ const ConfigureTwilioPage = () => {
         authToken !== initialValues.authToken ||
         appSid !== initialValues.appSid ||
         apiKeySid !== initialValues.apiKeySid ||
-        apiKeySecret !== initialValues.apiKeySecret
+        apiKeySecret !== initialValues.apiKeySecret ||
+        intelligenceServiceSid !== initialValues.intelligenceServiceSid
         : false;
 
     const handleSave = async () => {
@@ -86,6 +97,7 @@ const ConfigureTwilioPage = () => {
                         app_sid: appSid || '',
                         api_key_sid: apiKeySid || '',
                         api_key_secret: apiKeySecret || '',
+                        intelligence_service_sid: intelligenceServiceSid || '',
                     })
                     .eq('user_id', user.id);
 
@@ -102,6 +114,7 @@ const ConfigureTwilioPage = () => {
                         app_sid: appSid || '',
                         api_key_sid: apiKeySid || '',
                         api_key_secret: apiKeySecret || '',
+                        intelligence_service_sid: intelligenceServiceSid || '',
                         user_id: user.id,
                     });
 
@@ -110,7 +123,7 @@ const ConfigureTwilioPage = () => {
                     return;
                 }
             }
-            setInitialValues({ accountSid, authToken, appSid, apiKeySid, apiKeySecret });
+            setInitialValues({ accountSid, authToken, appSid, apiKeySid, apiKeySecret, intelligenceServiceSid });
             showToast('Configuration saved successfully', 'success');
         } catch (err) {
             showToast('Failed to save configuration', 'error');
@@ -200,6 +213,19 @@ const ConfigureTwilioPage = () => {
                                 value={apiKeySecret}
                                 onChange={(e) => setApiKeySecret(e.target.value)}
                                 placeholder="API Key Secret"
+                            />
+                        </div>
+                        <div className="twilio-form-group">
+                            <label className="twilio-label">Intelligence Service SID  (Call Transcription and Recording)</label>
+                            <input
+                                className="twilio-input"
+                                type="text"
+                                name="twilio_intelligence_service_sid"
+                                autoComplete="off"
+                                data-form-type="other"
+                                value={intelligenceServiceSid}
+                                onChange={(e) => setIntelligenceServiceSid(e.target.value)}
+                                placeholder="Intelligence Service SID"
                             />
                         </div>
                         <div className="twilio-actions">

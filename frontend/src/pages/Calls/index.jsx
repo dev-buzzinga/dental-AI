@@ -42,6 +42,7 @@ const formatCallDate = (dateStr) => {
 
 const CallsPage = () => {
     const [calls, setCalls] = useState([]);
+    const [callsLoading, setCallsLoading] = useState(true);
     const [activeCallId, setActiveCallId] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [callDetail, setCallDetail] = useState(null);
@@ -53,6 +54,7 @@ const CallsPage = () => {
     useEffect(() => {
         const fetchCalls = async () => {
             try {
+                setCallsLoading(true);
                 const res = await outgoing.getCallLogs();
                 const data = res?.data;
                 if (data?.success && Array.isArray(data?.data)) {
@@ -63,6 +65,8 @@ const CallsPage = () => {
                 }
             } catch (err) {
                 console.error('Failed to load calls:', err);
+            } finally {
+                setCallsLoading(false);
             }
         };
 
@@ -174,7 +178,7 @@ const CallsPage = () => {
     // Toggle play/pause
     const handlePlayPause = () => {
         if (!audioRef.current) return;
-        
+
         if (isPlaying) {
             audioRef.current.pause();
             setIsPlaying(false);
@@ -193,29 +197,53 @@ const CallsPage = () => {
                     <SearchInput placeholder="Search calls..." value={searchTerm} onChange={setSearchTerm} />
                 </div>
                 <div className="calls-list custom-scrollbar">
-                    {filteredCalls.map((call) => (
-                        <div
-                            key={call.id}
-                            className={`call-row ${activeCallId === call.id ? 'active' : ''}`}
-                            onClick={() => setActiveCallId(call.id)}
-                        >
-                            <div className="call-avatar">{getInitials(call.patients_name)}</div>
-                            <div className="call-meta">
-                                <div className="call-name">{call.patients_name || 'Unknown'}</div>
-                                <div className="call-number">{call.to_number || call.from_number || '—'}</div>
+                    {callsLoading ? (
+                        <div className="calls-loader">
+                            <i className="fas fa-spinner fa-spin" />
+                            <span>Loading calls…</span>
+                        </div>
+                    ) : filteredCalls.length === 0 ? (
+                        <div className="calls-list-empty">
+                            <div className="calls-list-empty-icon">
+                                <i className="fas fa-phone-slash" />
                             </div>
-                            <div className="call-badge">
-                                <i className="fas fa-circle" />
-                                {/* {getDisplayDuration(call)} */}
-                                {formatCallDate(call.created_at || call.started_at)}
+                            <div className="calls-list-empty-title">
+                                {searchTerm ? 'No matching calls' : 'No calls yet'}
+                            </div>
+                            <div className="calls-list-empty-subtitle">
+                                {searchTerm ? 'Try a different search.' : 'When calls are made, they’ll show up here.'}
                             </div>
                         </div>
-                    ))}
+                    ) : (
+                        filteredCalls.map((call) => (
+                            <div
+                                key={call.id}
+                                className={`call-row ${activeCallId === call.id ? 'active' : ''}`}
+                                onClick={() => setActiveCallId(call.id)}
+                            >
+                                <div className="call-avatar">{getInitials(call.patients_name)}</div>
+                                <div className="call-meta">
+                                    <div className="call-name">{call.patients_name || 'Unknown'}</div>
+                                    <div className="call-number">{call.to_number || call.from_number || '—'}</div>
+                                </div>
+                                <div className="call-badge">
+                                    {formatCallDate(call.created_at || call.started_at)}
+                                </div>
+                            </div>
+                        ))
+                    )}
                 </div>
             </div>
 
             {/* Right Panel */}
-            {activeCall ? (
+            {callsLoading ? (
+                <div className="call-detail-empty">
+                    <div className="calls-loader">
+                        <i className="fas fa-spinner fa-spin" />
+                        <span>Loading…</span>
+                    </div>
+                </div>
+            ) : activeCall ? (
                 <div className="call-detail custom-scrollbar">
                     {/* Header */}
                     <div className="call-detail-header">
@@ -245,10 +273,10 @@ const CallsPage = () => {
                                 {panelCall?.direction === 'outbound-dial' ? 'Outbound' : panelCall?.direction || 'Call'}
                             </span>
                         </div>
-                        <div className="call-status-item">
+                        {/* <div className="call-status-item">
                             <i className="far fa-clock" style={{ color: 'var(--text-secondary)' }} />
-                            <span>{getDisplayDuration(panelCall)}</span>
-                        </div>
+                            <span>{(panelCall.duration)}</span>
+                        </div> */}
                         <div className="call-status-item">
                             <i className="far fa-calendar" style={{ color: 'var(--text-secondary)' }} />
                             <span>{formatCallDate(panelCall?.date || panelCall?.created_at || panelCall?.started_at)}</span>
@@ -259,8 +287,8 @@ const CallsPage = () => {
                     <div className="call-waveform-card">
                         <div className="call-waveform-title">Call Recording</div>
                         <div className="call-waveform-container">
-                            <div 
-                                className="call-waveform-play" 
+                            <div
+                                className="call-waveform-play"
                                 onClick={handlePlayPause}
                                 style={{ cursor: panelCall?.recording?.stream_url ? 'pointer' : 'default' }}
                             >
@@ -271,15 +299,14 @@ const CallsPage = () => {
                                     <div key={i} className="waveform-bar-el" style={{ height: h, background: i < 30 ? 'var(--primary)' : '#E5E7EB' }} />
                                 ))}
                             </div>
-                            <span className="call-waveform-time">0:00 / {getDisplayDuration(panelCall)}</span>
                         </div>
                         {detailLoading ? (
                             <div style={{ marginTop: 10, color: 'var(--text-secondary)', fontSize: 13 }}>Loading recording…</div>
                         ) : panelCall?.recording?.stream_url ? (
-                            <audio 
+                            <audio
                                 ref={audioRef}
-                                style={{ width: '100%', marginTop: 10 }} 
-                                controls 
+                                style={{ width: '100%', marginTop: 10 }}
+                                controls
                                 src={audioUrl || undefined}
                                 onPlay={() => setIsPlaying(true)}
                                 onPause={() => setIsPlaying(false)}
@@ -296,13 +323,7 @@ const CallsPage = () => {
                     <div className="call-summary-card">
                         <div className="call-summary-title"><i className="fas fa-robot" /> AI Call Summary</div>
                         <div className="call-summary-text">
-                            <p>Patient <strong>{activeCall.patients_name || 'Unknown'}</strong> called to reschedule their upcoming dental cleaning. Key points discussed:</p>
-                            <ul>
-                                <li>Original appointment was Feb 20 at 2:00 PM</li>
-                                <li>Rescheduled to <span className="highlight-blue">Feb 24 at 10:00 AM</span></li>
-                                <li>Patient asked about teeth whitening options</li>
-                                <li>Front desk confirmed the change and sent a new reminder</li>
-                            </ul>
+                            {panelCall?.aiSummary || 'No summary available'}
                         </div>
                     </div>
 
@@ -335,8 +356,9 @@ const CallsPage = () => {
                 </div>
             ) : (
                 <div className="call-detail-empty">Select a call to view details</div>
-            )}
-        </div>
+            )
+            }
+        </div >
     );
 };
 

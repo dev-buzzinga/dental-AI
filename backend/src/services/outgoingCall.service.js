@@ -4,6 +4,7 @@ import { config } from "../config/env.js";
 import fs from "fs";
 import path from "path";
 import { Readable } from "stream";
+import { callAISummary } from "./anthropic.service.js";
 
 const callLogsCsvPath = path.join(process.cwd(), "call_logs.csv");
 const CALL_LOGS_HEADER = [
@@ -271,7 +272,6 @@ export const outgoingCall = async (req, res) => {
     }
 };
 
-// Upar file mein add karo - temporary store
 const callStore = new Map();
 // { parentCallSid: { to, from, userId, callerId, childCallSid, initiatedAt } }
 
@@ -285,6 +285,13 @@ export const voiceResponseService = async (req, res) => {
             const user_id = From?.replace('client:', '');
             if (!user_id) throw new Error("User not found");
 
+            const { data: twilioConfig } = await supabase
+                .from('twilio_config')
+                .select('intelligence_service_sid')
+                .eq('user_id', user_id)
+                .maybeSingle();
+
+
             const { data, error } = await supabase
                 .from('practice_details')
                 .select('*')
@@ -295,26 +302,25 @@ export const voiceResponseService = async (req, res) => {
 
             const callerId = data.contact_information.phone;
 
-            // ✅ Parent CallSid se save karo
             callStore.set(CallSid, {
                 to: To,
                 from: From,
                 userId: user_id,
                 callerId: callerId,
-                childCallSid: null,         // baad mein outbound-dial se milega
+                childCallSid: null,
                 initiatedAt: new Date().toISOString()
             });
 
             // console.log("📞 callStore saved ==>", callStore.get(CallSid));
             twiml.start().transcription({
-                intelligenceService: 'GA7f3362fbd0239aff1fb18c2b2c097a69',  // Console se mila SID
+                intelligenceService: twilioConfig?.intelligence_service_sid || '',
                 statusCallbackUrl: `${config.BASE_URL}/api/outgoing-call/transcription-status`
             });
             // const dial = twiml.dial({ callerId, answerOnBridge: true });
             const dial = twiml.dial({
                 callerId,
                 answerOnBridge: true,
-                record: 'record-from-answer-dual',        // dono speakers alag track mein
+                record: 'record-from-answer-dual',
                 recordingStatusCallback: `${config.BASE_URL}/api/outgoing-call/recording-status`,
                 recordingStatusCallbackEvent: 'completed'  // jab recording ready ho tab callback
             });
@@ -354,7 +360,7 @@ export const callStatusCallbackService = async (req, res) => {
             To,
             Timestamp,
             CallDuration,
-            ParentCallSid  // ✅ Twilio ye automatically bhejta hai
+            ParentCallSid 
         } = req.body;
 
         // ─── find right recode ─────────────────────────────────
@@ -527,7 +533,7 @@ export const recordingCallbackService = async (req, res) => {
         return res.status(500).send("Error");
     }
 };
-// callback for transcription orignal
+// callback for transcription call last time
 export const transcriptionCallbackService = async (req, res) => {
     // console.log("transcription callback ==>", req.query);
 
@@ -714,7 +720,7 @@ export const getCallDetailService = async (req, res) => {
         }
 
         const date = get("timestamp") || get("created_at") || get("started_at") || "";
-
+        const aiSummary = await callAISummary(transcript);
         return res.status(200).json({
             success: true,
             message: "Call detail fetched successfully",
@@ -728,6 +734,7 @@ export const getCallDetailService = async (req, res) => {
                 direction: get("direction"),
                 date,
                 duration: get("duration"),
+                aiSummary,
                 recording,   // { recording_sid, stream_url }
                 transcript,  // [{ speaker, text, timestamp }]
             }
@@ -741,7 +748,7 @@ export const getCallDetailService = async (req, res) => {
 
 export const getRecordingService = async (req, res) => {
     try {
-        console.log("Call to getRecordingService");
+        // console.log("Call to getRecordingService");
         const { recording_sid } = req.params;
         const user_id = req.user?.id;
         const client = await getTwilioClient(user_id);
@@ -756,7 +763,7 @@ export const getRecordingService = async (req, res) => {
             headers: { 'Authorization': authHeader }
         });
 
-        console.log("Twilio response status ==>", response.status);
+        // console.log("Twilio response status ==>", response.status);
 
         if (!response.ok) throw new Error(`Recording fetch failed: ${response.status}`);
 
