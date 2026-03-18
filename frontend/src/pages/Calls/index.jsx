@@ -294,9 +294,18 @@ const CallsPage = () => {
                             >
                                 <i className={`fas fa-${isPlaying ? 'pause' : 'play'}`} style={{ fontSize: 14 }} />
                             </div>
-                            <div className="call-waveform-bars">
+                            <div
+                                className={`call-waveform-bars ${isPlaying && panelCall?.recording?.stream_url ? 'is-playing' : ''}`}
+                            >
                                 {waveformHeights.map((h, i) => (
-                                    <div key={i} className="waveform-bar-el" style={{ height: h, background: i < 30 ? 'var(--primary)' : '#E5E7EB' }} />
+                                    <div
+                                        key={i}
+                                        className="waveform-bar-el"
+                                        style={{
+                                            ['--bar-h']: `${h}px`,
+                                            background: 'var(--primary)'
+                                        }}
+                                    />
                                 ))}
                             </div>
                         </div>

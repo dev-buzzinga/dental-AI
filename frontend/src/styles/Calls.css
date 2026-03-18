@@ -311,7 +311,48 @@
 .waveform-bar-el {
     width: 4px;
     border-radius: 2px;
-    transition: height 0.3s;
+    height: var(--bar-h, 16px);
+    transform-origin: bottom;
+    will-change: transform;
+}
+
+.call-waveform-bars.is-playing .waveform-bar-el {
+    animation: waveformPulse 1.15s ease-in-out infinite;
+}
+
+.call-waveform-bars.is-playing .waveform-bar-el:nth-child(3n) {
+    animation-duration: 0.95s;
+}
+
+.call-waveform-bars.is-playing .waveform-bar-el:nth-child(4n) {
+    animation-duration: 1.35s;
+}
+
+.call-waveform-bars.is-playing .waveform-bar-el:nth-child(5n) {
+    animation-duration: 1.55s;
+}
+
+.call-waveform-bars.is-playing .waveform-bar-el:nth-child(7n) {
+    animation-delay: 0.12s;
+}
+
+.call-waveform-bars.is-playing .waveform-bar-el:nth-child(9n) {
+    animation-delay: 0.22s;
+}
+
+@keyframes waveformPulse {
+    0% {
+        transform: scaleY(0.55);
+    }
+    35% {
+        transform: scaleY(1);
+    }
+    70% {
+        transform: scaleY(0.35);
+    }
+    100% {
+        transform: scaleY(0.55);
+    }
 }
 
 .call-waveform-time {
