@@ -761,8 +761,11 @@ const AddVoiceNotePage = () => {
                         onClick={handleSaveCompleteVoiceNote}
                         disabled={isSavingNote || isUploadingAudio || isGeneratingSummary || !transcript || !audioBlob}
                     >
-                        <i className="fas fa-check" />
-                        {isSavingNote ? 'Saving...' : 'Save Note'}
+                        {isSavingNote ? (
+                            <><i className="fas fa-spinner fa-spin" /> Saving...</>
+                        ) : (
+                            <><i className="fas fa-check" /> Save Note</>
+                        )}
                     </button>
                 </div>
             </div>

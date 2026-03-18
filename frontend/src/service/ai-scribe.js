@@ -1,9 +1,9 @@
 import axios, { authAxiosInstance } from "../config/axiosConfig";
 
-// Create new AI scribe record
-// const createAiScribe = async (payload) => {
-//     return await authAxiosInstance.post("/ai-scribe", payload);
-// };
+// Save complete voice note (new - called from Save Note button)
+const saveCompleteVoiceNote = async (payload) => {
+    return await authAxiosInstance.post('/ai-scribe/save-complete', payload);
+};
 
 // Get AI scribe by ID
 const getAiScribeById = async (id) => {
@@ -34,20 +34,12 @@ const uploadAiScribeAudio = async (id, formData) => {
     });
 };
 
-// Generate AI summary
-// const generateAiScribeSummary = async (id, payload) => {
-//     return await authAxiosInstance.post(`/ai-scribe/${id}/summarize`, payload);
-// };
-
 // Generate AI summary preview (without voiceNoteId)
 const generateAiScribeSummaryPreview = async (payload) => {
     return await authAxiosInstance.post('/ai-scribe/generate-summary-preview', payload);
 };
 
-// Save complete voice note (new - called from Save Note button)
-const saveCompleteVoiceNote = async (payload) => {
-    return await authAxiosInstance.post('/ai-scribe/save-complete', payload);
-};
+
 
 export default {
     // createAiScribe,

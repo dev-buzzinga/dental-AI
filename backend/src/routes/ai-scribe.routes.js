@@ -1,5 +1,6 @@
 import express from "express";
 import * as aiScribeController from "../controllers/ai-scribe.controller.js";
+import { authenticateUser } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
@@ -13,16 +14,16 @@ router.post("/generate-summary-preview", aiScribeController.generateSummaryPrevi
 router.post("/save-complete", aiScribeController.saveCompleteVoiceNote);
 
 // Get AI scribe by ID
-router.get("/:id", aiScribeController.getAiScribeById);
+router.get("/:id", authenticateUser, aiScribeController.getAiScribeById);
 
 // Get all AI scribes for a user
-router.get("/user/:userId", aiScribeController.getAiScribesByUser);
+router.get("/user/:userId", authenticateUser, aiScribeController.getAiScribesByUser);
 
 // Update AI scribe
 router.put("/:id", aiScribeController.updateAiScribe);
 
 // Delete AI scribe
-router.delete("/:id", aiScribeController.deleteAiScribe);
+router.delete("/:id", authenticateUser, aiScribeController.deleteAiScribe);
 
 // Upload audio file
 router.post("/:id/audio", aiScribeController.uploadAudio);
