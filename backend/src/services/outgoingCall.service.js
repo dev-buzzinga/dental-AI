@@ -18,7 +18,10 @@ const CALL_LOGS_HEADER = [
     "created_at",
     "started_at",
     "ended_at",
-    "duration"
+    "duration",
+    "recording_sid",
+    "recording_url",
+    "transcription_sid"
 ];
 
 const ensureCallLogsCsvHeader = () => {
@@ -37,6 +40,43 @@ const escapeCsvValue = (value) => {
     return str;
 };
 
+const parseCsvLine = (line) => {
+    const out = [];
+    let cur = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+
+        if (inQuotes) {
+            if (ch === '"') {
+                const next = line[i + 1];
+                if (next === '"') {
+                    cur += '"';
+                    i++; // consume escaped quote
+                } else {
+                    inQuotes = false;
+                }
+            } else {
+                cur += ch;
+            }
+        } else {
+            if (ch === ",") {
+                out.push(cur);
+                cur = "";
+            } else if (ch === '"') {
+                inQuotes = true;
+            } else {
+                cur += ch;
+            }
+        }
+    }
+    out.push(cur);
+    return out;
+};
+
+const toCsvLine = (cols) => cols.map(escapeCsvValue).join(",");
+
 const serializeCsvRow = (row) => {
     return [
         escapeCsvValue(row.user_id),
@@ -51,30 +91,62 @@ const serializeCsvRow = (row) => {
         escapeCsvValue(row.created_at),
         escapeCsvValue(row.started_at),
         escapeCsvValue(row.ended_at),
-        escapeCsvValue(row.duration)
+        escapeCsvValue(row.duration),
+        escapeCsvValue(row.recording_sid),
+        escapeCsvValue(row.recording_url),
+        escapeCsvValue(row.transcription_sid)
     ].join(",");
 };
 
-const loadCallLogsCsv = () => {
+const loadCallLogsCsvWithHeader = () => {
     ensureCallLogsCsvHeader();
     const content = fs.readFileSync(callLogsCsvPath, "utf8");
     const lines = content.split("\n").filter(Boolean);
 
-    // first line is header, rest are data rows
-    const rows = lines.slice(1).map(line => line.split(","));
-    return rows;
+    const header = lines.length ? parseCsvLine(lines[0]) : [...CALL_LOGS_HEADER];
+    const rows = lines.slice(1).map((line) => parseCsvLine(line));
+    return { header, rows };
 };
 
-const saveCallLogsCsv = (rows) => {
-    const headerLine = CALL_LOGS_HEADER.join(",");
-    const bodyLines = rows.map(cols => cols.join(","));
+const saveCallLogsCsvWithHeader = (header, rows) => {
+    const headerLine = toCsvLine(header);
+    const bodyLines = rows.map((cols) => toCsvLine(cols));
     const all = [headerLine, ...bodyLines].join("\n") + "\n";
     fs.writeFileSync(callLogsCsvPath, all, "utf8");
 };
 
+const ensureColumns = (header, rows, requiredColumns) => {
+    let changed = false;
+
+    for (const colName of requiredColumns) {
+        if (!header.includes(colName)) {
+            header.push(colName);
+            const idx = header.length - 1;
+            for (let r = 0; r < rows.length; r++) {
+                rows[r][idx] = rows[r][idx] ?? "";
+            }
+            changed = true;
+        }
+    }
+
+    // Normalize row lengths to header length
+    for (let r = 0; r < rows.length; r++) {
+        if (rows[r].length < header.length) {
+            rows[r] = [...rows[r], ...Array(header.length - rows[r].length).fill("")];
+            changed = true;
+        } else if (rows[r].length > header.length) {
+            rows[r] = rows[r].slice(0, header.length);
+            changed = true;
+        }
+    }
+
+    return changed;
+};
+
 const upsertCallLogCsv = (row) => {
     // row is an object in same shape as serializeCsvRow uses
-    const rows = loadCallLogsCsv();
+    const { header, rows } = loadCallLogsCsvWithHeader();
+    ensureColumns(header, rows, CALL_LOGS_HEADER);
 
     const childCallSid = row.child_call_sid || "";
     let updated = false;
@@ -108,11 +180,10 @@ const upsertCallLogCsv = (row) => {
     if (!updated) {
         // new record (like ringing insert)
         const serialized = serializeCsvRow(row);
-        const cols = serialized.split(",");
-        rows.push(cols);
+        rows.push(parseCsvLine(serialized));
     }
 
-    saveCallLogsCsv(rows);
+    saveCallLogsCsvWithHeader(header, rows);
 };
 
 const getPatientNameFromNumber = async (userId, toNumber) => {
@@ -230,9 +301,20 @@ export const voiceResponseService = async (req, res) => {
                 initiatedAt: new Date().toISOString()
             });
 
-            console.log("📞 callStore saved ==>", callStore.get(CallSid));
+            // console.log("📞 callStore saved ==>", callStore.get(CallSid));
+            twiml.start().transcription({
+                intelligenceService: 'GA7f3362fbd0239aff1fb18c2b2c097a69',  // Console se mila SID
+                statusCallbackUrl: `${config.BASE_URL}/api/outgoing-call/transcription-status`
+            });
+            // const dial = twiml.dial({ callerId, answerOnBridge: true });
+            const dial = twiml.dial({
+                callerId,
+                answerOnBridge: true,
+                record: 'record-from-answer-dual',        // dono speakers alag track mein
+                recordingStatusCallback: `${config.BASE_URL}/api/outgoing-call/recording-status`,
+                recordingStatusCallbackEvent: 'completed'  // jab recording ready ho tab callback
+            });
 
-            const dial = twiml.dial({ callerId, answerOnBridge: true });
             dial.number({
                 statusCallbackEvent: 'initiated ringing answered completed',
                 statusCallback: `${config.BASE_URL}/api/outgoing-call/status-callback`,
@@ -244,7 +326,7 @@ export const voiceResponseService = async (req, res) => {
         }
 
         const twimlString = twiml.toString();
-        console.log("TwiML being sent ==>", twimlString);
+        // console.log("TwiML being sent ==>", twimlString);
         res.type('text/xml');
         return res.send(twimlString);
 
@@ -295,16 +377,16 @@ export const callStatusCallbackService = async (req, res) => {
         const toNumber = To || savedCall?.to;
         const fromNumber = From || savedCall?.from;
 
-        console.log("Twilio call status callback =>", {
-            CallSid,
-            ParentCallSid,
-            CallStatus,
-            Direction,
-            From: fromNumber,
-            To: toNumber,
-            UserId: userId,
-            Timestamp,
-        });
+        // console.log("Twilio call status callback =>", {
+        //     CallSid,
+        //     ParentCallSid,
+        //     CallStatus,
+        //     Direction,
+        //     From: fromNumber,
+        //     To: toNumber,
+        //     UserId: userId,
+        //     Timestamp,
+        // });
 
         // ─── CSV store + Timer-ish info ─────────────────────────
         if (Direction === 'outbound-dial') {
@@ -403,6 +485,102 @@ export const callStatusCallbackService = async (req, res) => {
         return res.status(500).send("Error");
     }
 };
+
+// /api/recording-status
+export const recordingCallbackService = async (req, res) => {
+    // console.log("recording callback service ==>", req.body);
+    try {
+        const { CallSid, RecordingSid, RecordingUrl, RecordingStatus, } = req.body;
+        if (RecordingStatus === 'completed') {
+            // Update call_logs.csv where call_sid === CallSid
+            if (CallSid) {
+                const { header, rows } = loadCallLogsCsvWithHeader();
+                ensureColumns(header, rows, ["recording_sid", "recording_url"]);
+
+                const callSidIdx = header.indexOf("call_sid");
+                const recSidIdx = header.indexOf("recording_sid");
+                const recUrlIdx = header.indexOf("recording_url");
+
+                if (callSidIdx !== -1) {
+                    for (let i = 0; i < rows.length; i++) {
+                        if (rows[i]?.[callSidIdx] === CallSid) {
+                            rows[i][recSidIdx] = RecordingSid ?? rows[i][recSidIdx] ?? "";
+                            rows[i][recUrlIdx] = RecordingUrl ?? rows[i][recUrlIdx] ?? "";
+                            break;
+                        }
+                    }
+                    saveCallLogsCsvWithHeader(header, rows);
+                }
+            }
+
+            // console.log("RecordingSid ==>", RecordingSid);
+            // console.log("RecordingUrl ==>", RecordingUrl);
+            // console.log("CallSid ==>", CallSid);
+        }
+        return res.status(204).send();
+    } catch (error) {
+        console.error("Error handling recording callback:", error);
+        return res.status(500).send("Error");
+    }
+};
+// callback for transcription orignal
+export const transcriptionCallbackService = async (req, res) => {
+    // console.log("transcription callback ==>", req.query);
+
+    try {
+        const { transcript_sid, event_type } = req.query;
+
+        if (event_type === 'voice_intelligence_transcript_available' && transcript_sid) {
+
+            // ✅ Pehle client await karo
+            // const client = await getTwilioClient("a6d729d6-efb6-4121-9c19-83ade5236b9e");
+
+            // const transcript = await client.intelligence.v2
+            //     .transcripts(transcript_sid)
+            //     .fetch();
+            // transcript.channel.participants.map(participant => {
+            //     console.log("participant ==>", participant);
+            // });
+
+            // const sentences = await client.intelligence.v2
+            //     .transcripts(transcript_sid)
+            //     .sentences.list();
+            // console.log("sentences ==>", sentences);
+        }
+
+        return res.status(204).send();
+    } catch (error) {
+        console.error("Error ==>", error);
+        return res.status(500).send("Error");
+    }
+};
+// callback for transcription
+export const transcriptionCallbackServicePost = async (req, res) => {
+    try {
+        const { TranscriptionSid, CallSid } = req.body;
+        if (TranscriptionSid && CallSid) {
+            const { header, rows } = loadCallLogsCsvWithHeader();
+            ensureColumns(header, rows, ["transcription_sid"]);
+
+            const callSidIdx = header.indexOf("call_sid");
+            const recSidIdx = header.indexOf("transcription_sid");
+            if (callSidIdx !== -1 && recSidIdx !== -1) {
+                for (let i = 0; i < rows.length; i++) {
+                    if (rows[i]?.[callSidIdx] === CallSid) {
+                        rows[i][recSidIdx] = TranscriptionSid ?? rows[i][recSidIdx] ?? "";
+                        break;
+                    }
+                }
+                saveCallLogsCsvWithHeader(header, rows);
+            }
+        }
+        return res.status(204).send();
+    } catch (error) {
+        console.error("Error ==>", error);
+        return res.status(500).send("Error");
+    }
+};
+
 // list of calls for a user
 export const getCallLogsService = async (req, res) => {
     try {
@@ -428,9 +606,9 @@ export const getCallLogsService = async (req, res) => {
             return res.json({ success: true, data: [] });
         }
 
-        const header = lines[0].split(",");
+        const header = parseCsvLine(lines[0]);
         const rows = lines.slice(1).map((line, index) => {
-            const cols = line.split(",");
+            const cols = parseCsvLine(line);
             const row = {};
             header.forEach((key, i) => {
                 row[key] = cols[i] ?? "";
@@ -450,7 +628,10 @@ export const getCallLogsService = async (req, res) => {
                 created_at: row.created_at || "",
                 started_at: row.started_at || "",
                 ended_at: row.ended_at || "",
-                duration: row.duration || ""
+                duration: row.duration || "",
+                recording_sid: row.recording_sid || "",
+                recording_url: row.recording_url || "",
+                transcription_sid: row.transcription_sid || ""
             };
         });
 
