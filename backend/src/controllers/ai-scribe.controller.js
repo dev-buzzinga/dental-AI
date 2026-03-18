@@ -1,38 +1,38 @@
 import * as aiScribeService from "../services/ai-scribe.service.js";
 
-export const createAiScribe = async (req, res) => {
-    try {
-        const { user_id, patient_id, doctor_id, template_id, description, date_created } = req.body;
+// export const createAiScribe = async (req, res) => {
+//     try {
+//         const { user_id, patient_id, doctor_id, template_id, description, date_created } = req.body;
 
-        if (!user_id || !patient_id || !doctor_id) {
-            return res.status(400).json({
-                success: false,
-                message: "user_id, patient_id, and doctor_id are required",
-            });
-        }
+//         if (!user_id || !patient_id || !doctor_id) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: "user_id, patient_id, and doctor_id are required",
+//             });
+//         }
 
-        const result = await aiScribeService.createAiScribe({
-            user_id,
-            patient_id,
-            doctor_id,
-            template_id,
-            description,
-            date_created,
-        });
+//         const result = await aiScribeService.createAiScribe({
+//             user_id,
+//             patient_id,
+//             doctor_id,
+//             template_id,
+//             description,
+//             date_created,
+//         });
 
-        return res.status(201).json({
-            success: true,
-            data: result,
-            message: "AI Scribe created successfully",
-        });
-    } catch (error) {
-        console.error("Create AI Scribe error:", error);
-        return res.status(500).json({
-            success: false,
-            message: error.message || "Failed to create AI Scribe",
-        });
-    }
-};
+//         return res.status(201).json({
+//             success: true,
+//             data: result,
+//             message: "AI Scribe created successfully",
+//         });
+//     } catch (error) {
+//         console.error("Create AI Scribe error:", error);
+//         return res.status(500).json({
+//             success: false,
+//             message: error.message || "Failed to create AI Scribe",
+//         });
+//     }
+// };
 
 export const getAiScribeById = async (req, res) => {
     try {
