@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { SearchInput } from '../../components/common/SearchInput';
 import outgoing from '../../service/outgoing';
 import '../../styles/Calls.css';
@@ -44,6 +44,11 @@ const CallsPage = () => {
     const [calls, setCalls] = useState([]);
     const [activeCallId, setActiveCallId] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [callDetail, setCallDetail] = useState(null);
+    const [detailLoading, setDetailLoading] = useState(false);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [audioUrl, setAudioUrl] = useState(null);
+    const audioRef = useRef(null);
 
     useEffect(() => {
         const fetchCalls = async () => {
@@ -74,6 +79,110 @@ const CallsPage = () => {
         }), [calls, searchTerm]);
 
     const activeCall = filteredCalls.find((c) => c.id === activeCallId) || filteredCalls[0];
+
+    // Reset audio URL when call changes
+    useEffect(() => {
+        setAudioUrl(null);
+    }, [activeCall?.call_sid]);
+
+    useEffect(() => {
+        const fetchDetail = async () => {
+            if (!activeCall?.call_sid) {
+                setCallDetail(null);
+                return;
+            }
+            setDetailLoading(true);
+            try {
+                const res = await outgoing.getCallDetail(activeCall.call_sid);
+                const data = res?.data;
+                if (data?.success && data?.data) {
+                    setCallDetail(data.data);
+                } else {
+                    setCallDetail(null);
+                }
+            } catch (err) {
+                console.error('Failed to load call detail:', err);
+                setCallDetail(null);
+            } finally {
+                setDetailLoading(false);
+            }
+        };
+        fetchDetail();
+    }, [activeCall?.call_sid]);
+
+    const panelCall = callDetail || activeCall;
+
+    // Fetch recording as blob via axios so auth headers are included.
+    useEffect(() => {
+        let cancelled = false;
+        let nextObjectUrl = null;
+
+        const run = async () => {
+            const streamUrl = callDetail?.recording?.stream_url;
+            if (!streamUrl) return;
+
+            try {
+                const res = await outgoing.getRecording(streamUrl);
+                const blob = new Blob([res.data], { type: "audio/mpeg" });
+                nextObjectUrl = URL.createObjectURL(blob);
+                if (!cancelled) {
+                    setAudioUrl(nextObjectUrl);
+                } else {
+                    URL.revokeObjectURL(nextObjectUrl);
+                }
+            } catch (err) {
+                console.error("Failed to load recording audio:", err);
+                if (!cancelled) setAudioUrl(null);
+            }
+        };
+
+        run();
+
+        return () => {
+            cancelled = true;
+            if (nextObjectUrl) {
+                URL.revokeObjectURL(nextObjectUrl);
+            }
+        };
+    }, [callDetail?.recording?.stream_url]);
+
+    // Revoke previous blob URL when audioUrl changes/unmounts (avoid leaks)
+    useEffect(() => {
+        return () => {
+            if (audioUrl) URL.revokeObjectURL(audioUrl);
+        };
+    }, [audioUrl]);
+
+    const formatTranscriptTime = (seconds) => {
+        const n = Number(seconds);
+        if (!isFinite(n) || n < 0) return '';
+        const s = Math.floor(n);
+        const m = Math.floor(s / 60);
+        const rem = s % 60;
+        return `${m}:${rem.toString().padStart(2, '0')}`;
+    };
+
+    // Reset audio player when call changes
+    useEffect(() => {
+        setIsPlaying(false);
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+        }
+    }, [activeCall?.call_sid]);
+
+    // Toggle play/pause
+    const handlePlayPause = () => {
+        if (!audioRef.current) return;
+        
+        if (isPlaying) {
+            audioRef.current.pause();
+            setIsPlaying(false);
+        } else {
+            audioRef.current.play();
+            setIsPlaying(true);
+        }
+    };
 
     return (
         <div className="calls-page">
@@ -111,10 +220,10 @@ const CallsPage = () => {
                     {/* Header */}
                     <div className="call-detail-header">
                         <div className="call-detail-caller">
-                            <div className="call-detail-avatar">{getInitials(activeCall.patients_name)}</div>
+                            <div className="call-detail-avatar">{getInitials(panelCall?.patients_name)}</div>
                             <div>
-                                <div className="call-detail-name">{activeCall.patients_name || 'Unknown'}</div>
-                                <div className="call-detail-phone">{activeCall.to_number || activeCall.from_number || '—'}</div>
+                                <div className="call-detail-name">{panelCall?.patients_name || 'Unknown'}</div>
+                                <div className="call-detail-phone">{panelCall?.to_number || panelCall?.from_number || '—'}</div>
                             </div>
                         </div>
                         <div className="call-detail-actions">
@@ -128,21 +237,21 @@ const CallsPage = () => {
                     <div className="call-status-bar">
                         <div className="call-status-item">
                             <i className="fas fa-circle-check" style={{ color: 'var(--success)' }} />
-                            <span className="call-status-pill pill-completed">{activeCall.status || 'Completed'}</span>
+                            <span className="call-status-pill pill-completed">{panelCall?.status || 'Completed'}</span>
                         </div>
                         <div className="call-status-item">
                             <i className="fas fa-phone-volume" style={{ color: 'var(--primary)' }} />
                             <span className="call-status-pill pill-inbound">
-                                {activeCall.direction === 'outbound-dial' ? 'Outbound' : activeCall.direction || 'Call'}
+                                {panelCall?.direction === 'outbound-dial' ? 'Outbound' : panelCall?.direction || 'Call'}
                             </span>
                         </div>
                         <div className="call-status-item">
                             <i className="far fa-clock" style={{ color: 'var(--text-secondary)' }} />
-                            <span>{getDisplayDuration(activeCall)}</span>
+                            <span>{getDisplayDuration(panelCall)}</span>
                         </div>
                         <div className="call-status-item">
                             <i className="far fa-calendar" style={{ color: 'var(--text-secondary)' }} />
-                            <span>{formatCallDate(activeCall.created_at || activeCall.started_at)}</span>
+                            <span>{formatCallDate(panelCall?.date || panelCall?.created_at || panelCall?.started_at)}</span>
                         </div>
                     </div>
 
@@ -150,14 +259,37 @@ const CallsPage = () => {
                     <div className="call-waveform-card">
                         <div className="call-waveform-title">Call Recording</div>
                         <div className="call-waveform-container">
-                            <div className="call-waveform-play"><i className="fas fa-play" style={{ fontSize: 14 }} /></div>
+                            <div 
+                                className="call-waveform-play" 
+                                onClick={handlePlayPause}
+                                style={{ cursor: panelCall?.recording?.stream_url ? 'pointer' : 'default' }}
+                            >
+                                <i className={`fas fa-${isPlaying ? 'pause' : 'play'}`} style={{ fontSize: 14 }} />
+                            </div>
                             <div className="call-waveform-bars">
                                 {waveformHeights.map((h, i) => (
                                     <div key={i} className="waveform-bar-el" style={{ height: h, background: i < 30 ? 'var(--primary)' : '#E5E7EB' }} />
                                 ))}
                             </div>
-                            <span className="call-waveform-time">0:00 / {getDisplayDuration(activeCall)}</span>
+                            <span className="call-waveform-time">0:00 / {getDisplayDuration(panelCall)}</span>
                         </div>
+                        {detailLoading ? (
+                            <div style={{ marginTop: 10, color: 'var(--text-secondary)', fontSize: 13 }}>Loading recording…</div>
+                        ) : panelCall?.recording?.stream_url ? (
+                            <audio 
+                                ref={audioRef}
+                                style={{ width: '100%', marginTop: 10 }} 
+                                controls 
+                                src={audioUrl || undefined}
+                                onPlay={() => setIsPlaying(true)}
+                                onPause={() => setIsPlaying(false)}
+                            />
+                        ) : (
+                            <div style={{ marginTop: 10, color: 'var(--text-secondary)', fontSize: 13 }}>No recording available</div>
+                        )}
+                        {!detailLoading && panelCall?.recording?.stream_url && !audioUrl ? (
+                            <div style={{ marginTop: 10, color: 'var(--text-secondary)', fontSize: 13 }}>Loading audio…</div>
+                        ) : null}
                     </div>
 
                     {/* AI Summary */}
@@ -177,23 +309,28 @@ const CallsPage = () => {
                     {/* Transcript */}
                     <div className="call-transcript-card">
                         <div className="call-transcript-title"><i className="fas fa-file-lines" style={{ color: 'var(--primary)' }} /> Full Transcript</div>
-                        {[
-                            { role: 'Receptionist', text: "Good morning, Smile Dental — this is Jake speaking. How can I help you today?", time: '0:00', color: '#7C3AED', initials: 'JR' },
-                            { role: activeCall.patients_name || 'Patient', text: "Hi Jake — I need to reschedule my cleaning next Thursday. Something came up at work.", time: '0:08', color: '#6B7280', initials: getInitials(activeCall.patients_name) },
-                            { role: 'Receptionist', text: "Of course! Let me pull up your file. Looks like you're booked for Feb 20 at 2 PM with Dr. Rama. When works better for you?", time: '0:18', color: '#7C3AED', initials: 'JR' },
-                            { role: activeCall.patients_name || 'Patient', text: "Could I do a morning appointment the following Monday — Feb 24?", time: '0:33', color: '#6B7280', initials: getInitials(activeCall.patients_name) },
-                            { role: 'Receptionist', text: "We've got 10 AM or 11:30 AM available that day. Which works best?", time: '0:41', color: '#7C3AED', initials: 'JR' },
-                            { role: activeCall.patients_name || 'Patient', text: "10 AM is perfect. Also, I've been thinking about teeth whitening — do you guys do that?", time: '0:52', color: '#6B7280', initials: getInitials(activeCall.patients_name) },
-                        ].map((line, i) => (
-                            <div key={i} className="transcript-line">
-                                <div className="transcript-avatar" style={{ background: line.color }}>{line.initials}</div>
-                                <div className="transcript-content">
-                                    <span className="transcript-name">{line.role}</span>
-                                    <span className="transcript-time">{line.time}</span>
-                                    <p className="transcript-text">{line.text}</p>
-                                </div>
-                            </div>
-                        ))}
+                        {detailLoading ? (
+                            <div style={{ marginTop: 10, color: 'var(--text-secondary)', fontSize: 13 }}>Loading transcript…</div>
+                        ) : Array.isArray(panelCall?.transcript) && panelCall.transcript.length > 0 ? (
+                            panelCall.transcript.map((line, i) => {
+                                const role = line.speaker || 'Speaker';
+                                const isAgent = String(role).toLowerCase() === 'agent';
+                                const color = isAgent ? '#7C3AED' : '#6B7280';
+                                const initials = isAgent ? 'AG' : getInitials(panelCall?.patients_name);
+                                return (
+                                    <div key={i} className="transcript-line">
+                                        <div className="transcript-avatar" style={{ background: color }}>{initials}</div>
+                                        <div className="transcript-content">
+                                            <span className="transcript-name">{role}</span>
+                                            <span className="transcript-time">{formatTranscriptTime(line.timestamp)}</span>
+                                            <p className="transcript-text">{line.text || ''}</p>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        ) : (
+                            <div style={{ marginTop: 10, color: 'var(--text-secondary)', fontSize: 13 }}>No transcript available</div>
+                        )}
                     </div>
                 </div>
             ) : (

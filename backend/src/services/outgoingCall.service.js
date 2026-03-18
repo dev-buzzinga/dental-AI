@@ -3,6 +3,7 @@ import twilio from "twilio";
 import { config } from "../config/env.js";
 import fs from "fs";
 import path from "path";
+import { Readable } from "stream";
 
 const callLogsCsvPath = path.join(process.cwd(), "call_logs.csv");
 const CALL_LOGS_HEADER = [
@@ -228,6 +229,9 @@ const getTwilioClient = async (user_id) => {
         const authToken = data.auth_token;
 
         const client = twilio(accountSid, authToken);
+        // Keep creds accessible for server-side proxy calls (recordings fetch etc.)
+        client.__accountSid = accountSid;
+        client.__authToken = authToken;
         return client;
     } catch (error) {
         throw new Error(error.message);
@@ -642,5 +646,130 @@ export const getCallLogsService = async (req, res) => {
     } catch (err) {
         console.error("Error reading call_logs.csv:", err);
         return res.status(500).json({ success: false, message: "Failed to load calls" });
+    }
+};
+
+export const getCallDetailService = async (req, res) => {
+    try {
+        const user_id = req.user?.id;
+        const { call_sid } = req.query;
+        console.log("call_sid ==>", call_sid);
+        console.log("user_id ==>", user_id);
+        if (!user_id || !call_sid) {
+            return res.status(400).json({
+                success: false,
+                message: "user_id and call_sid are required"
+            });
+        }
+
+        // CSV se data lo (existing code same)
+        const { header, rows } = loadCallLogsCsvWithHeader();
+        const callSidIdx = header.indexOf("call_sid");
+        const userIdIdx = header.indexOf("user_id");
+
+        const match = rows.find((cols) =>
+            String(cols?.[callSidIdx] ?? "") === String(call_sid) &&
+            String(cols?.[userIdIdx] ?? "") === String(user_id)
+        );
+
+        if (!match) {
+            return res.status(404).json({ success: false, message: "Call not found" });
+        }
+
+        const get = (key) => {
+            const idx = header.indexOf(key);
+            return idx === -1 ? "" : (match[idx] ?? "");
+        };
+
+        const recording_sid = get("recording_sid");
+        const transcript_sid = get("transcription_sid");
+
+        // ── Twilio client ──
+        const client = await getTwilioClient(user_id);
+        const accountSid = client.accountSid;
+        const authToken = client.password;
+
+        // ── 1. Recording URL (authenticated) ──
+        let recording = null;
+        if (recording_sid) {
+            recording = {
+                recording_sid,
+                // Backend proxy URL — frontend seedha yeh use karega <audio> tag mein
+                stream_url: `${config.BASE_URL}/api/outgoing-call/get-recording/${recording_sid}`,
+            };
+        }
+
+        // ── 2. Transcript sentences ──
+        let transcript = null;
+        if (transcript_sid) {
+            const sentences = await client.intelligence.v2
+                .transcripts(transcript_sid)
+                .sentences.list();
+
+            transcript = sentences.map((s) => ({
+                speaker: s.mediaChannel === 1 ? "Agent" : "Customer", // 0 = agent, 1 = customer
+                text: s.transcript,
+                timestamp: s.startTime,  // seconds
+            }));
+        }
+
+        const date = get("timestamp") || get("created_at") || get("started_at") || "";
+
+        return res.status(200).json({
+            success: true,
+            message: "Call detail fetched successfully",
+            data: {
+                call_sid: get("call_sid"),
+                child_call_sid: get("child_call_sid"),
+                patients_name: get("patients_name"),
+                to_number: get("to_number"),
+                from_number: get("from_number"),
+                status: get("status"),
+                direction: get("direction"),
+                date,
+                duration: get("duration"),
+                recording,   // { recording_sid, stream_url }
+                transcript,  // [{ speaker, text, timestamp }]
+            }
+        });
+
+    } catch (error) {
+        console.error("Error ==>", error);
+        return res.status(500).send("Error");
+    }
+};
+
+export const getRecordingService = async (req, res) => {
+    try {
+        console.log("Call to getRecordingService");
+        const { recording_sid } = req.params;
+        const user_id = req.user?.id;
+        const client = await getTwilioClient(user_id);
+        const accountSid = client.__accountSid;  // ✅ __accountSid
+        const authToken = client.__authToken;
+
+        const recordingUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Recordings/${recording_sid}.mp3`;
+
+        const authHeader = 'Basic ' + Buffer.from(`${accountSid}:${authToken}`).toString('base64');
+
+        const response = await fetch(recordingUrl, {
+            headers: { 'Authorization': authHeader }
+        });
+
+        console.log("Twilio response status ==>", response.status);
+
+        if (!response.ok) throw new Error(`Recording fetch failed: ${response.status}`);
+
+        // ✅ pipe nahi — arrayBuffer use karo
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+
+        res.setHeader('Content-Type', 'audio/mpeg');
+        res.setHeader('Content-Length', buffer.length);
+        return res.send(buffer);
+
+    } catch (error) {
+        console.error("getRecordingService error ==>", error.message);
+        return res.status(500).json({ message: error.message });
     }
 };
