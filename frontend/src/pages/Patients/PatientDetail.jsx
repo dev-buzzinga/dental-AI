@@ -2,6 +2,7 @@ import { useState, useEffect, useContext, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../../config/supabase';
 import { AuthContext } from '../../context/AuthContext';
+import { useCall } from '../../context/CallContext';
 import { useToast } from '../../components/Toast/Toast';
 import AddAppointmentModal from '../../components/Patients/AddAppointmentModal';
 import PatientModal from '../../components/Patients/PatientModal';
@@ -11,6 +12,7 @@ const PatientDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { user } = useContext(AuthContext);
+    const { makeCall } = useCall();
     const [patient, setPatient] = useState(null);
     const [appointments, setAppointments] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -67,6 +69,15 @@ const PatientDetail = () => {
 
     const handleEditPatient = () => {
         setIsPatientModalOpen(true);
+    };
+
+    const handleCallPatient = () => {
+        if (!patient?.phone) {
+            showToast('No phone number available for this patient', 'error');
+            return;
+        }
+        console.log('📞 Calling patient:', patient.name, patient.phone);
+        makeCall(patient.phone);
     };
 
     const handleSavePatientDetails = async (formData) => {
@@ -233,7 +244,9 @@ const PatientDetail = () => {
                 </div>
 
                 <div className="patient-detail-actions">
-                    <button className="btn-outline"><i className="fas fa-phone" /> Call</button>
+                    <button className="btn-outline" onClick={handleCallPatient}>
+                        <i className="fas fa-phone" /> Call
+                    </button>
                     <button className="btn-outline"><i className="fas fa-message" /> SMS</button>
                     <button className="btn-outline" onClick={handleEditPatient}>
                         <i className="fas fa-edit" /> Edit
