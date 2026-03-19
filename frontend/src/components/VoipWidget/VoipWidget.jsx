@@ -6,12 +6,14 @@ import twilioService from '../../service/twilio';
 import outgoingService from '../../service/outgoing';
 import { Device } from '@twilio/voice-sdk';
 import { AuthContext } from '../../context/AuthContext';
+import { useCall } from '../../context/CallContext';
 import { supabase } from '../../config/supabase';
 import './VoipWidget.css';
 
 const VoipWidget = () => {
     const location = useLocation();
     const { user } = useContext(AuthContext);
+    const { registerCallHandler, requestedCall, setRequestedCall } = useCall();
     const [isOpen, setIsOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('incoming');
     const [callSeconds, setCallSeconds] = useState(0);
@@ -216,6 +218,81 @@ const VoipWidget = () => {
 
     useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
 
+    // Extracted call logic that can be called with a phone number
+    const initiateCall = useCallback(async (phoneNumber) => {
+        if (!deviceRef.current || !phoneNumber) {
+            alert('Phone number is required to make a call');
+            return;
+        }
+
+        try {
+            // Get user's active phone number
+            const numbersResponse = await twilioService.getActiveNumbers();
+            const userPhoneNumber = numbersResponse.data.data[0] || '+1234567890';
+
+            // Notify backend of outgoing call
+            await outgoingService.makeOutgoingCall(phoneNumber, userPhoneNumber);
+
+            // Initiate call via Twilio SDK
+            const outgoingConnection = await deviceRef.current.connect({
+                params: { To: phoneNumber },
+            });
+
+            // Look up patient name by phone number
+            let patientName = null;
+            try {
+                const { data: patient } = await supabase
+                    .from('patients')
+                    .select('name')
+                    .eq('phone', phoneNumber)
+                    .single();
+                if (patient) {
+                    patientName = patient.name;
+                }
+            } catch (err) {
+                console.log('Patient lookup failed:', err);
+            }
+
+            setActiveCallConnection(outgoingConnection);
+            setCallerDisplayName(patientName || phoneNumber);
+            setCallSeconds(0);
+            setIsCallActive(false);
+            setActiveTab('active');
+            setIsOpen(true); // Auto-open widget for active call
+
+            // Handle call end
+            outgoingConnection.on('disconnect', () => {
+                setActiveCallConnection(null);
+                stopTimer();
+                setActiveTab('dialpad');
+            });
+
+            outgoingConnection.on('error', (error) => {
+                console.error('Call error:', error);
+                alert('Call failed: ' + error.message);
+                setActiveCallConnection(null);
+                stopTimer();
+            });
+        } catch (error) {
+            console.error('Error starting call:', error);
+            alert('Failed to start call: ' + error.message);
+        }
+    }, [stopTimer]);
+
+    // Register call handler with CallContext so other components can initiate calls
+    useEffect(() => {
+        registerCallHandler(initiateCall);
+    }, [registerCallHandler, initiateCall]);
+
+    // Listen for requested calls from other components
+    useEffect(() => {
+        if (requestedCall) {
+            console.log('📞 VoipWidget: Processing requested call to', requestedCall);
+            initiateCall(requestedCall);
+            setRequestedCall(null); // Clear the request
+        }
+    }, [requestedCall, initiateCall, setRequestedCall]);
+
     // Auto-focus dial input when switching to dialpad tab
     useEffect(() => {
         if (activeTab === 'dialpad' && dialInputRef.current) {
@@ -249,66 +326,12 @@ const VoipWidget = () => {
     };
 
     const startCall = async () => {
-        if (!deviceRef.current || !dialInput) {
+        if (!dialInput) {
             alert('Enter a phone number');
             return;
         }
-
-        // Cleanup any previous call/microphone
-        // deviceRef.current.disconnectAll();
-        // await new Promise(resolve => setTimeout(resolve, 500));
-
-        try {
-            // Get user's active phone number
-            const numbersResponse = await twilioService.getActiveNumbers();
-            const userPhoneNumber = numbersResponse.data.data[0] || '+1234567890';
-
-            // Notify backend of outgoing call
-            await outgoingService.makeOutgoingCall(dialInput, userPhoneNumber);
-
-            // Initiate call via Twilio SDK
-            const outgoingConnection = await deviceRef.current.connect({
-                params: { To: dialInput },
-            });
-
-            // Look up patient name by phone number
-            let patientName = null;
-            try {
-                const { data: patient } = await supabase
-                    .from('patients')
-                    .select('name')
-                    .eq('phone', dialInput)
-                    .single();
-                if (patient) {
-                    patientName = patient.name;
-                }
-            } catch (err) {
-                console.log('Patient lookup failed:', err);
-            }
-
-            setActiveCallConnection(outgoingConnection);
-            setCallerDisplayName(patientName || dialInput);
-            setCallSeconds(0);
-            setIsCallActive(false);
-            setActiveTab('active');
-            setDialInput('');
-            // Handle call end
-            outgoingConnection.on('disconnect', () => {
-                setActiveCallConnection(null);
-                stopTimer();
-                setActiveTab('dialpad');
-            });
-
-            outgoingConnection.on('error', (error) => {
-                console.error('Call error:', error);
-                alert('Call failed: ' + error.message);
-                setActiveCallConnection(null);
-                stopTimer();
-            });
-        } catch (error) {
-            console.error('Error starting call:', error);
-            alert('Failed to start call: ' + error.message);
-        }
+        await initiateCall(dialInput);
+        setDialInput(''); // Clear input after call starts
     };
 
     const endCall = () => {

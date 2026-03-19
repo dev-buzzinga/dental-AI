@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { SearchInput } from '../../components/common/SearchInput';
+import { useCall } from '../../context/CallContext';
 import outgoing from '../../service/outgoing';
 import '../../styles/Calls.css';
 
@@ -41,6 +42,7 @@ const formatCallDate = (dateStr) => {
 };
 
 const CallsPage = () => {
+    const { makeCall } = useCall();
     const [calls, setCalls] = useState([]);
     const [callsLoading, setCallsLoading] = useState(true);
     const [activeCallId, setActiveCallId] = useState(null);
@@ -217,6 +219,17 @@ const CallsPage = () => {
         }
     };
 
+    // Handle call button click
+    const handleCallClick = () => {
+        const phoneNumber = panelCall?.to_number || panelCall?.from_number;
+        if (!phoneNumber) {
+            alert('No phone number available for this call');
+            return;
+        }
+        console.log('📞 Calling', phoneNumber);
+        makeCall(phoneNumber);
+    };
+
     return (
         <div className="calls-page">
             {/* Left Panel */}
@@ -295,7 +308,14 @@ const CallsPage = () => {
                             </div>
                         </div>
                         <div className="call-detail-actions">
-                            <div className="call-action-btn"><i className="fas fa-phone" /></div>
+                            <div 
+                                className="call-action-btn" 
+                                onClick={handleCallClick}
+                                title="Call this number"
+                                style={{ cursor: 'pointer' }}
+                            >
+                                <i className="fas fa-phone" />
+                            </div>
                             <div className="call-action-btn"><i className="fas fa-message" /></div>
                             {/* <div className="call-action-btn"><i className="fas fa-ellipsis-vertical" /></div> */}
                         </div>

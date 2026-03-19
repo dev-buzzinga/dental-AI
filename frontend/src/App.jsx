@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar/Sidebar';
 import VoipWidget from './components/VoipWidget/VoipWidget';
 import { ToastProvider } from './components/Toast/Toast';
 import { AuthProvider } from './context/AuthContext';
+import { CallProvider } from './context/CallContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import GuestRoute from './components/auth/GuestRoute';
 
@@ -84,9 +85,11 @@ const AppContent = () => {
 function App() {
   return (
     <AuthProvider>
-      <ToastProvider>
-        <AppContent />
-      </ToastProvider>
+      <CallProvider>
+        <ToastProvider>
+          <AppContent />
+        </ToastProvider>
+      </CallProvider>
     </AuthProvider>
   );
 }
