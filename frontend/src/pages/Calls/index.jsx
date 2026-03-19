@@ -49,6 +49,8 @@ const CallsPage = () => {
     const [detailLoading, setDetailLoading] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
     const [audioUrl, setAudioUrl] = useState(null);
+    const [currentTime, setCurrentTime] = useState(0);
+    const [audioDuration, setAudioDuration] = useState(0);
     const audioRef = useRef(null);
 
     useEffect(() => {
@@ -87,6 +89,8 @@ const CallsPage = () => {
     // Reset audio URL when call changes
     useEffect(() => {
         setAudioUrl(null);
+        setCurrentTime(0);
+        setAudioDuration(0);
     }, [activeCall?.call_sid]);
 
     useEffect(() => {
@@ -167,6 +171,30 @@ const CallsPage = () => {
         return `${m}:${rem.toString().padStart(2, '0')}`;
     };
 
+    const formatAudioTime = (seconds) => {
+        const n = Number(seconds);
+        if (!isFinite(n) || n < 0) return '0:00';
+        const s = Math.floor(n);
+        const m = Math.floor(s / 60);
+        const rem = s % 60;
+        return `${m}:${rem.toString().padStart(2, '0')}`;
+    };
+
+    const parseDurationToSeconds = (value) => {
+        if (typeof value === 'number' && isFinite(value)) return Math.max(0, value);
+        if (typeof value === 'string') {
+            const clean = value.trim();
+            if (/^\d+$/.test(clean)) return Number(clean);
+            const parts = clean.split(':');
+            if (parts.length === 2) {
+                const mins = Number(parts[0]);
+                const secs = Number(parts[1]);
+                if (isFinite(mins) && isFinite(secs)) return (mins * 60) + secs;
+            }
+        }
+        return 0;
+    };
+
     // Reset audio player when call changes
     useEffect(() => {
         setIsPlaying(false);
@@ -178,7 +206,7 @@ const CallsPage = () => {
 
     // Toggle play/pause
     const handlePlayPause = () => {
-        if (!audioRef.current) return;
+        if (!audioRef.current || !audioUrl) return;
 
         if (isPlaying) {
             audioRef.current.pause();
@@ -301,49 +329,82 @@ const CallsPage = () => {
                         </div>
                     </div>
 
-                    {/* Waveform */}
+                    {/* Waveform an Integrated Player */}
                     <div className="call-waveform-card">
                         <div className="call-waveform-title">Call Recording</div>
-                        <div className="call-waveform-container">
-                            <div
-                                className="call-waveform-play"
-                                onClick={handlePlayPause}
-                                style={{ cursor: panelCall?.recording?.stream_url ? 'pointer' : 'default' }}
-                            >
-                                <i className={`fas fa-${isPlaying ? 'pause' : 'play'}`} style={{ fontSize: 14 }} />
+                        
+                        <div className="call-integrated-player">
+                            {/* Top part: Play button + Waveform */}
+                            <div className="call-waveform-top">
+                                <div
+                                    className={`call-waveform-play ${audioUrl ? '' : 'disabled'}`}
+                                    onClick={handlePlayPause}
+                                >
+                                    <i className={`fas fa-${isPlaying ? 'pause' : 'play'}`} />
+                                </div>
+                                <div className={`call-waveform-bars ${isPlaying && panelCall?.recording?.stream_url ? 'is-playing' : ''}`}>
+                                    {waveformHeights.map((h, i) => (
+                                        <div
+                                            key={i}
+                                            className="waveform-bar-el"
+                                            style={{ '--bar-h': `${h}px` }}
+                                        />
+                                    ))}
+                                </div>
                             </div>
-                            <div
-                                className={`call-waveform-bars ${isPlaying && panelCall?.recording?.stream_url ? 'is-playing' : ''}`}
-                            >
-                                {waveformHeights.map((h, i) => (
-                                    <div
-                                        key={i}
-                                        className="waveform-bar-el"
-                                        style={{
-                                            ['--bar-h']: `${h}px`,
-                                            background: 'var(--primary)'
-                                        }}
+
+                            {/* Bottom part: Custom audio controls */}
+                            {detailLoading ? (
+                                <div style={{ color: 'var(--text-secondary)', fontSize: 13, padding: '0 16px' }}>Loading recording…</div>
+                            ) : panelCall?.recording?.stream_url ? (
+                                <div className="call-audio-container">
+                                    <div className="call-audio-controls">
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max={audioDuration || parseDurationToSeconds(panelCall?.duration) || 0}
+                                            value={Math.min(currentTime, audioDuration || parseDurationToSeconds(panelCall?.duration) || 0)}
+                                            className="call-audio-slider"
+                                            onChange={(e) => {
+                                                const time = parseFloat(e.target.value || 0);
+                                                setCurrentTime(time);
+                                                if (audioRef.current) {
+                                                    audioRef.current.currentTime = time;
+                                                }
+                                            }}
+                                            disabled={!audioUrl}
+                                        />
+                                        <span className="call-audio-time">
+                                            {formatAudioTime(currentTime)} / {formatAudioTime(audioDuration || parseDurationToSeconds(panelCall?.duration))}
+                                        </span>
+                                        <a
+                                            href={audioUrl || panelCall?.recording?.stream_url}
+                                            className="call-audio-download"
+                                            download="call-recording.mp3"
+                                            title="Download recording"
+                                        >
+                                            <i className="fas fa-download" />
+                                        </a>
+                                    </div>
+                                    <audio
+                                        ref={audioRef}
+                                        src={audioUrl || undefined}
+                                        onPlay={() => setIsPlaying(true)}
+                                        onPause={() => setIsPlaying(false)}
+                                        onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime || 0)}
+                                        onLoadedMetadata={() => setAudioDuration(audioRef.current?.duration || 0)}
+                                        onEnded={() => setIsPlaying(false)}
+                                        style={{ display: 'none' }}
                                     />
-                                ))}
-                            </div>
+                                </div>
+                            ) : (
+                                <div style={{ color: 'var(--text-secondary)', fontSize: 13, padding: '0 16px' }}>No recording available</div>
+                            )}
+
+                            {!detailLoading && panelCall?.recording?.stream_url && !audioUrl && (
+                                <div style={{ color: 'var(--text-secondary)', fontSize: 13, padding: '0 16px' }}>Loading audio…</div>
+                            )}
                         </div>
-                        {detailLoading ? (
-                            <div style={{ marginTop: 10, color: 'var(--text-secondary)', fontSize: 13 }}>Loading recording…</div>
-                        ) : panelCall?.recording?.stream_url ? (
-                            <audio
-                                ref={audioRef}
-                                style={{ width: '100%', marginTop: 10 }}
-                                controls
-                                src={audioUrl || undefined}
-                                onPlay={() => setIsPlaying(true)}
-                                onPause={() => setIsPlaying(false)}
-                            />
-                        ) : (
-                            <div style={{ marginTop: 10, color: 'var(--text-secondary)', fontSize: 13 }}>No recording available</div>
-                        )}
-                        {!detailLoading && panelCall?.recording?.stream_url && !audioUrl ? (
-                            <div style={{ marginTop: 10, color: 'var(--text-secondary)', fontSize: 13 }}>Loading audio…</div>
-                        ) : null}
                     </div>
 
                     {/* AI Summary */}

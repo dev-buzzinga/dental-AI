@@ -646,8 +646,14 @@ export const getCallLogsService = async (req, res) => {
             };
         });
 
-        // Filter rows so that only the current user's records are returned
-        const filteredRows = rows.filter((row) => String(row.user_id) === String(user_id));
+        // Filter current user rows and return newest first by created_at
+        const filteredRows = rows
+            .filter((row) => String(row.user_id) === String(user_id))
+            .sort((a, b) => {
+                const aTime = new Date(String(a.created_at || a.timestamp || "").replace(/"/g, "").trim()).getTime();
+                const bTime = new Date(String(b.created_at || b.timestamp || "").replace(/"/g, "").trim()).getTime();
+                return (isNaN(bTime) ? 0 : bTime) - (isNaN(aTime) ? 0 : aTime);
+            });
 
         return res.json({ success: true, data: filteredRows });
     } catch (err) {
