@@ -369,7 +369,7 @@
     width: 3px;
     border-radius: 2px;
     height: var(--bar-h, 16px);
-    background: #7c3aed;
+    background: var(--primary);
     opacity: 0.8;
     transform-origin: center;
     will-change: transform;

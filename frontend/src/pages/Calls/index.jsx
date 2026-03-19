@@ -430,7 +430,7 @@ const CallsPage = () => {
                             panelCall.transcript.map((line, i) => {
                                 const role = line.speaker == "Customer" ? panelCall?.patients_name || "Customer" : line.speaker || "Agent";
                                 const isAgent = String(role).toLowerCase() === 'agent';
-                                const color = isAgent ? '#7C3AED' : '#6B7280';
+                                const color = isAgent ? 'var(--primary)' : 'var(--text-secondary)';
                                 const initials = isAgent ? 'AG' : getInitials(panelCall?.patients_name);
                                 return (
                                     <div key={i} className="transcript-line">
