@@ -115,6 +115,7 @@ const CallsPage = () => {
     }, [activeCall?.call_sid]);
 
     const panelCall = callDetail || activeCall;
+    const isHeaderLoading = detailLoading && Boolean(activeCall?.call_sid);
 
     // Fetch recording as blob via axios so auth headers are included.
     useEffect(() => {
@@ -248,10 +249,21 @@ const CallsPage = () => {
                     {/* Header */}
                     <div className="call-detail-header">
                         <div className="call-detail-caller">
-                            <div className="call-detail-avatar">{getInitials(panelCall?.patients_name)}</div>
+                            <div className={`call-detail-avatar ${isHeaderLoading ? 'is-loading' : ''}`}>
+                                {isHeaderLoading ? <i className="fas fa-spinner fa-spin" /> : getInitials(panelCall?.patients_name)}
+                            </div>
                             <div>
-                                <div className="call-detail-name">{panelCall?.patients_name || 'Unknown'}</div>
-                                <div className="call-detail-phone">{panelCall?.to_number || panelCall?.from_number || '—'}</div>
+                                {isHeaderLoading ? (
+                                    <>
+                                        <div className="call-header-skeleton call-header-skeleton-name" />
+                                        <div className="call-header-skeleton call-header-skeleton-phone" />
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="call-detail-name">{panelCall?.patients_name || 'Unknown'}</div>
+                                        <div className="call-detail-phone">{panelCall?.to_number || panelCall?.from_number || '—'}</div>
+                                    </>
+                                )}
                             </div>
                         </div>
                         <div className="call-detail-actions">
@@ -264,8 +276,14 @@ const CallsPage = () => {
                     {/* Status Bar */}
                     <div className="call-status-bar">
                         <div className="call-status-item">
-                            <i className="fas fa-circle-check" style={{ color: 'var(--success)' }} />
-                            <span className="call-status-pill pill-completed">{panelCall?.status || 'Completed'}</span>
+                            {['no-answer', 'failed', 'canceled'].includes(panelCall?.status) ? (
+                                <i className="fas fa-circle-xmark" style={{ color: 'var(--danger)' }} />
+                            ) : (
+                                <i className="fas fa-circle-check" style={{ color: 'var(--success)' }} />
+                            )}
+                            <span className={`call-status-pill ${['no-answer', 'failed', 'canceled'].includes(panelCall?.status) ? 'pill-declined' : 'pill-completed'}`}>
+                                {panelCall?.status || 'Completed'}
+                            </span>
                         </div>
                         <div className="call-status-item">
                             <i className="fas fa-phone-volume" style={{ color: 'var(--primary)' }} />
@@ -331,9 +349,15 @@ const CallsPage = () => {
                     {/* AI Summary */}
                     <div className="call-summary-card">
                         <div className="call-summary-title"><i className="fas fa-robot" /> AI Call Summary</div>
-                        <div className="call-summary-text">
-                            {panelCall?.aiSummary || 'No summary available'}
-                        </div>
+                        {detailLoading ? (
+                            <div style={{ marginTop: 10, color: 'var(--text-secondary)', fontSize: 13 }}>Loading summary</div>
+                        ) : panelCall?.aiSummary ? (
+                            <div className="call-summary-text">
+                                {panelCall?.aiSummary || 'No summary available'}
+                            </div>
+                        ) : (
+                            <div style={{ marginTop: 10, color: 'var(--text-secondary)', fontSize: 13 }}>No summary available</div>
+                        )}
                     </div>
 
                     {/* Transcript */}
@@ -343,7 +367,7 @@ const CallsPage = () => {
                             <div style={{ marginTop: 10, color: 'var(--text-secondary)', fontSize: 13 }}>Loading transcript…</div>
                         ) : Array.isArray(panelCall?.transcript) && panelCall.transcript.length > 0 ? (
                             panelCall.transcript.map((line, i) => {
-                                const role = line.speaker || 'Speaker';
+                                const role = line.speaker == "Customer" ? panelCall?.patients_name || "Customer" : line.speaker || "Agent";
                                 const isAgent = String(role).toLowerCase() === 'agent';
                                 const color = isAgent ? '#7C3AED' : '#6B7280';
                                 const initials = isAgent ? 'AG' : getInitials(panelCall?.patients_name);

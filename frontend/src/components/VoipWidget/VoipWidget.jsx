@@ -72,12 +72,14 @@ const VoipWidget = () => {
                 // Look up patient by phone number
                 let patientName = null;
                 try {
+                    console.log("callerNumber==>", callerNumber);
                     const { data: patient } = await supabase
                         .from('patients')
                         .select('name')
                         .eq('phone', callerNumber)
                         .single();
                     if (patient) {
+                        console.log("patient==>", patient);
                         patientName = patient.name;
                     }
                 } catch (err) {
@@ -85,6 +87,7 @@ const VoipWidget = () => {
                 }
 
                 const displayName = patientName || callerNumber;
+                console.log("displayName==>", displayName);
                 setCallerDisplayName(displayName);
 
                 setIncomingCall({
@@ -268,7 +271,25 @@ const VoipWidget = () => {
                 params: { To: dialInput },
             });
 
+            // Look up patient name by phone number
+            let patientName = null;
+            try {
+                const { data: patient } = await supabase
+                    .from('patients')
+                    .select('name')
+                    .eq('phone', dialInput)
+                    .single();
+                if (patient) {
+                    patientName = patient.name;
+                }
+            } catch (err) {
+                console.log('Patient lookup failed:', err);
+            }
+
             setActiveCallConnection(outgoingConnection);
+            setCallerDisplayName(patientName || dialInput);
+            setCallSeconds(0);
+            setIsCallActive(false);
             setActiveTab('active');
             setDialInput('');
             // Handle call end
@@ -305,6 +326,9 @@ const VoipWidget = () => {
 
         if (key === 'mute' && activeCallConnection) {
             activeCallConnection.mute(!controls.mute);
+        }
+        if (key === 'hold' && activeCallConnection) {
+            activeCallConnection.hold(!controls.hold);
         }
     };
 
@@ -403,46 +427,56 @@ const VoipWidget = () => {
 
             {/* Active Call Tab */}
             {activeTab === 'active' && (
-                <div className="fade-in">
+                <div className="fade-in voip-active-tab-container">
                     {activeCallConnection ? (
-                        <>
-                            <div className="voip-active-header">
-                                <div className="left">
-                                    <div className="voip-active-dot animate-pulse-custom" />
-                                    <span className="voip-active-name">{callerDisplayName || 'Active Call'}</span>
+                        <div className="voip-active-wrapper">
+                            <div className="voip-active-profile">
+                                <div className={`voip-active-avatar ${!isCallActive ? 'ringing-pulse' : 'connected-glow'}`}>
+                                    {callerDisplayName
+                                        ? callerDisplayName.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase()
+                                        : <i className="fas fa-user" />}
                                 </div>
-                                <span className="voip-timer">{formatTime(callSeconds)}</span>
-                            </div>
-                            <div className="voip-controls">
-                                <button className={`voip-control-btn ${controls.mute ? 'active' : ''}`} onClick={() => toggleControl('mute')}>
-                                    <i className="fas fa-microphone-slash" />
-                                </button>
-                                <button className={`voip-control-btn ${controls.hold ? 'active' : ''}`} onClick={() => toggleControl('hold')}>
-                                    <i className="fas fa-pause" />
-                                </button>
-                                <button className="voip-control-btn"><i className="fas fa-right-left" /></button>
-                                <button className={`voip-control-btn ${controls.record ? 'active' : ''}`} onClick={() => toggleControl('record')}>
-                                    <i className="fas fa-circle-dot" />
-                                </button>
-                                <button className={`voip-control-btn ${noteOpen ? 'active' : ''}`} onClick={() => setNoteOpen(!noteOpen)}>
-                                    <i className="fas fa-note-sticky" />
-                                </button>
-                            </div>
-                            <div className="voip-note-section" style={{ maxHeight: noteOpen ? 100 : 0 }}>
-                                <div style={{ padding: '8px 0' }}>
-                                    <textarea className="voip-note-textarea" rows="2" placeholder="Type notes..." />
+                                <h3 className="voip-active-caller-name">{callerDisplayName || 'Unknown Caller'}</h3>
+                                <div className={`voip-active-status ${isCallActive ? 'status-connected' : 'status-ringing'}`}>
+                                    {isCallActive ? (
+                                        <>
+                                            <span className="status-dot"></span>
+                                            <span className="timer-text">{formatTime(callSeconds)}</span>
+                                        </>
+                                    ) : (
+                                        <span className="ringing-text">Ringing...</span>
+                                    )}
                                 </div>
                             </div>
-                            <div className="voip-actions">
-                                <button className="voip-btn voip-btn-end" onClick={endCall}>
-                                    <i className="fas fa-phone-slash" /> End Call
+
+                            <div className="voip-note-section" style={{ maxHeight: noteOpen ? 120 : 0, padding: noteOpen ? '0 16px 16px' : '0 16px' }}>
+                                <textarea className="voip-note-textarea" rows="3" placeholder="Type notes here..." />
+                            </div>
+
+                            <div className="voip-active-actions">
+                                <div className="voip-controls-grid">
+                                    <button className={`voip-action-btn ${controls.mute ? 'btn-active' : ''}`} onClick={() => toggleControl('mute')} title="Mute">
+                                        <i className={`fas ${controls.mute ? 'fa-microphone-slash' : 'fa-microphone'}`} />
+                                    </button>
+                                    <button className={`voip-action-btn ${controls.hold ? 'btn-active' : ''}`} onClick={() => toggleControl('hold')} title="Hold">
+                                        <i className="fas fa-pause" />
+                                    </button>
+                                    <button className={`voip-action-btn ${noteOpen ? 'btn-active' : ''}`} onClick={() => setNoteOpen(!noteOpen)} title="Notes">
+                                        <i className="fas fa-note-sticky" />
+                                    </button>
+                                </div>
+                                <button className="voip-btn-end-large" onClick={endCall}>
+                                    <i className="fas fa-phone-slash" />
                                 </button>
                             </div>
-                        </>
+                        </div>
                     ) : (
                         <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                            <i className="fas fa-phone-slash" style={{ fontSize: '24px', marginBottom: '12px', display: 'block', color: '#D1D5DB' }} />
-                            <p>No active call</p>
+                            <i className="fas fa-phone-slash" style={{ fontSize: '32px', marginBottom: '16px', display: 'block', color: '#E5E7EB' }} />
+                            <p style={{ fontWeight: 500 }}>No active call</p>
+                            <button className="voip-action-secondary" onClick={() => setActiveTab('dialpad')} style={{ marginTop: '16px' }}>
+                                Open Dialpad
+                            </button>
                         </div>
                     )}
                 </div>
