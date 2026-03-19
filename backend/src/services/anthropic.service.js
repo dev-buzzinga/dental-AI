@@ -648,7 +648,7 @@ export const callAISummary = async (transcript = []) => {
             max_tokens: 500,
             messages: [{ role: "user", content: prompt }],
         });
-        console.log("response==>", response?.content?.[0]?.text);
+        // console.log("response==>", response?.content?.[0]?.text);
         const raw = response?.content?.[0]?.text || "";
         if (!raw) return null;
 

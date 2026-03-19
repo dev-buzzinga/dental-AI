@@ -29,6 +29,7 @@ const VoipWidget = () => {
     const deviceRef = useRef(null);
     const tokenRef = useRef(null);
     const dialInputRef = useRef(null);
+    const callEventsWsRef = useRef(null);
 
     // Fetch Twilio token from backend
     const fetchTwilioToken = useCallback(async () => {
@@ -148,6 +149,68 @@ const VoipWidget = () => {
         setIsCallActive(false);
     }, []);
 
+    // ─── Call-events WebSocket (timer start/stop from backend) ───
+    useEffect(() => {
+        if (!user?.id) return;
+
+        let ws = null;
+        let reconnectTimer = null;
+        let isCancelled = false;
+
+        const connect = () => {
+            if (isCancelled) return;
+
+            const wsUrl = `${import.meta.env.VITE_BACKEND_URL.replace('http', 'ws')}/ws/call-events?userId=${user.id}`;
+            ws = new WebSocket(wsUrl);
+
+            ws.onopen = () => {
+                console.log('📡 Call-events WS connected');
+            };
+
+            ws.onmessage = (msg) => {
+                try {
+                    const data = JSON.parse(msg.data);
+                    console.log('📩 Call event received:', data);
+
+                    if (data.event === 'call:answered') {
+                        startTimer(true);
+                    } else if (data.event === 'call:ended') {
+                        stopTimer();
+                        setActiveCallConnection(null);
+                        setActiveTab('dialpad');
+                    }
+                } catch (err) {
+                    console.error('Error parsing call event:', err);
+                }
+            };
+
+            ws.onerror = (err) => console.error('Call-events WS error:', err);
+
+            ws.onclose = () => {
+                console.log('🔌 Call-events WS disconnected');
+                // Auto-reconnect after 3s if not intentionally cancelled
+                if (!isCancelled) {
+                    reconnectTimer = setTimeout(connect, 3000);
+                }
+            };
+
+            callEventsWsRef.current = ws;
+        };
+
+        connect();
+
+        return () => {
+            isCancelled = true;
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+            if (ws) {
+                ws.onclose = null; // prevent reconnect on intentional close
+                ws.close();
+            }
+            callEventsWsRef.current = null;
+        };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?.id]);
+
     useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
 
     // Auto-focus dial input when switching to dialpad tab
@@ -208,12 +271,6 @@ const VoipWidget = () => {
             setActiveCallConnection(outgoingConnection);
             setActiveTab('active');
             setDialInput('');
-            // startTimer(true);
-            // Start timer only after call is actually accepted
-            outgoingConnection.on('accept', () => {
-                startTimer(true);
-            });
-
             // Handle call end
             outgoingConnection.on('disconnect', () => {
                 setActiveCallConnection(null);

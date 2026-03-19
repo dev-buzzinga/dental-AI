@@ -5,6 +5,7 @@ import fs from "fs";
 import path from "path";
 import { Readable } from "stream";
 import { callAISummary } from "./anthropic.service.js";
+import { sendCallEvent } from "./callEventWs.js";
 
 const callLogsCsvPath = path.join(process.cwd(), "call_logs.csv");
 const CALL_LOGS_HEADER = [
@@ -440,8 +441,8 @@ export const callStatusCallbackService = async (req, res) => {
                     duration: ""
                 });
 
-                console.log("🟢 Call answered! Timer started - CSV row updated - UserId:", userId);
-                // TODO: WebSocket → frontend timer start
+                console.log("🟢 Call answered! Timer started");
+                sendCallEvent(userId, 'call:answered', { callSid: parentCallSid });
 
             } else if (CallStatus === 'no-answer' || CallStatus === 'failed') {
                 // DB: update row, set status only (and we also set ended_at for clarity)
@@ -462,7 +463,7 @@ export const callStatusCallbackService = async (req, res) => {
                 });
 
                 callStore.delete(parentCallSid);
-                console.log("📵 No answer / Failed - CSV row updated - UserId:", userId);
+                console.log("📵 No answer / Failed - CSV row updated");
 
             } else if (CallStatus === 'completed') {
                 // DB: update row, set completed + ended_at + duration
@@ -483,8 +484,8 @@ export const callStatusCallbackService = async (req, res) => {
                 });
 
                 callStore.delete(parentCallSid);
-                console.log("🔴 Call ended. Timer band karo - CSV row updated - UserId:", userId);
-                // TODO: WebSocket → frontend timer stop
+                console.log("🔴 Call ended");
+                sendCallEvent(userId, 'call:ended', { callSid: parentCallSid });
             }
         }
 
@@ -659,8 +660,8 @@ export const getCallDetailService = async (req, res) => {
     try {
         const user_id = req.user?.id;
         const { call_sid } = req.query;
-        console.log("call_sid ==>", call_sid);
-        console.log("user_id ==>", user_id);
+        // console.log("call_sid ==>", call_sid);
+        // console.log("user_id ==>", user_id);
         if (!user_id || !call_sid) {
             return res.status(400).json({
                 success: false,

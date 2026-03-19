@@ -257,7 +257,7 @@ const CallsPage = () => {
                         <div className="call-detail-actions">
                             <div className="call-action-btn"><i className="fas fa-phone" /></div>
                             <div className="call-action-btn"><i className="fas fa-message" /></div>
-                            <div className="call-action-btn"><i className="fas fa-ellipsis-vertical" /></div>
+                            {/* <div className="call-action-btn"><i className="fas fa-ellipsis-vertical" /></div> */}
                         </div>
                     </div>
 
