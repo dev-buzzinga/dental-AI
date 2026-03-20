@@ -30,7 +30,7 @@ const VoiceNoteDetailPage = () => {
     const [error, setError] = useState('');
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
-    // const [duration, setDuration] = useState(0);
+    const [duration, setDuration] = useState(0);
 
     useEffect(() => {
         if (!id) return;
@@ -86,6 +86,31 @@ const VoiceNoteDetailPage = () => {
 
     const handleEnded = () => {
         setIsPlaying(false);
+    };
+
+    const handleDownloadRecording = async (event) => {
+        event.preventDefault();
+        const recordingUrl = note?.user_recording_url;
+        if (!recordingUrl) return;
+
+        try {
+            const response = await fetch(recordingUrl);
+            if (!response.ok) {
+                throw new Error('Unable to download recording.');
+            }
+
+            const blob = await response.blob();
+            const objectUrl = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = objectUrl;
+            link.download = 'voice-note-recording.webm';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(objectUrl);
+        } catch (downloadError) {
+            setError('Failed to download recording. Please try again.');
+        }
     };
 
     const formatTime = (seconds) => {
@@ -277,6 +302,7 @@ const VoiceNoteDetailPage = () => {
                                                     <a
                                                         href={note.user_recording_url}
                                                         download="voice-note-recording.webm"
+                                                        onClick={handleDownloadRecording}
                                                         style={{
                                                             background: '#F3F4F6',
                                                             color: 'var(--text-secondary)',

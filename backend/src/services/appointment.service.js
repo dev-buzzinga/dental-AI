@@ -91,19 +91,22 @@ export const googleCallback = async (req, res) => {
         const { type, doctor_id } = JSON.parse(state);
         console.log("type==>", type);
         if (type == "calendar") {
-
             const { tokens } = await oauth2Client.getToken(code);
-            if (!tokens.refresh_token) {
-                console.log("No refresh token received");
+
+            let updateData = {
+                calendar_connected: true,
+                expired_calendar_connection: false
+            };
+
+            // ✅ ONLY update if refresh_token exists
+            if (tokens.refresh_token) {
+                updateData.google_refresh_token = tokens.refresh_token;
             }
-            const { data, error, count } = await supabase
+
+            await supabase
                 .from("doctors")
-                .update({
-                    google_refresh_token: tokens.refresh_token,
-                    calendar_connected: true
-                })
-                .eq("id", doctor_id)
-                .select("*", { count: "exact" });
+                .update(updateData)
+                .eq("id", doctor_id);
 
             res.send("Google Calendar connected successfully. You can close this window.");
         } else if (type == "gmail") {
@@ -424,64 +427,72 @@ const getPracticeTimezone = async (user_id) => {
  * We send local time in practice timezone so Google displays correctly.
  */
 export const createGoogleEvent = async (doctor, appointment, timeZone) => {
-    const oauth2Client = new google.auth.OAuth2(
-        process.env.GOOGLE_CLIENT_ID,
-        process.env.GOOGLE_CLIENT_SECRET,
-        process.env.GOOGLE_REDIRECT_URI
-    );
-    if (!doctor.google_refresh_token) {
-        const { data: doctorData, error: doctorDataError } = await supabase
-            .from("doctors")
-            .select("*")
-            .eq("id", doctor.id)
-            .single();
-        if (doctorDataError) {
-            console.log("doctorDataError==>", doctorDataError);
-        } else if (doctorData) {
-            doctor = doctorData;
-        }
-    }
-    oauth2Client.setCredentials({
-        refresh_token: doctor.google_refresh_token,
-    });
-
-    const calendar = google.calendar({
-        version: "v3",
-        auth: oauth2Client,
-    });
-
-    const startDt = DateTime.fromISO(appointment.start_time, { zone: "utc" }).setZone(timeZone);
-    const endDt = DateTime.fromISO(appointment.end_time, { zone: "utc" }).setZone(timeZone);
-
-    const startDateTime = startDt.toFormat("yyyy-MM-dd'T'HH:mm:ss");
-    const endDateTime = endDt.toFormat("yyyy-MM-dd'T'HH:mm:ss");
-
-    const summaryName =
-        appointment.patient_details?.name ||
-        appointment.patient_details?.patient_name ||
-        "Patient";
-
-    const tz = timeZone || "UTC";
-
     try {
+        const oauth2Client = new google.auth.OAuth2(
+            process.env.GOOGLE_CLIENT_ID,
+            process.env.GOOGLE_CLIENT_SECRET,
+            process.env.GOOGLE_REDIRECT_URI
+        );
+
+        // Ensure doctor has latest refresh token
+        if (!doctor.google_refresh_token) {
+            const { data: doctorData } = await supabase
+                .from("doctors")
+                .select("*")
+                .eq("id", doctor.id)
+                .single();
+
+            if (doctorData) {
+                doctor = doctorData;
+            }
+        }
+
+        if (!doctor.google_refresh_token) {
+            throw new Error("Doctor not connected with Google Calendar");
+        }
+
+        // ✅ Set refresh token
+        oauth2Client.setCredentials({
+            refresh_token: doctor.google_refresh_token,
+        });
+
+        // ✅ FORCE refresh access token (IMPORTANT)
+        await oauth2Client.getAccessToken();
+
+        const calendar = google.calendar({
+            version: "v3",
+            auth: oauth2Client,
+        });
+
+        const startDt = DateTime.fromISO(appointment.start_time, { zone: "utc" }).setZone(timeZone);
+        const endDt = DateTime.fromISO(appointment.end_time, { zone: "utc" }).setZone(timeZone);
+
+        const summaryName =
+            appointment.patient_details?.name ||
+            appointment.patient_details?.patient_name ||
+            "Patient";
+
+        const tz = timeZone || "UTC";
+
         await calendar.events.insert({
             calendarId: "primary",
             requestBody: {
                 summary: `Appointment - ${summaryName}`,
                 start: {
-                    dateTime: startDateTime,
+                    dateTime: startDt.toISO(),
                     timeZone: tz,
                 },
                 end: {
-                    dateTime: endDateTime,
+                    dateTime: endDt.toISO(),
                     timeZone: tz,
                 },
             },
         });
-    }
-    catch (err) {
-        console.log("err.response?.data?.error==>", err);
-        console.log("err.response?.data?.error==>", err.response?.data?.error);
+
+        return { success: true };
+
+    } catch (err) {
+        console.log("Google Calendar Error:", err?.response?.data || err.message);
 
         if (
             err.response?.data?.error === "invalid_grant" ||
@@ -489,8 +500,13 @@ export const createGoogleEvent = async (doctor, appointment, timeZone) => {
         ) {
             await supabase
                 .from("doctors")
-                .update({ calendar_connected: false })
+                .update({ calendar_connected: false, expired_calendar_connection: true })
                 .eq("id", doctor.id);
         }
+
+        return {
+            success: false,
+            message: err.message
+        };
     }
 };

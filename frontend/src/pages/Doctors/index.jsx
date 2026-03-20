@@ -166,7 +166,12 @@ const DoctorsPage = () => {
                                     <span className="doctor-badge-type">{d.type}</span>
                                     {d.calendar_connected && (
                                         <span className="doctor-badge-calendar">
-                                            <i className="fab fa-google" /> Connected
+                                            <i className="fab fa-google" />Google calendar connected
+                                        </span>
+                                    )}
+                                    {d.expired_calendar_connection && (
+                                        <span className="doctor-badge-calendar-expired">
+                                            <i className="fas fa-exclamation-triangle" /> Expired Google calendar connection
                                         </span>
                                     )}
                                 </div>
