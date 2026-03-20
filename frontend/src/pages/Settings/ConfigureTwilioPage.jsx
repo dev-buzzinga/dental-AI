@@ -2,6 +2,7 @@ import { useState, useEffect, useContext } from 'react';
 import { useToast } from '../../components/Toast/Toast';
 import { AuthContext } from '../../context/AuthContext';
 import { supabase } from '../../config/supabase';
+import twilioService from '../../service/twilio';
 import '../../styles/Settings.css';
 
 const ConfigureTwilioPage = () => {
@@ -14,6 +15,7 @@ const ConfigureTwilioPage = () => {
     const [intelligenceServiceSid, setIntelligenceServiceSid] = useState('');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [webhookLoading, setWebhookLoading] = useState(false);
     const [initialValues, setInitialValues] = useState(null);
     const showToast = useToast();
 
@@ -78,6 +80,18 @@ const ConfigureTwilioPage = () => {
         intelligenceServiceSid !== initialValues.intelligenceServiceSid
         : false;
 
+    const isConfigComplete =
+        Boolean(accountSid.trim()) &&
+        Boolean(authToken.trim()) &&
+        Boolean(appSid.trim()) &&
+        Boolean(apiKeySid.trim()) &&
+        Boolean(apiKeySecret.trim()) &&
+        Boolean(intelligenceServiceSid.trim());
+
+    const isWebhookButtonEnabled = !loading && !saving && !webhookLoading && !hasChanges && isConfigComplete;
+
+    const normalizePhone = (phone = '') => phone.replace(/[^\d+]/g, '');
+
     const handleSave = async () => {
         if (!user) return;
         try {
@@ -129,6 +143,54 @@ const ConfigureTwilioPage = () => {
             showToast('Failed to save configuration', 'error');
         } finally {
             setSaving(false);
+        }
+    };
+
+    const handleSetupWebhook = async () => {
+        if (!user || !isWebhookButtonEnabled) return;
+
+        try {
+            setWebhookLoading(true);
+
+            const { data: practiceData, error: practiceError } = await supabase
+                .from('practice_details')
+                .select('contact_information')
+                .eq('user_id', user.id)
+                .maybeSingle();
+
+            if (practiceError) {
+                showToast(practiceError.message || 'Failed to read practice phone number', 'error');
+                return;
+            }
+
+            const practicePhone = practiceData?.contact_information?.phone?.trim();
+            if (!practicePhone) {
+                showToast('Phone value not found in practice details', 'error');
+                return;
+            }
+
+            const activeNumbersResponse = await twilioService.getActiveNumbers();
+            const activeNumbers = activeNumbersResponse?.data?.data || [];
+
+            const matchedNumber = activeNumbers.find(
+                (num) => normalizePhone(num.phoneNumber || '') === normalizePhone(practicePhone)
+            );
+
+            if (!matchedNumber?.sid) {
+                showToast('Selected practice phone is not found in active Twilio numbers', 'error');
+                return;
+            }
+
+            const webhookResult = await twilioService.setupWebhooks(matchedNumber.sid);
+            if (webhookResult?.data?.success) {
+                showToast('Webhook setup completed successfully', 'success');
+            } else {
+                showToast(webhookResult?.data?.message || 'Webhook setup completed with warnings', 'error');
+            }
+        } catch (err) {
+            showToast(err?.message || 'Failed to setup webhook', 'error');
+        } finally {
+            setWebhookLoading(false);
         }
     };
 
@@ -238,6 +300,17 @@ const ConfigureTwilioPage = () => {
                                     <><i className="fas fa-spinner fa-spin" /> Saving...</>
                                 ) : (
                                     <><i className="fas fa-save" /> Save Configuration</>
+                                )}
+                            </button>
+                            <button
+                                className="btn-outline"
+                                onClick={handleSetupWebhook}
+                                disabled={!isWebhookButtonEnabled}
+                            >
+                                {webhookLoading ? (
+                                    <><i className="fas fa-spinner fa-spin" /> Setting up...</>
+                                ) : (
+                                    <><i className="fas fa-link" /> Setup Webhook</>
                                 )}
                             </button>
                         </div>

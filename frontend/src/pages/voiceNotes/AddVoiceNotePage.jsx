@@ -10,6 +10,107 @@ import { supabase } from '../../config/supabase';
 import { AuthContext } from '../../context/AuthContext';
 import aiScribeService from '../../service/ai-scribe';
 import { useToast } from '../../components/Toast/Toast';
+
+const renderMarkdownToPdf = (doc, markdown = '') => {
+    const marginLeft = 40;
+    const marginTop = 40;
+    const maxWidth = 515;
+    const baseLineHeight = 18;
+    const pageBottom = 800;
+    const normalized = markdown.replace(/\r\n/g, '\n');
+    let cursorY = marginTop;
+
+    const ensurePageSpace = (requiredHeight = baseLineHeight) => {
+        if (cursorY + requiredHeight > pageBottom) {
+            doc.addPage();
+            cursorY = marginTop;
+        }
+    };
+
+    const parseBoldSegments = (text) => {
+        const parts = text.split(/(\*\*.*?\*\*)/g).filter(Boolean);
+        return parts.map((part) => ({
+            text: part.startsWith('**') && part.endsWith('**') ? part.slice(2, -2) : part,
+            isBold: part.startsWith('**') && part.endsWith('**'),
+        }));
+    };
+
+    const stripInlineMarkdown = (text) => text
+        .replace(/\*\*(.*?)\*\*/g, '$1')
+        .replace(/\*(.*?)\*/g, '$1')
+        .replace(/`{1,3}(.*?)`{1,3}/g, '$1');
+
+    const drawInlineText = (lineText, { fontSize = 12, forceBold = false, indent = 0 } = {}) => {
+        const left = marginLeft + indent;
+        const right = marginLeft + maxWidth;
+        const lineHeight = fontSize >= 16 ? fontSize + 6 : baseLineHeight;
+        let x = left;
+
+        doc.setFontSize(fontSize);
+
+        const segments = forceBold
+            ? [{ text: stripInlineMarkdown(lineText), isBold: true }]
+            : parseBoldSegments(lineText);
+        segments.forEach((segment) => {
+            const tokens = segment.text.split(/(\s+)/).filter((t) => t !== '');
+            tokens.forEach((token) => {
+                doc.setFont('helvetica', segment.isBold ? 'bold' : 'normal');
+                const tokenWidth = doc.getTextWidth(token);
+                if (x + tokenWidth > right && token.trim()) {
+                    cursorY += lineHeight;
+                    ensurePageSpace(lineHeight);
+                    x = left;
+                }
+                doc.text(token, x, cursorY);
+                x += tokenWidth;
+            });
+        });
+
+        cursorY += lineHeight;
+    };
+
+    normalized.split('\n').forEach((rawLine) => {
+        const line = rawLine.trim();
+
+        if (!line) {
+            ensurePageSpace(baseLineHeight);
+            cursorY += Math.floor(baseLineHeight * 0.7);
+            return;
+        }
+
+        if (/^[-*_]{3,}$/.test(line)) {
+            ensurePageSpace(baseLineHeight);
+            doc.setDrawColor(180);
+            doc.line(marginLeft, cursorY, marginLeft + maxWidth, cursorY);
+            cursorY += baseLineHeight;
+            return;
+        }
+
+        const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
+        if (headingMatch) {
+            const level = headingMatch[1].length;
+            const headingText = headingMatch[2];
+            const headingSizeMap = { 1: 20, 2: 18, 3: 16, 4: 14, 5: 13, 6: 12 };
+            ensurePageSpace(baseLineHeight + 6);
+            drawInlineText(headingText, { fontSize: headingSizeMap[level], forceBold: true });
+            return;
+        }
+
+        const listMatch = line.match(/^[-*]\s+(.*)$/);
+        if (listMatch) {
+            ensurePageSpace(baseLineHeight);
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(12);
+            doc.text('•', marginLeft, cursorY);
+            drawInlineText(listMatch[1], { fontSize: 12, indent: 12 });
+            return;
+        }
+
+        ensurePageSpace(baseLineHeight);
+        drawInlineText(line, { fontSize: 12 });
+    });
+};
+
 const AddVoiceNotePage = () => {
     const navigate = useNavigate();
     const { user } = useContext(AuthContext);
@@ -667,26 +768,7 @@ const AddVoiceNotePage = () => {
                 unit: 'pt',
                 format: 'a4',
             });
-
-            const marginLeft = 40;
-            const marginTop = 40;
-            const maxWidth = 515; // A4 width (595pt) - 2 * 40 margin
-            const lineHeight = 18;
-
-            // Use plain text version of the summary
-            const plainSummary = summary.replace(/\r\n/g, '\n');
-            const lines = doc.splitTextToSize(plainSummary, maxWidth);
-
-            let cursorY = marginTop;
-
-            lines.forEach((line) => {
-                if (cursorY > 800) {
-                    doc.addPage();
-                    cursorY = marginTop;
-                }
-                doc.text(line, marginLeft, cursorY);
-                cursorY += lineHeight;
-            });
+            renderMarkdownToPdf(doc, summary);
 
             const fileName = `dental-summary-${dateCreated || 'note'}.pdf`;
             doc.save(fileName);
