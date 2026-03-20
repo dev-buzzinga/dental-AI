@@ -34,6 +34,7 @@ const Sidebar = () => {
         { path: '/email', icon: 'fa-envelope', label: 'Email Inbox'},
         { path: '/calendar', icon: 'fa-calendar-days', label: 'Calendar' },
         { path: '/patients', icon: 'fa-users', label: 'Patients' },
+        { path: '/campaigns', icon: 'fa-bullhorn', label: 'Campaigns' },
     ];
 
     const settingsItems = [

@@ -12,6 +12,7 @@ import CallsPage from './pages/Calls';
 import SMSPage from './pages/SMS';
 import EmailPage from './pages/Email';
 import PatientsPage from './pages/Patients/index';
+import CampaignsPage from './pages/Campaigns/index';
 import DoctorsPage from './pages/Doctors/index';
 import DoctorDetails from './pages/Doctors/DoctorDetails';
 import PatientDetail from './pages/Patients/PatientDetail';
@@ -63,6 +64,7 @@ const AppContent = () => {
                 <Route path="/add-voice-notes" element={<AddVoiceNotePage />} />
                 <Route path="/patients/:id" element={<PatientDetail />} />
                 <Route path="/patients" element={<PatientsPage />} />
+                <Route path="/campaigns" element={<CampaignsPage />} />
                 <Route path="/settings/doctors/:id" element={<DoctorDetails />} />
                 <Route path="/settings/doctors" element={<DoctorsPage />} />
                 <Route path="/settings/appointment-types" element={<AppointmentTypes />} />
