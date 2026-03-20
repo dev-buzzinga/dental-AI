@@ -1,6 +1,8 @@
 
 import twilio from "twilio";
 import { supabase } from "../config/database.js";
+import { setupTwilioWebhooks } from "./twilioWebhookSetup.js";
+
 const getTwilioClient = async (user_id) => {
     try {
         const { data, error } = await supabase
@@ -27,7 +29,17 @@ export const getTwilioActiveNumbers = async (req, res) => {
         const user_id = req.user.id;
         const client = await getTwilioClient(user_id);
         const data = await client.incomingPhoneNumbers.list();
-        const numbers = data.map(num => num.phoneNumber);
+        // console.log("data==>", data);
+        const numbers = data.map(num =>
+        ({
+            phoneNumber: num.phoneNumber,
+            sid: num.sid,
+            // friendlyName: num.friendlyName,
+            // voiceUrl: num.voiceUrl,
+            // statusCallback: num.statusCallback,
+            // statusCallbackMethod: num.statusCallbackMethod,
+        })
+        );
         return res.status(200).json({
             success: true,
             message: "Active numbers fetched successfully",
@@ -107,3 +119,24 @@ export const generateTwilioToken = async (req, res) => {
         });
     }
 }
+
+/**
+ * Helper function to trigger webhook setup after phone number changes
+ * Can be called internally when user adds/changes phone number
+ * @param {string} user_id - User ID
+ * @param {string} phoneNumberSid - Phone Number SID (optional)
+ * @returns {Promise<Object>} Setup result
+ */
+export const autoSetupWebhooksForUser = async (user_id, phoneNumberSid = null) => {
+    try {
+        console.log(`🔄 Auto-triggering webhook setup for user: ${user_id}`);
+        const result = await setupTwilioWebhooks(user_id, phoneNumberSid);
+        return result;
+    } catch (error) {
+        console.error("Error in autoSetupWebhooksForUser:", error);
+        return {
+            success: false,
+            message: error.message,
+        };
+    }
+};

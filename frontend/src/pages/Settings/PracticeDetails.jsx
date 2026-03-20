@@ -266,6 +266,9 @@ const PracticeDetails = () => {
             setSaving(true);
             setError('');
 
+            // Check if phone number changed
+            const phoneChanged = originalData.contact_information.phone !== formData.contact_information.phone;
+
             const payload = {
                 // user_id: user.id, auto insert by supabase
                 general_information: formData.general_information,
@@ -310,6 +313,27 @@ const PracticeDetails = () => {
                 setOriginalData(newData);
                 showToast('Practice details saved successfully', 'success');
             }
+
+            // 🔧 Auto-setup Twilio webhooks if phone number changed
+            if (phoneChanged && formData.contact_information.phone) {
+                try {
+                    console.log('📞 Phone number changed, setting up Twilio webhooks...');
+                    const selectedPhone = activePhoneNumbers.find(
+                        (num) => num.phoneNumber === formData.contact_information.phone
+                    );
+                    const webhookResult = await twilioService.setupWebhooks(selectedPhone?.sid || null);
+
+                    if (webhookResult.data.success) {
+                        console.log('✅ Twilio webhooks configured successfully');
+                    } else {
+                        console.warn('⚠️  Webhook setup had issues:', webhookResult.data.message);
+                    }
+                } catch (webhookError) {
+                    // Non-blocking: don't fail the save if webhook setup fails
+                    console.error('⚠️  Webhook setup error (non-critical):', webhookError);
+                }
+            }
+
         } catch (err) {
             console.error('Error saving practice details:', err);
             setError(err.message);
@@ -510,9 +534,14 @@ const PracticeDetails = () => {
                                         <SearchableDropdown
                                             label="Phone"
                                             placeholder="Select phone number"
-                                            options={activePhoneNumbers.map((num) => ({ id: num, name: num }))}
+                                            options={activePhoneNumbers.map((num) => ({
+                                                id: num.phoneNumber,
+                                                name: num.phoneNumber,
+                                                sid: num.sid,
+                                                phoneNumber: num.phoneNumber,
+                                            }))}
                                             value={formData.contact_information.phone}
-                                            onChange={(opt) => handleContactChange('phone', opt.id)}
+                                            onChange={(opt) => handleContactChange('phone', opt?.phoneNumber || opt?.id || '')}
                                             searchKeys={['name']}
                                         />
                                     </div>

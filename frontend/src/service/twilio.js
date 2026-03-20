@@ -11,7 +11,14 @@ const generateTwilioToken = async (identity) => {
     });
 };
 
+const setupWebhooks = async (phoneNumberSid = null) => {
+    return await authAxiosInstance.post("/twilio/setup-webhooks", {
+        phoneNumberSid,
+    });
+};
+
 export default {
     getActiveNumbers,
     generateTwilioToken,
+    setupWebhooks,
 };
