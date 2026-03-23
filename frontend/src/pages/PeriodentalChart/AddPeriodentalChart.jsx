@@ -95,7 +95,7 @@ const AddPeriodentalChart = () => {
       setChartData(originalChartData.tooth_data || defaultChartData);
       setAudioUrl(originalChartData.recording_url || '');
       setDuration(originalChartData.duration_seconds || 0);
-      
+
       // Load transcript if exists
       if (originalChartData.transcript_url) {
         fetchTranscript(originalChartData.transcript_url);
@@ -304,7 +304,7 @@ const AddPeriodentalChart = () => {
         const audioBlob = new Blob(chunks, { type: 'audio/webm' });
         setAudioBlob(audioBlob);
         setShouldUploadOnStop(true);
-        
+
         // Stop stream
         stream.getTracks().forEach(track => track.stop());
       };
@@ -378,7 +378,7 @@ const AddPeriodentalChart = () => {
       mediaRecorder.stop();
       setIsRecording(false);
       clearInterval(recordingIntervalRef.current);
-      
+
       // Close WebSocket
       if (wsRef.current) {
         wsRef.current.close();
@@ -454,7 +454,7 @@ const AddPeriodentalChart = () => {
         if (!isSummaryGenerating && summary) {
           clearInterval(summaryStatusIntervalRef.current);
           setIsSummaryGenerating(false);
-          
+
           if (onComplete) {
             onComplete(summary);
           }
@@ -545,9 +545,9 @@ const AddPeriodentalChart = () => {
             <i className={`fas fa-${isFullscreen ? 'compress' : 'expand'}`}></i>
           </button>
           {!isReadOnly && (
-            <button 
-              className="save-btn" 
-              onClick={() => handleSaveChart()} 
+            <button
+              className="save-btn"
+              onClick={() => handleSaveChart()}
               disabled={isSaving}
             >
               {isSaving ? 'Saving...' : (chartId ? 'Update Chart' : 'Save Chart')}
@@ -620,8 +620,8 @@ const AddPeriodentalChart = () => {
             </div>
             <div className="recording-controls">
               {!isRecording ? (
-                <button 
-                  className="record-btn-circle" 
+                <button
+                  className="record-btn-circle"
                   onClick={startRecording}
                   disabled={isRecordingLoading}
                   title="Start Recording"
@@ -679,12 +679,14 @@ const AddPeriodentalChart = () => {
       </div>
 
       {/* Chart Section */}
-      <div className="chart-section">
-        <PeriodontalChart 
-          chartData={chartData} 
-          setChartData={setChartData} 
-          mode={mode}
-        />
+      <div className="chart-section-cover">
+        <div className="chart-section">
+          <PeriodontalChart
+            chartData={chartData}
+            setChartData={setChartData}
+            mode={mode}
+          />
+        </div>
       </div>
     </div>
   );

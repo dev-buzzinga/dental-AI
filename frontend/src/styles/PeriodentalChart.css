@@ -146,9 +146,9 @@
 
 /* Add/Edit/View Periodontal Chart Styles */
 .add-periodontal-chart-page {
-  padding: 24px;
   background: var(--background, #f5f5f5);
-  min-height: 100vh;
+  height: 100vh;
+  overflow-y: auto;
 }
 
 .add-periodontal-chart-page.fullscreen {
@@ -250,6 +250,7 @@
   gap: 24px;
   margin-bottom: 24px;
   align-items: flex-start;
+  padding: 0 24px;
 }
 
 /* Form Section */
@@ -587,6 +588,9 @@
 }
 
 /* Chart Section */
+.chart-section-cover {
+  padding: 0 24px 24px 24px;
+}
 .chart-section {
   padding: 20px;
   background: white;

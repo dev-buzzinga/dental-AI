@@ -1,318 +1,786 @@
 import React from 'react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { TOOTH_IMG_URL } from '../utils/teeth';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  ReferenceLine,
+  ResponsiveContainer,
+} from 'recharts';
 import './PeriodontalChart.css';
 
-const PeriodontalChart = ({ chartData, setChartData, mode = 'edit' }) => {
-  const upperTeeth = chartData.slice(0, 16); // Teeth 1-16
-  const lowerTeeth = chartData.slice(16, 32); // Teeth 17-32
+const horizontalLines = [2, 4, 6, 8, 10, 12, 14, 16];
 
-  // Update tooth data
-  const updateTooth = (toothIndex, field, value) => {
-    if (mode === 'view') return; // Read-only mode
-    
-    const newChartData = [...chartData];
-    newChartData[toothIndex] = {
-      ...newChartData[toothIndex],
-      [field]: value
-    };
-    setChartData(newChartData);
-  };
+const SITE_LABELS = ['MB', 'B', 'DB', 'ML', 'L', 'DL'];
 
-  // Update site-specific data (plaque, bop, gr, pd)
-  const updateSiteData = (toothIndex, field, siteIndex, value) => {
-    if (mode === 'view') return;
-    
-    const newChartData = [...chartData];
-    const tooth = { ...newChartData[toothIndex] };
-    const siteData = [...tooth[field]];
-    siteData[siteIndex] = value;
-    tooth[field] = siteData;
-    newChartData[toothIndex] = tooth;
-    setChartData(newChartData);
-  };
+// const upperFields = [
+//   { label: 'Mobility', cells: 1, className: 'mobility-cell' },
+//   { label: 'Implant', cells: 1, className: 'implant-cell' },
+//   { label: 'Furcation', cells: 1, className: 'furcation-cell' },
+//   { label: 'Plaque', cells: 3, className: 'plaque-cell' },
+//   { label: 'BOP', cells: 3, className: 'bop-cell' },
+//   { label: 'GR', cells: 3, className: 'gr-cell' },
+//   { label: 'PD', cells: 3, className: 'pd-cell' }
+// ];
 
-  // Toggle implant status
-  const toggleImplant = (toothIndex) => {
-    if (mode === 'view') return;
-    updateTooth(toothIndex, 'isImplant', !chartData[toothIndex].isImplant);
-  };
 
-  // Prepare data for area chart (GR and PD)
-  const prepareChartData = (teeth, field) => {
-    return teeth.map(tooth => ({
-      tooth: tooth.number,
-      buccal: (tooth[field][0] + tooth[field][1] + tooth[field][2]) / 3,
-      lingual: (tooth[field][3] + tooth[field][4] + tooth[field][5]) / 3
-    }));
-  };
+const mapValueToY = (val, max = 10, height = 40) => {
+  return height - (val / max) * height;
+};
 
-  // Render tooth component
-  const ToothComponent = ({ tooth, toothIndex }) => {
-    const isImplant = tooth.isImplant;
-    const hasPlaque = tooth.plaque.some(p => p);
-    const hasBleeding = tooth.bop.some(b => b);
 
-    return (
-      <div className="tooth-container">
-        {/* Tooth Number */}
-        <div className="tooth-number">{tooth.number}</div>
+const renderChartLines = (teeth) => {
+  const spacing = 30; // space between each tooth
+  const subSpacing = 6; // space between MB, B, DB (or ML, L, DL)
 
-        {/* Site inputs for Buccal (MB, B, DB) */}
-        <div className="sites-row buccal">
-          {[0, 1, 2].map(siteIndex => (
-            <div key={siteIndex} className="site-group">
-              {/* GR input */}
-              <input
-                type="number"
-                className="site-input gr-input"
-                value={tooth.gr[siteIndex]}
-                onChange={(e) => updateSiteData(toothIndex, 'gr', siteIndex, parseFloat(e.target.value) || 0)}
-                disabled={isImplant || mode === 'view'}
-                min="0"
-                max="15"
-              />
-              {/* PD input */}
-              <input
-                type="number"
-                className="site-input pd-input"
-                value={tooth.pd[siteIndex]}
-                onChange={(e) => updateSiteData(toothIndex, 'pd', siteIndex, parseFloat(e.target.value) || 1)}
-                disabled={isImplant || mode === 'view'}
-                min="1"
-                max="15"
-              />
-            </div>
-          ))}
-        </div>
+  const grPoints = [];
+  const pdPoints = [];
 
-        {/* Tooth Image/Visual */}
-        <div 
-          className={`tooth-visual ${isImplant ? 'implant' : ''} ${hasPlaque ? 'plaque' : ''} ${hasBleeding ? 'bleeding' : ''}`}
-          onClick={() => toggleImplant(toothIndex)}
-          title={isImplant ? 'Click to mark as natural tooth' : 'Click to mark as implant'}
-        >
-          <div className="tooth-icon">
-            {isImplant ? '🔩' : '🦷'}
-          </div>
-        </div>
+  teeth.forEach((tooth, i) => {
+    if (!tooth) return;
 
-        {/* Mobility and Furcation */}
-        <div className="tooth-controls">
-          <div className="control-group">
-            <label>M</label>
-            <input
-              type="number"
-              className="small-input"
-              value={tooth.mobility}
-              onChange={(e) => updateTooth(toothIndex, 'mobility', parseInt(e.target.value) || 0)}
-              disabled={isImplant || mode === 'view'}
-              min="0"
-              max="3"
-            />
-          </div>
-          <div className="control-group">
-            <label>F</label>
-            <select
-              className="small-select"
-              value={tooth.furcation}
-              onChange={(e) => updateTooth(toothIndex, 'furcation', e.target.value)}
-              disabled={isImplant || mode === 'view'}
-            >
-              <option value="None">-</option>
-              <option value="1">1</option>
-              <option value="2">2</option>
-              <option value="3">3</option>
-            </select>
-          </div>
-        </div>
+    const baseX = i * spacing;
 
-        {/* Plaque indicators (6 checkboxes) */}
-        <div className="indicators-row plaque-indicators">
-          {tooth.plaque.map((checked, idx) => (
-            <input
-              key={idx}
-              type="checkbox"
-              checked={checked}
-              onChange={(e) => updateSiteData(toothIndex, 'plaque', idx, e.target.checked)}
-              disabled={isImplant || mode === 'view'}
-              title={`Plaque site ${idx + 1}`}
-            />
-          ))}
-        </div>
+    tooth.gr.forEach((val, j) => {
+      const x = baseX + j * subSpacing;
+      const y = mapValueToY(val);
+      grPoints.push(`${x},${y}`);
+    });
 
-        {/* BOP indicators (6 checkboxes) */}
-        <div className="indicators-row bop-indicators">
-          {tooth.bop.map((checked, idx) => (
-            <input
-              key={idx}
-              type="checkbox"
-              checked={checked}
-              onChange={(e) => updateSiteData(toothIndex, 'bop', idx, e.target.checked)}
-              disabled={isImplant || mode === 'view'}
-              title={`BOP site ${idx + 1}`}
-            />
-          ))}
-        </div>
-
-        {/* Site inputs for Lingual (ML, L, DL) */}
-        <div className="sites-row lingual">
-          {[3, 4, 5].map(siteIndex => (
-            <div key={siteIndex} className="site-group">
-              {/* PD input */}
-              <input
-                type="number"
-                className="site-input pd-input"
-                value={tooth.pd[siteIndex]}
-                onChange={(e) => updateSiteData(toothIndex, 'pd', siteIndex, parseFloat(e.target.value) || 1)}
-                disabled={isImplant || mode === 'view'}
-                min="1"
-                max="15"
-              />
-              {/* GR input */}
-              <input
-                type="number"
-                className="site-input gr-input"
-                value={tooth.gr[siteIndex]}
-                onChange={(e) => updateSiteData(toothIndex, 'gr', siteIndex, parseFloat(e.target.value) || 0)}
-                disabled={isImplant || mode === 'view'}
-                min="0"
-                max="15"
-              />
-            </div>
-          ))}
-        </div>
-
-        {/* Furcation Lingual */}
-        <div className="furcation-lingual">
-          <label>FL</label>
-          <select
-            className="small-select"
-            value={tooth.furcationLingual}
-            onChange={(e) => updateTooth(toothIndex, 'furcationLingual', e.target.value)}
-            disabled={isImplant || mode === 'view'}
-          >
-            <option value="None">-</option>
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-          </select>
-        </div>
-      </div>
-    );
-  };
+    tooth.pd.forEach((val, j) => {
+      const x = baseX + j * subSpacing;
+      const y = mapValueToY(val);
+      pdPoints.push(`${x},${y}`);
+    });
+  });
 
   return (
-    <div className="periodontal-chart">
-      {/* Legend */}
-      <div className="chart-legend">
-        <div className="legend-item">
-          <span className="legend-label">GR:</span> Gingival Recession
-        </div>
-        <div className="legend-item">
-          <span className="legend-label">PD:</span> Pocket Depth
-        </div>
-        <div className="legend-item">
-          <span className="legend-label">M:</span> Mobility (0-3)
-        </div>
-        <div className="legend-item">
-          <span className="legend-label">F:</span> Furcation
-        </div>
-        <div className="legend-item">
-          <span className="legend-label">FL:</span> Furcation Lingual
-        </div>
-        <div className="legend-item">
-          <span className="legend-color plaque-color"></span> Plaque
-        </div>
-        <div className="legend-item">
-          <span className="legend-color bop-color"></span> BOP (Bleeding on Probing)
-        </div>
-      </div>
+    <svg className="absolute top-0 left-0 z-10 pointer-events-none" width="100%" height="40">
+      <polyline points={grPoints.join(' ')} fill="none" stroke="blue" strokeWidth={2} />
+      <polyline points={pdPoints.join(' ')} fill="none" stroke="red" strokeWidth={2} />
+    </svg>
+  );
+};
 
-      {/* Upper Teeth Section */}
-      <div className="teeth-section upper-section">
-        <h3 className="section-title">Upper Teeth (1-16)</h3>
-        
-        {/* Area Chart for Upper Teeth - GR */}
-        <div className="area-chart-container">
-          <h4>Gingival Recession (GR)</h4>
-          <ResponsiveContainer width="100%" height={150}>
-            <AreaChart data={prepareChartData(upperTeeth, 'gr')}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="tooth" />
-              <YAxis />
-              <Tooltip />
-              <Area type="monotone" dataKey="buccal" stackId="1" stroke="#8884d8" fill="#8884d8" name="Buccal" />
-              <Area type="monotone" dataKey="lingual" stackId="2" stroke="#82ca9d" fill="#82ca9d" name="Lingual" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
 
-        {/* Area Chart for Upper Teeth - PD */}
-        <div className="area-chart-container">
-          <h4>Pocket Depth (PD)</h4>
-          <ResponsiveContainer width="100%" height={150}>
-            <AreaChart data={prepareChartData(upperTeeth, 'pd')}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="tooth" />
-              <YAxis />
-              <Tooltip />
-              <Area type="monotone" dataKey="buccal" stackId="1" stroke="#ff7300" fill="#ff7300" name="Buccal" />
-              <Area type="monotone" dataKey="lingual" stackId="2" stroke="#387908" fill="#387908" name="Lingual" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+function getToothImage(tooth, isUpper) {
+  
+  let tNumber = tooth.id;
 
-        {/* Upper Teeth Grid */}
-        <div className="teeth-grid">
-          {upperTeeth.map((tooth, idx) => (
-            <ToothComponent key={tooth.id} tooth={tooth} toothIndex={idx} />
-          ))}
-        </div>
-      </div>
+  if (!isUpper) {
+    tNumber = tooth.id - 16;
+  }
+  const base = `t${tNumber}_${isUpper ? 'U' : 'L'}`;
 
-      {/* Lower Teeth Section */}
-      <div className="teeth-section lower-section">
-        <h3 className="section-title">Lower Teeth (17-32)</h3>
-        
-        {/* Lower Teeth Grid */}
-        <div className="teeth-grid">
-          {lowerTeeth.map((tooth, idx) => (
-            <ToothComponent key={tooth.id} tooth={tooth} toothIndex={idx + 16} />
-          ))}
-        </div>
+  if (tooth.isImplant) return TOOTH_IMG_URL[`${base}_Implant`];
 
-        {/* Area Chart for Lower Teeth - PD */}
-        <div className="area-chart-container">
-          <h4>Pocket Depth (PD)</h4>
-          <ResponsiveContainer width="100%" height={150}>
-            <AreaChart data={prepareChartData(lowerTeeth, 'pd')}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="tooth" />
-              <YAxis />
-              <Tooltip />
-              <Area type="monotone" dataKey="buccal" stackId="1" stroke="#ff7300" fill="#ff7300" name="Buccal" />
-              <Area type="monotone" dataKey="lingual" stackId="2" stroke="#387908" fill="#387908" name="Lingual" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
+  const hasPlaque = tooth.plaque.slice(0, 3).some(Boolean);
+  const hasBOP = tooth.bop.slice(0, 3).some(Boolean);
 
-        {/* Area Chart for Lower Teeth - GR */}
-        <div className="area-chart-container">
-          <h4>Gingival Recession (GR)</h4>
-          <ResponsiveContainer width="100%" height={150}>
-            <AreaChart data={prepareChartData(lowerTeeth, 'gr')}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="tooth" />
-              <YAxis />
-              <Tooltip />
-              <Area type="monotone" dataKey="buccal" stackId="1" stroke="#8884d8" fill="#8884d8" name="Buccal" />
-              <Area type="monotone" dataKey="lingual" stackId="2" stroke="#82ca9d" fill="#82ca9d" name="Lingual" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+  if (hasPlaque && hasBOP) return TOOTH_IMG_URL[`${base}_Plaque_Bleed`];
+  if (hasPlaque) return TOOTH_IMG_URL[`${base}_Plaque`];
+  if (hasBOP) return TOOTH_IMG_URL[`${base}_Bleed`];
+
+  return TOOTH_IMG_URL[base];
+}
+
+const Tooth = ({ tooth, isUpper }) => {
+  const imgUrl = getToothImage(tooth, isUpper);
+
+  if (isUpper) {
+    return (
+      <div style={{ textAlign: 'center' }}>
+      <img src={imgUrl} alt="tooth" style={{ height: "250px" }} />
+      <div style={{ fontSize: 12 }}>{tooth.id}</div>
+
+    </div>
+    )
+  }
+  return (
+    <div style={{ textAlign: 'center' }}>
+      <div style={{ fontSize: 12 }}>{tooth.id}</div>
+      <img src={imgUrl} alt="tooth" style={{ height: "250px" }} />
+
     </div>
   );
 };
 
-export default PeriodontalChart;
+const upperFields = [
+  { label: 'Mobility', cells: 1, className: 'mobility-cell' },
+  { label: 'Implant', cells: 1, className: 'implant-cell' },
+  { label: 'Furcation', cells: 1, className: 'furcation-cell' },
+  { label: 'Plaque', cells: 3, className: 'plaque-cell' },
+  { label: 'BOP', cells: 3, className: 'bop-cell' },
+  { label: 'GR', cells: 3, className: 'gr-cell' },
+  { label: 'PD', cells: 3, className: 'pd-cell' },
+];
+
+const lowerFields = [
+  { label: 'Furcation', cells: 1, className: 'furcation-cell' },
+  { label: 'Plaque', cells: 3, className: 'plaque-cell' },
+  { label: 'BOP', cells: 3, className: 'bop-cell' },
+  { label: 'GR', cells: 3, className: 'gr-cell' },
+  { label: 'PD', cells: 3, className: 'pd-cell' },
+];
+
+const getSiteColor = (val) => {
+  if (val >= 5) return '#d32f2f';
+  if (val >= 3) return '#fbc02d';
+  if (val >= 1) return '#388e3c';
+  return '#ccc';
+};
+
+const PeriodontalChart = ({ chartData, setChartData }) => {
+  const upperTeeth = chartData.slice(0, 16);
+  const lowerTeeth = chartData.slice(16, 32);
+
+  const handleToggle = (toothIdx, field, siteIdx = null) => {
+    const updated = [...chartData];
+    const tooth = { ...updated[toothIdx] };
+
+    if (field === 'implant') {
+      tooth.isImplant = !tooth.isImplant;
+      if (tooth.isImplant) {
+        tooth.mobility = 0;
+        tooth.furcation = '0';
+        tooth.bop = [false, false, false, false, false, false];
+        tooth.pd = [0, 0, 0, 0, 0, 0];
+        tooth.gr = [0, 0, 0, 0, 0, 0];
+      }
+    } else if (field === 'mobility') {
+      tooth.mobility = (tooth.mobility + 1) % 4;
+    } else if (field === 'furcation') {
+      const values = ['0', '1', '2', '3'];
+      const i = values.indexOf(tooth.furcation);
+      tooth.furcation = values[(i + 1) % values.length];
+    } else if (field === 'furcationLingual') {
+      const values = ['0', '1', '2', '3'];
+      const i = values.indexOf(tooth.furcationLingual);
+      tooth.furcationLingual = values[(i + 1) % values.length];
+    } else if (['plaque', 'bop'].includes(field)) {
+      tooth[field][siteIdx] = !tooth[field][siteIdx];
+    }
+
+    updated[toothIdx] = tooth;
+    setChartData(updated);
+  };
+
+  const handleInputChange = (toothIdx, field, siteIdx, value) => {
+    const updated = [...chartData];
+    const tooth = { ...updated[toothIdx] };
+    tooth[field][siteIdx] = Number(value);
+    updated[toothIdx] = tooth;
+    setChartData(updated);
+  };
+
+
+  const getUpperAreaData = () => {
+    const areaData = upperTeeth.map((tooth, index) => ({
+      name: `Tooth ${tooth.id}`,
+      gr: tooth.gr.reduce((a, b) => a + b, 0),
+      pd: tooth.pd.reduce((a, b) => a + b, 0),
+    }));
+
+    return areaData;
+  }
+
+  const getLowerAreaData = () => {
+    const areaData = lowerTeeth.map((tooth, index) => ({
+      name: `Tooth ${tooth.id}`,
+      gr: tooth.gr.reduce((a, b) => a + b, 0),
+      pd: tooth.pd.reduce((a, b) => a + b, 0),
+    }));
+
+    return areaData;
+  }
+  return (
+    <div className="periodontal-chart-root" style={{ width: '100%', margin: '0 auto' }}>
+      {/* Upper Teeth Buccal Table */}
+      <div style={{ width: '100%' }}>
+        <table className="chart-table" style={{ width: '100%', minWidth: 960, tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 10 }}>
+          <thead>
+            <tr>
+              <th style={{ position: 'sticky', left: 0, background: '#fff', zIndex: 2, minWidth: 90, maxWidth: 120, width: 50, textAlign: 'right', paddingRight: '4px' }}></th>
+              {upperTeeth.map((_, idx) => (
+                <th key={idx} style={{ minWidth: 50, maxWidth: 80, width: 50, textAlign: 'center', fontWeight: 500, padding: '6px 2px', border: '1px solid #ccc' }}>MB B DB</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {upperFields.map(({ label, cells, className }) => (
+              <tr key={label}>
+                <td style={{ position: 'sticky', left: 0, background: '#fff', zIndex: 1, minWidth: 90, maxWidth: 120, width: 50, textAlign: 'right', fontWeight: 500, paddingRight: '4px' }}>{label}</td>
+                {upperTeeth.map((tooth, toothIdx) => {
+                  const isDisabled = tooth.isImplant && ['Mobility', 'Furcation', 'BOP', 'GR', 'PD'].includes(label);
+                  const siteStart = 0; // Buccal side (MB, B, DB)
+                  return (
+                    <td key={toothIdx} style={{ textAlign: 'center', padding: 0, border: '1px solid #ccc', padding: '2px 2px', verticalAlign: 'middle', minWidth: 50, maxWidth: 80, width: 50, }}>
+                      <div style={{ display: 'flex', justifyContent: 'center', gap: 4, padding: '4px 0px' }}>
+                        {Array.from({ length: cells }).map((_, siteIdx) => {
+                          const globalSiteIdx = siteStart + siteIdx;
+                          let style = {
+                            backgroundColor: '#eee',
+                            boxSizing: 'border-box',
+                            width: '16px',
+                            height: '20px',
+                            fontSize: 10,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: '1px solid #ccc',
+                            borderRadius: 4,
+                            cursor: isDisabled ? 'not-allowed' : 'pointer',
+                          };
+                          if (label === 'Implant') {
+                            style.backgroundColor = tooth.isImplant ? '#2196f3' : '#eee';
+                          } else if (label === 'Mobility') {
+                            style = { ...style, backgroundColor: '#fff', fontWeight: 600 };
+                          } else if (label === 'Furcation') {
+                            const percent = parseInt(tooth.furcation) * 33;
+                            style.background = `linear-gradient(to top, #8bc34a ${percent}%, #eee ${percent}%)`;
+                          } else if (label === 'Plaque') {
+                            style.backgroundColor = tooth.plaque[globalSiteIdx] ? 'yellow' : '#eee';
+                          } else if (label === 'BOP') {
+                            style.backgroundColor = tooth.bop[globalSiteIdx] ? 'red' : '#eee';
+                          }
+                          if (label === 'GR' || label === 'PD') {
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '16px', paddingRight: '2px' }} key={siteIdx}>
+                                <input
+                                  type="number"
+                                  value={tooth[label.toLowerCase()][globalSiteIdx]}
+                                  onChange={(e) => handleInputChange(toothIdx, label.toLowerCase(), globalSiteIdx, e.target.value)}
+                                  disabled={isDisabled}
+                                  style={{ width: '90%', height: '20px', textAlign: 'center', fontSize: 10, border: '1px solid #ccc', borderRadius: 4, margin: '0 4%' }}
+                                  className='hide-spinner'
+                                />
+                              </div>
+                            );
+                          }
+                          return (
+                            <span
+                              key={siteIdx}
+                              className={`cell ${className}`}
+                              style={style}
+                              onClick={() => {
+                                if (isDisabled) return;
+                                if (label === 'Implant') handleToggle(toothIdx, 'implant');
+                                if (label === 'Mobility') handleToggle(toothIdx, 'mobility');
+                                if (label === 'Furcation') handleToggle(toothIdx, 'furcation');
+                                if (label === 'Plaque') handleToggle(toothIdx, 'plaque', globalSiteIdx);
+                                if (label === 'BOP') handleToggle(toothIdx, 'bop', globalSiteIdx);
+                              }}
+                            >
+                              {label === 'Mobility' ? tooth.mobility : ''}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Upper Teeth Lingual Table */}
+      {/* <table className="chart-table" style={{ width: '100%', minWidth: 960, tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 10, marginTop: '24px' }}>
+        <thead>
+          <tr>
+            <th style={{ position: 'sticky', left: 0, background: '#fff', zIndex: 2, minWidth: 90, maxWidth: 120, width: 50, textAlign: 'right', paddingRight: '4px' }}></th>
+            {upperTeeth.map((_, idx) => (
+              <th key={idx} style={{ minWidth: 50, maxWidth: 80, width: 50, textAlign: 'center', fontWeight: 500, padding: '6px 2px', border: '1px solid #ccc' }}>ML L DL</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {lowerFields.map(({ label, cells, className }) => (
+            <tr key={label}>
+              <td style={{ position: 'sticky', left: 0, background: '#fff', zIndex: 1, minWidth: 90, maxWidth: 120, width: 50, textAlign: 'right', fontWeight: 500, paddingRight: '4px' }}>{label}</td>
+              {upperTeeth.map((tooth, toothIdx) => {
+                const isDisabled = tooth.isImplant && ['Mobility', 'Furcation', 'BOP', 'GR', 'PD'].includes(label);
+                const siteStart = 3; // Lingual side (ML, L, DL)
+                return (
+                  <td key={toothIdx} style={{ textAlign: 'center', padding: 0, border: '1px solid #ccc', padding: '2px 2px', verticalAlign: 'middle', minWidth: 50, maxWidth: 80, width: 50, }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: 4, padding: '4px 0px' }}>
+                      {Array.from({ length: cells }).map((_, siteIdx) => {
+                        const globalSiteIdx = siteStart + siteIdx;
+                        let style = {
+                          backgroundColor: '#eee',
+                          boxSizing: 'border-box',
+                          width: '16px',
+                          height: '20px',
+                          fontSize: 10,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          border: '1px solid #ccc',
+                          borderRadius: 4,
+                          cursor: isDisabled ? 'not-allowed' : 'pointer',
+                        };
+                        if (label === 'Implant') {
+                          style.backgroundColor = tooth.isImplant ? '#2196f3' : '#eee';
+                        } else if (label === 'Mobility') {
+                          style = { ...style, backgroundColor: '#fff', fontWeight: 600 };
+                        } else if (label === 'Furcation') {
+                          const percent = parseInt(tooth.furcationLingual) * 33;
+                          style.background = `linear-gradient(to top, #8bc34a ${percent}%, #eee ${percent}%)`;
+                        } else if (label === 'Plaque') {
+                          style.backgroundColor = tooth.plaque[globalSiteIdx] ? 'yellow' : '#eee';
+                        } else if (label === 'BOP') {
+                          style.backgroundColor = tooth.bop[globalSiteIdx] ? 'red' : '#eee';
+                        }
+                        if (label === 'GR' || label === 'PD') {
+                          return (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '16px', paddingRight: '2px' }} key={siteIdx}>
+                              <input
+                                type="number"
+                                value={tooth[label.toLowerCase()][globalSiteIdx]}
+                                onChange={(e) => handleInputChange(toothIdx, label.toLowerCase(), globalSiteIdx, e.target.value)}
+                                disabled={isDisabled}
+                                style={{ width: '90%', height: '20px', textAlign: 'center', fontSize: 10, border: '1px solid #ccc', borderRadius: 4, margin: '0 4%' }}
+                                className='hide-spinner'
+                              />
+                            </div>
+                          );
+                        }
+                        return (
+                          <span
+                            key={siteIdx}
+                            className={`cell ${className}`}
+                            style={style}
+                            onClick={() => {
+                              if (isDisabled) return;
+                              if (label === 'Implant') handleToggle(toothIdx, 'implant');
+                              if (label === 'Mobility') handleToggle(toothIdx, 'mobility');
+                              if (label === 'Furcation') handleToggle(toothIdx, 'furcationLingual');
+                              if (label === 'Plaque') handleToggle(toothIdx, 'plaque', globalSiteIdx);
+                              if (label === 'BOP') handleToggle(toothIdx, 'bop', globalSiteIdx);
+                            }}
+                          >
+                            {label === 'Mobility' ? tooth.mobility : ''}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table> */}
+
+
+      <div style={{ position: 'relative',   width: "-webkit-fill-available", marginLeft: "70px" }}>
+        {/* Chart in background */}
+        <ResponsiveContainer width="100%" height={200}>
+          <AreaChart
+            data={getUpperAreaData()}
+            margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+          >
+            <YAxis domain={[0, 16]} hide />
+            <XAxis tick={false} axisLine={false} tickLine={false} />
+
+            {/* Grid lines behind chart */}
+            {horizontalLines.map((y, index) => (
+              <ReferenceLine
+                key={index}
+                y={y}
+                stroke="#ccc"
+                strokeDasharray="3 3"
+                ifOverflow="visible"
+              />
+            ))}
+
+            <Area
+              type="monotone"
+              dataKey="gr"
+              stackId="0"
+              stroke="#a3a8fa"
+              fill="#a3a8fa"
+              fillOpacity={0.3}
+            />
+            <Area
+              type="monotone"
+              dataKey="pd"
+              stackId="1"
+              stroke="#f9cdce"
+              fill="#f9cdce"
+              fillOpacity={0.3}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+
+        {/* Teeth images on top of chart */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 42,
+            left: 0,
+            right: 0,
+            display: 'flex',
+            justifyContent: 'space-between',
+            pointerEvents: 'none',
+          }}
+        >
+          {upperTeeth.map((tooth) => (
+            <Tooth key={tooth.id} tooth={tooth} isUpper={true} />
+          ))}
+        </div>
+      </div>
+      <table
+        className="chart-table"
+        style={{
+          width: '100%',
+          minWidth: 960,
+          tableLayout: 'fixed',
+          borderCollapse: 'collapse',
+          fontSize: 10,
+          marginTop: '150px'
+        }}
+      >
+        <thead>
+          <tr>
+            <th style={{ position: 'sticky', left: 0, background: '#fff', zIndex: 2, minWidth: 90, maxWidth: 120, width: 50, textAlign: 'right', paddingRight: '4px' }}></th>
+            {upperTeeth.map((_, idx) => (
+              <th key={idx} style={{ minWidth: 50, maxWidth: 80, width: 50, textAlign: 'center', fontWeight: 500, padding: '6px 2px', border: '1px solid #ccc' }}>ML L DL</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {lowerFields.map(({ label, cells, className }) => (
+            <tr key={label}>
+              <td style={{ position: 'sticky', left: 0, background: '#fff', zIndex: 1, minWidth: 90, maxWidth: 120, width: 50, textAlign: 'right', fontWeight: 500, paddingRight: '4px' }}>
+                {label}
+              </td>
+              {upperTeeth.map((tooth, toothIdx) => {
+                const isDisabled = tooth.isImplant && ['Mobility', 'Furcation', 'BOP', 'GR', 'PD'].includes(label);
+                const siteStart = 3; // Lingual side (ML, L, DL)
+                return (
+                  <td key={toothIdx} style={{ textAlign: 'center', padding: 0, border: '1px solid #ccc', padding: '2px 2px', verticalAlign: 'middle', minWidth: 50, maxWidth: 80, width: 50, }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: 4, padding: '4px 0px' }}>
+                      {Array.from({ length: cells }).map((_, siteIdx) => {
+                        const globalSiteIdx = siteStart + siteIdx;
+                        let style = {
+                          backgroundColor: '#eee',
+                          boxSizing: 'border-box',
+                          width: '16px',
+                          height: '20px',
+                          fontSize: 10,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          border: '1px solid #ccc',
+                          borderRadius: 4,
+                          cursor: isDisabled ? 'not-allowed' : 'pointer',
+                        };
+                        if (label === 'Implant') {
+                          style.backgroundColor = tooth.isImplant ? '#2196f3' : '#eee';
+                        } else if (label === 'Mobility') {
+                          style = {
+                            ...style,
+                            backgroundColor: '#fff',
+                            fontWeight: 600,
+                          };
+                        } else if (label === 'Furcation') {
+                          const percent = parseInt(tooth.furcationLingual) * 33;
+                          style.background = `linear-gradient(to top, #8bc34a ${percent}%, #eee ${percent}%)`;
+                        } else if (label === 'Plaque') {
+                          style.backgroundColor = tooth.plaque[globalSiteIdx] ? 'yellow' : '#eee';
+                        } else if (label === 'BOP') {
+                          style.backgroundColor = tooth.bop[globalSiteIdx] ? 'red' : '#eee';
+                        }
+                        if (label === 'GR' || label === 'PD') {
+                          return (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '16px', paddingRight: '2px' }} key={siteIdx}>
+                              <input
+                                type="number"
+                                value={tooth[label.toLowerCase()][globalSiteIdx]}
+                                onChange={(e) => handleInputChange(toothIdx, label.toLowerCase(), globalSiteIdx, e.target.value)}
+                                disabled={isDisabled}
+                                style={{
+                                  width: '90%',
+                                  height: '20px',
+                                  textAlign: 'center',
+                                  fontSize: 10,
+                                  border: '1px solid #ccc',
+                                  borderRadius: 4,
+                                  margin: '0 4%',
+                                }}
+                                className='hide-spinner'
+                              />
+                            </div>
+                          );
+                        }
+                        return (
+                          <span
+                            key={siteIdx}
+                            className={`cell ${className}`}
+                            style={style}
+                            onClick={() => {
+                              if (isDisabled) return;
+                              if (label === 'Implant') handleToggle(toothIdx, 'implant');
+                              if (label === 'Mobility') handleToggle(toothIdx, 'mobility');
+                              if (label === 'Furcation') handleToggle(toothIdx, 'furcationLingual');
+                              if (label === 'Plaque') handleToggle(toothIdx, 'plaque', globalSiteIdx);
+                              if (label === 'BOP') handleToggle(toothIdx, 'bop', globalSiteIdx);
+                            }}
+                          >
+                            {label === 'Mobility' ? tooth.mobility : ''}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+            {/* Lower Teeth Buccal Table */}
+            <div style={{ width: '100%', marginTop: '48px' }}>
+        <table className="chart-table" style={{ width: '100%', minWidth: 960, tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 10 }}>
+          <thead>
+            <tr>
+              <th style={{ position: 'sticky', left: 0, background: '#fff', zIndex: 2, minWidth: 90, maxWidth: 120, width: 50, textAlign: 'right', paddingRight: '4px' }}></th>
+              {lowerTeeth.map((_, idx) => (
+                <th key={idx} style={{ minWidth: 50, maxWidth: 80, width: 50, textAlign: 'center', fontWeight: 500, padding: '6px 2px', border: '1px solid #ccc' }}>MB B DB</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {upperFields.map(({ label, cells, className }) => (
+              <tr key={label}>
+                <td style={{ position: 'sticky', left: 0, background: '#fff', zIndex: 1, minWidth: 90, maxWidth: 120, width: 50, textAlign: 'right', fontWeight: 500, paddingRight: '4px' }}>{label}</td>
+                {lowerTeeth.map((tooth, toothIdx) => {
+                  const isDisabled = tooth.isImplant && ['Mobility', 'Furcation', 'BOP', 'GR', 'PD'].includes(label);
+                  const siteStart = 0; // Buccal side (MB, B, DB)
+                  return (
+                    <td key={toothIdx} style={{ textAlign: 'center', padding: 0, border: '1px solid #ccc', padding: '2px 2px', verticalAlign: 'middle', minWidth: 50, maxWidth: 80, width: 50, }}>
+                      <div style={{ display: 'flex', justifyContent: 'center', gap: 4, padding: '4px 0px' }}>
+                        {Array.from({ length: cells }).map((_, siteIdx) => {
+                          const globalSiteIdx = siteStart + siteIdx;
+                          let style = {
+                            backgroundColor: '#eee',
+                            boxSizing: 'border-box',
+                            width: '16px',
+                            height: '20px',
+                            fontSize: 10,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: '1px solid #ccc',
+                            borderRadius: 4,
+                            cursor: isDisabled ? 'not-allowed' : 'pointer',
+                          };
+                          if (label === 'Implant') {
+                            style.backgroundColor = tooth.isImplant ? '#2196f3' : '#eee';
+                          } else if (label === 'Mobility') {
+                            style = { ...style, backgroundColor: '#fff', fontWeight: 600 };
+                          } else if (label === 'Furcation') {
+                            const percent = parseInt(tooth.furcation) * 33;
+                            style.background = `linear-gradient(to top, #8bc34a ${percent}%, #eee ${percent}%)`;
+                          } else if (label === 'Plaque') {
+                            style.backgroundColor = tooth.plaque[globalSiteIdx] ? 'yellow' : '#eee';
+                          } else if (label === 'BOP') {
+                            style.backgroundColor = tooth.bop[globalSiteIdx] ? 'red' : '#eee';
+                          }
+                          if (label === 'GR' || label === 'PD') {
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '16px', paddingRight: '2px' }} key={siteIdx}>
+                                <input
+                                  type="number"
+                                  value={tooth[label.toLowerCase()][globalSiteIdx]}
+                                  onChange={(e) => handleInputChange(16 + toothIdx, label.toLowerCase(), globalSiteIdx, e.target.value)}
+                                  disabled={isDisabled}
+                                  style={{ width: '90%', height: '20px', textAlign: 'center', fontSize: 10, border: '1px solid #ccc', borderRadius: 4, margin: '0 4%' }}
+                                  className='hide-spinner'
+                                />
+                              </div>
+                            );
+                          }
+                          return (
+                            <span
+                              key={siteIdx}
+                              className={`cell ${className}`}
+                              style={style}
+                              onClick={() => {
+                                if (isDisabled) return;
+                                if (label === 'Implant') handleToggle(16 + toothIdx, 'implant');
+                                if (label === 'Mobility') handleToggle(16 + toothIdx, 'mobility');
+                                if (label === 'Furcation') handleToggle(16 + toothIdx, 'furcation');
+                                if (label === 'Plaque') handleToggle(16 + toothIdx, 'plaque', globalSiteIdx);
+                                if (label === 'BOP') handleToggle(16 + toothIdx, 'bop', globalSiteIdx);
+                              }}
+                            >
+                              {label === 'Mobility' ? tooth.mobility : ''}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div style={{ position: 'relative',   width: "-webkit-fill-available", marginLeft: "70px", 
+         }}>
+        {/* Chart in background */}
+        <ResponsiveContainer width="100%" height={200} style={{ transform: 'rotate(180deg)', paddingBottom: '150px'}}>
+          <AreaChart
+            data={getLowerAreaData()}
+            margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+          >
+            <YAxis domain={[0, 16]} hide />
+            <XAxis tick={false} axisLine={false} tickLine={false} />
+
+            {/* Grid lines behind chart */}
+            {horizontalLines.map((y, index) => (
+              <ReferenceLine
+                key={index}
+                y={y}
+                stroke="#ccc"
+                strokeDasharray="3 3"
+                ifOverflow="visible"
+              />
+            ))}
+
+            <Area
+              type="monotone"
+              dataKey="gr"
+              stackId="0"
+              stroke="#a3a8fa"
+              fill="#a3a8fa"
+              fillOpacity={0.3}
+            />
+            <Area
+              type="monotone"
+              dataKey="pd"
+              stackId="1"
+              stroke="#f9cdce"
+              fill="#f9cdce"
+              fillOpacity={0.3}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+
+        {/* Teeth images on top of chart */}
+        <div
+          style={{
+            position: 'absolute',
+            top: 42,
+            left: 0,
+            right: 0,
+            display: 'flex',
+            justifyContent: 'space-between',
+            pointerEvents: 'none',
+          }}
+        >
+          {lowerTeeth.map((tooth) => (
+            <Tooth key={tooth.id} tooth={tooth} isUpper={false} />
+          ))}
+        </div>
+      </div>
+
+      {/* Lower Teeth Lingual Table */}
+      <table className="chart-table" style={{ width: '100%', minWidth: 960, tableLayout: 'fixed', borderCollapse: 'collapse', fontSize: 10, marginTop: '150px' }}>
+        <thead>
+          <tr>
+            <th style={{ position: 'sticky', left: 0, background: '#fff', zIndex: 2, minWidth: 90, maxWidth: 120, width: 50, textAlign: 'right', paddingRight: '4px' }}></th>
+            {lowerTeeth.map((_, idx) => (
+              <th key={idx} style={{ minWidth: 50, maxWidth: 80, width: 50, textAlign: 'center', fontWeight: 500, padding: '6px 2px', border: '1px solid #ccc' }}>ML L DL</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {lowerFields.map(({ label, cells, className }) => (
+            <tr key={label}>
+              <td style={{ position: 'sticky', left: 0, background: '#fff', zIndex: 1, minWidth: 90, maxWidth: 120, width: 50, textAlign: 'right', fontWeight: 500, paddingRight: '4px' }}>{label}</td>
+              {lowerTeeth.map((tooth, toothIdx) => {
+                const isDisabled = tooth.isImplant && ['Mobility', 'Furcation', 'BOP', 'GR', 'PD'].includes(label);
+                const siteStart = 3; // Lingual side (ML, L, DL)
+                return (
+                  <td key={toothIdx} style={{ textAlign: 'center', padding: 0, border: '1px solid #ccc', padding: '2px 2px', verticalAlign: 'middle', minWidth: 50, maxWidth: 80, width: 50, }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: 4, padding: '4px 0px' }}>
+                      {Array.from({ length: cells }).map((_, siteIdx) => {
+                        const globalSiteIdx = siteStart + siteIdx;
+                        let style = {
+                          backgroundColor: '#eee',
+                          boxSizing: 'border-box',
+                          width: '16px',
+                          height: '20px',
+                          fontSize: 10,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          border: '1px solid #ccc',
+                          borderRadius: 4,
+                          cursor: isDisabled ? 'not-allowed' : 'pointer',
+                        };
+                        if (label === 'Implant') {
+                          style.backgroundColor = tooth.isImplant ? '#2196f3' : '#eee';
+                        } else if (label === 'Mobility') {
+                          style = { ...style, backgroundColor: '#fff', fontWeight: 600 };
+                        } else if (label === 'Furcation') {
+                          const percent = parseInt(tooth.furcationLingual) * 33;
+                          style.background = `linear-gradient(to top, #8bc34a ${percent}%, #eee ${percent}%)`;
+                        } else if (label === 'Plaque') {
+                          style.backgroundColor = tooth.plaque[globalSiteIdx] ? 'yellow' : '#eee';
+                        } else if (label === 'BOP') {
+                          style.backgroundColor = tooth.bop[globalSiteIdx] ? 'red' : '#eee';
+                        }
+                        if (label === 'GR' || label === 'PD') {
+                          return (
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '16px', paddingRight: '2px' }} key={siteIdx}>
+                              <input
+                                type="number"
+                                value={tooth[label.toLowerCase()][globalSiteIdx]}
+                                onChange={(e) => handleInputChange(16 + toothIdx, label.toLowerCase(), globalSiteIdx, e.target.value)}
+                                disabled={isDisabled}
+                                style={{ width: '90%', height: '20px', textAlign: 'center', fontSize: 10, border: '1px solid #ccc', borderRadius: 4, margin: '0 4%' }}
+                                className='hide-spinner'
+                              />
+                            </div>
+                          );
+                        }
+                        return (
+                          <span
+                            key={siteIdx}
+                            className={`cell ${className}`}
+                            style={style}
+                            onClick={() => {
+                              if (isDisabled) return;
+                              if (label === 'Implant') handleToggle(16 + toothIdx, 'implant');
+                              if (label === 'Mobility') handleToggle(16 + toothIdx, 'mobility');
+                              if (label === 'Furcation') handleToggle(16 + toothIdx, 'furcationLingual');
+                              if (label === 'Plaque') handleToggle(16 + toothIdx, 'plaque', globalSiteIdx);
+                              if (label === 'BOP') handleToggle(16 + toothIdx, 'bop', globalSiteIdx);
+                            }}
+                          >
+                            {label === 'Mobility' ? tooth.mobility : ''}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+export default PeriodontalChart; 
