@@ -638,7 +638,7 @@ const PeriodontalChart = ({ chartData, setChartData }) => {
         <ResponsiveContainer
           width="100%"
           height={200}
-          style={{ transform: 'rotate(180deg)' }}
+          style={{ transform: 'rotate(180deg) scaleX(-1)'  }}
         >
           <AreaChart
             data={getLowerAreaData()}

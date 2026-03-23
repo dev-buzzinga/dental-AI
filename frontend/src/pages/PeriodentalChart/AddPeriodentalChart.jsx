@@ -58,11 +58,40 @@ const AddPeriodentalChart = () => {
   const [isConnected, setIsConnected] = useState(false);
   const [liveTranscript, setLiveTranscript] = useState('');
 
+  // Audio player states
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [audioDuration, setAudioDuration] = useState(0);
+  const audioRef = useRef(null);
+
   // Audio states
   const [audioBlob, setAudioBlob] = useState(null);
   const [audioUrl, setAudioUrl] = useState('');
   const [isUploadingAudio, setIsUploadingAudio] = useState(false);
   const [duration, setDuration] = useState(0);
+
+  // Format audio time
+  const formatAudioTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Handle play/pause
+  const handlePlayPause = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+    }
+  };
+
+  const sliderMax = duration || 0;
+  const sliderProgressPercent = sliderMax > 0
+    ? Math.min((currentTime / sliderMax) * 100, 100)
+    : 0;
 
   // Dropdown data
   const [patients, setPatients] = useState([]);
@@ -762,10 +791,66 @@ const AddPeriodentalChart = () => {
             </button>
 
             {audioUrl && (
-              <div className="audio-player-compact">
-                <audio controls src={audioUrl}>
-                  Your browser does not support the audio element.
-                </audio>
+              <div className="periodontal-audio-player">
+                <div className="periodontal-audio-title">Voice Recording</div>
+
+                <div className="periodontal-integrated-player">
+                  {/* Top part: Play button */}
+                  <div className="periodontal-audio-top">
+                    <div
+                      className="periodontal-audio-play"
+                      onClick={handlePlayPause}
+                    >
+                      <i className={`fas fa-${isPlaying ? 'pause' : 'play'}`} />
+                    </div>
+                    <div className="periodontal-audio-info">
+                      <span className="periodontal-audio-label">Recording</span>
+                      <span className="periodontal-audio-duration">{formatAudioTime(duration || 0)}</span>
+                    </div>
+                  </div>
+
+                  {/* Bottom part: Custom audio controls */}
+                  <div className="periodontal-audio-container">
+                    <div className="periodontal-audio-controls">
+                      <input
+                        type="range"
+                        min="0"
+                        max={sliderMax}
+                        value={currentTime}
+                        className="periodontal-audio-slider"
+                        style={{ '--slider-progress': `${sliderProgressPercent}%` }}
+                        onChange={(e) => {
+                          const time = parseFloat(e.target.value || 0);
+                          setCurrentTime(time);
+                          if (audioRef.current) {
+                            audioRef.current.currentTime = time;
+                          }
+                        }}
+                      />
+                      <span className="periodontal-audio-time">
+                        {formatAudioTime(currentTime)} / {formatAudioTime(sliderMax)}
+                      </span>
+                      {/* <a
+                        href={audioUrl}
+                        className="periodontal-audio-download"
+                        download="voice-recording.webm"
+                        title="Download recording"
+                      >
+                        <i className="fas fa-download" />
+                      </a> */}
+                    </div>
+                    <audio
+                      ref={audioRef}
+                      src={audioUrl}
+                      onPlay={() => setIsPlaying(true)}
+                      onPause={() => setIsPlaying(false)}
+                      onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime || 0)}
+                      onLoadedMetadata={() => setAudioDuration(audioRef.current?.duration || 0)}
+                      onEnded={() => setIsPlaying(false)}
+                      style={{ display: 'none' }}
+                    />
+                  </div>
+                </div>
               </div>
             )}
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { SearchInput } from '../../components/common/SearchInput';
 import Table from '../../components/common/Table';
 import { AuthContext } from '../../context/AuthContext';
@@ -109,6 +109,7 @@ const PeriodentalChartPage = () => {
         { key: 'doctor', label: 'Doctor', align: 'left' },
         { key: 'dob', label: 'Date of Birth', align: 'left' },
         { key: 'chartDate', label: 'Chart Date', align: 'left' },
+        { key: 'view', label: 'View', align: 'left' },
         { key: 'actions', label: 'Actions', align: 'center' },
     ];
 
@@ -133,16 +134,21 @@ const PeriodentalChartPage = () => {
             case 'chartDate':
                 return row.chart_date ? new Date(row.chart_date).toLocaleDateString() : 'N/A';
 
+            case 'view':
+                return (
+                    <Link
+                        className="view-btn"
+                        to="/periodontal-charts/view"
+                        state={{ mode: 'view', chartData: row }}
+                        title="View Chart"
+                    >
+                        View
+                    </Link>
+                );
+
             case 'actions':
                 return (
                     <div className="action-buttons">
-                        <button
-                            className="btn-icon view-btn"
-                            onClick={() => handleViewChart(row)}
-                            title="View Chart"
-                        >
-                            <i className="fas fa-eye"></i>
-                        </button>
                         <button
                             className="btn-icon edit-btn"
                             onClick={() => handleEditChart(row)}
