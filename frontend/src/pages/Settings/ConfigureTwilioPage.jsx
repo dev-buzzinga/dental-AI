@@ -195,15 +195,18 @@ const ConfigureTwilioPage = () => {
     };
 
     return (
-        <div className="settings-page custom-scrollbar">
-            <div className="settings-header">
-                <div>
-                    <h2 className="settings-title">Configure Twilio</h2>
-                    <p className="settings-subtitle">Connect your Twilio account for calls and SMS</p>
+        <div className="practice-details-page custom-scrollbar">
+            <div className="practice-header-section">
+                <div className="practice-header-content">
+                    <div>
+                        <h2 className="settings-title">Configure Twilio</h2>
+                        <p className="settings-subtitle">Connect your Twilio account for calls and SMS</p>
+                    </div>
                 </div>
             </div>
 
-            <div className="twilio-card">
+            <div className="settings-page-content">
+                <div className="twilio-card">
                 {loading ? (
                     <p className="settings-subtitle">Loading...</p>
                 ) : (
@@ -316,6 +319,7 @@ const ConfigureTwilioPage = () => {
                         </div>
                     </>
                 )}
+                </div>
             </div>
         </div>
     );

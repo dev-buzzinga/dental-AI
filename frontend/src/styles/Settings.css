@@ -1,3 +1,8 @@
+/* Settings Page Content */
+.settings-page-content {
+    padding: 24px;
+}
+
 /* === SETTINGS SHARED === */
 .settings-page {
     height: 100%;
@@ -280,6 +285,199 @@
 
 .ai-agent-section-title i {
     color: var(--primary);
+}
+
+/* Voice Dropdown Header */
+.voice-dropdown-header {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+.voice-filters {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.filter-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.filter-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.clear-filters-btn {
+    background: none;
+    border: none;
+    color: var(--primary);
+    font-size: 12px;
+    cursor: pointer;
+    text-decoration: underline;
+    align-self: flex-start;
+}
+
+.voice-search {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-btn);
+    background: #fff;
+}
+
+.voice-search input {
+    flex: 1;
+    border: none;
+    outline: none;
+    font-size: 14px;
+}
+
+/* Checkbox Styles */
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.checkbox-container input[type="checkbox"] {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    cursor: pointer;
+    position: relative;
+}
+
+.checkbox-container input[type="checkbox"]:checked {
+    background: var(--primary);
+    border-color: var(--primary);
+}
+
+.checkbox-container input[type="checkbox"]:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: white;
+    font-size: 10px;
+}
+
+/* Voice List Item */
+.voice-list-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: background 0.15s;
+    border-bottom: 1px solid #F3F4F6;
+}
+
+.voice-list-item:hover {
+    background: #F9FAFB;
+}
+
+.voice-list-item.selected {
+    background: var(--primary-light);
+}
+
+.voice-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.voice-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.voice-gender {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+/* Prompt Description */
+.prompt-description {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+    line-height: 1.5;
+}
+
+/* Agent Display Card */
+.agent-display-card {
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 20px;
+    text-align: center;
+}
+
+.agent-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.agent-avatar {
+    flex-shrink: 0;
+}
+
+.agent-info {
+    flex: 1;
+    text-align: left;
+}
+
+.agent-name {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 0 0 4px 0;
+    color: var(--text-primary);
+}
+
+.agent-voice-info {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.agent-play-btn {
+    width: 100%;
+    padding: 12px 20px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-btn);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background 0.15s;
+    margin-top: 18px;
+}
+
+.agent-play-btn:hover {
+    background: var(--primary-dark);
 }
 
 /* Voice Picker */

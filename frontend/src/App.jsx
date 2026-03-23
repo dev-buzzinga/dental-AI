@@ -30,7 +30,7 @@ import AddVoiceNotePage from './pages/voiceNotes/AddVoiceNotePage';
 import VoiceNoteDetailPage from './pages/voiceNotes/[id]';
 import PeriodentalChartPage from './pages/PeriodentalChart';
 import AddPeriodentalChart from './pages/PeriodentalChart/AddPeriodentalChart';
-
+import AiAgentPage from './pages/Settings/AiAgentPage';
 
 
 
@@ -79,6 +79,7 @@ const AppContent = () => {
                 <Route path="/settings/connect-google-gmail" element={<ConnectGoogleGmail />} />
                 <Route path="/settings/practice-details" element={<PracticeDetails />} />
                 <Route path="/settings/configure-twilio" element={<ConfigureTwilioPage />} />
+                <Route path="/settings/ai-agent" element={<AiAgentPage />} />
                 <Route path="*" element={<Navigate to="/calls" replace />} />
               </Routes>
             </div>

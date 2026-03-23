@@ -45,7 +45,7 @@ const Sidebar = () => {
         { path: '/settings/practice-details', icon: 'fa-building', label: 'Practice Details' },
         // { path: '/settings/add-number', icon: 'fa-plus-circle', label: 'Add Number' },
         { path: '/settings/configure-twilio', icon: 'fa-plug', label: 'Configure Twilio' },
-        // { path: '/settings/ai-agent', icon: 'fa-robot', label: 'AI Agent' },
+        { path: '/settings/ai-agent', icon: 'fa-robot', label: 'AI Agent' },
     ];
 
     return (
