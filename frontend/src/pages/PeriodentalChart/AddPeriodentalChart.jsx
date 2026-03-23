@@ -51,6 +51,7 @@ const AddPeriodentalChart = () => {
   const [recordingTime, setRecordingTime] = useState(0);
   const [mediaRecorder, setMediaRecorder] = useState(null);
   const [audioChunks, setAudioChunks] = useState([]);
+  const [showVoiceModal, setShowVoiceModal] = useState(false);
 
   // WebSocket states
   const [wsConnection, setWsConnection] = useState(null);
@@ -78,10 +79,31 @@ const AddPeriodentalChart = () => {
   const recordingIntervalRef = useRef(null);
   const summaryStatusIntervalRef = useRef(null);
   const wsRef = useRef(null);
+  const waveformIntervalRef = useRef(null);
+  const [waveformBars, setWaveformBars] = useState(Array(20).fill(3));
 
   // Fetch patients and doctors on mount
   useEffect(() => {
     fetchPatientsAndDoctors();
+  }, []);
+
+  // Handle fullscreen change events
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+    };
   }, []);
 
   // Load existing chart data in view/edit mode
@@ -125,11 +147,35 @@ const AddPeriodentalChart = () => {
       if (summaryStatusIntervalRef.current) {
         clearInterval(summaryStatusIntervalRef.current);
       }
+      if (waveformIntervalRef.current) {
+        clearInterval(waveformIntervalRef.current);
+      }
       if (mediaRecorder) {
         mediaRecorder.stream.getTracks().forEach(track => track.stop());
       }
     };
   }, []);
+
+  // Waveform animation effect
+  useEffect(() => {
+    if (isRecording && !isPaused) {
+      waveformIntervalRef.current = setInterval(() => {
+        setWaveformBars(Array(20).fill(0).map(() => Math.random() * 20 + 5));
+      }, 150);
+    } else {
+      if (waveformIntervalRef.current) {
+        clearInterval(waveformIntervalRef.current);
+      }
+      if (!isRecording) {
+        setWaveformBars(Array(20).fill(3));
+      }
+    }
+    return () => {
+      if (waveformIntervalRef.current) {
+        clearInterval(waveformIntervalRef.current);
+      }
+    };
+  }, [isRecording, isPaused]);
 
   // Fetch patients and doctors
   const fetchPatientsAndDoctors = async () => {
@@ -253,8 +299,13 @@ const AddPeriodentalChart = () => {
 
   // Start recording
   const startRecording = async () => {
-    let newChartId = chartId;
+    setShowVoiceModal(true);
     setLiveTranscript('');
+  };
+
+  // Initialize recording after modal opens
+  const initializeRecording = async () => {
+    let newChartId = chartId;
 
     // Create chart entry first if doesn't exist
     if (!chartId) {
@@ -325,6 +376,46 @@ const AddPeriodentalChart = () => {
     }
   };
 
+  // Pause recording
+  const pauseRecording = () => {
+    if (mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.pause();
+      setIsPaused(true);
+      clearInterval(recordingIntervalRef.current);
+    }
+  };
+
+  // Resume recording
+  const resumeRecording = () => {
+    if (mediaRecorder && mediaRecorder.state === 'paused') {
+      mediaRecorder.resume();
+      setIsPaused(false);
+      recordingIntervalRef.current = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+    }
+  };
+
+  // Cancel recording
+  const cancelRecording = () => {
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+      mediaRecorder.stream.getTracks().forEach(track => track.stop());
+    }
+    if (wsRef.current) {
+      wsRef.current.close();
+    }
+    clearInterval(recordingIntervalRef.current);
+    clearInterval(waveformIntervalRef.current);
+    setIsRecording(false);
+    setIsPaused(false);
+    setRecordingTime(0);
+    setAudioChunks([]);
+    setLiveTranscript('');
+    setShowVoiceModal(false);
+    setWaveformBars(Array(20).fill(3));
+  };
+
   // Connect WebSocket
   const connectWebSocket = (chartId) => {
     return new Promise((resolve, reject) => {
@@ -374,16 +465,28 @@ const AddPeriodentalChart = () => {
 
   // Stop recording
   const stopRecording = () => {
-    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-      mediaRecorder.stop();
-      setIsRecording(false);
-      clearInterval(recordingIntervalRef.current);
+    return new Promise((resolve) => {
+      if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        mediaRecorder.stop();
+        setIsRecording(false);
+        clearInterval(recordingIntervalRef.current);
+        clearInterval(waveformIntervalRef.current);
 
-      // Close WebSocket
-      if (wsRef.current) {
-        wsRef.current.close();
+        // Close WebSocket
+        if (wsRef.current) {
+          wsRef.current.close();
+        }
+
+        // Close modal after a brief delay to show completion
+        setTimeout(() => {
+          setShowVoiceModal(false);
+          setWaveformBars(Array(20).fill(3));
+          resolve();
+        }, 500);
+      } else {
+        resolve();
       }
-    }
+    });
   };
 
   // Upload audio when recording stops
@@ -523,7 +626,28 @@ const AddPeriodentalChart = () => {
 
   // Toggle fullscreen
   const toggleFullscreen = () => {
-    setIsFullscreen(!isFullscreen);
+    if (!document.fullscreenElement) {
+      // Enter fullscreen
+      const elem = document.documentElement;
+      if (elem.requestFullscreen) {
+        elem.requestFullscreen();
+      } else if (elem.webkitRequestFullscreen) { /* Safari */
+        elem.webkitRequestFullscreen();
+      } else if (elem.msRequestFullscreen) { /* IE11 */
+        elem.msRequestFullscreen();
+      }
+      setIsFullscreen(true);
+    } else {
+      // Exit fullscreen
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if (document.webkitExitFullscreen) { /* Safari */
+        document.webkitExitFullscreen();
+      } else if (document.msExitFullscreen) { /* IE11 */
+        document.msExitFullscreen();
+      }
+      setIsFullscreen(false);
+    }
   };
 
   const isReadOnly = mode === 'view';
@@ -546,6 +670,11 @@ const AddPeriodentalChart = () => {
           <button className="icon-btn" onClick={toggleFullscreen} title="Toggle Fullscreen">
             <i className={`fas fa-${isFullscreen ? 'compress' : 'expand'}`}></i>
           </button>
+          {(mode === 'view' || mode === 'edit') && (
+            <button className="export-btn" onClick={handleExportPDF}>
+              <i className="fas fa-download"></i>
+            </button>
+          )}
           {!isReadOnly && (
             <button
               className="save-btn"
@@ -553,11 +682,6 @@ const AddPeriodentalChart = () => {
               disabled={isSaving}
             >
               {isSaving ? 'Saving...' : (chartId ? 'Update Chart' : 'Save Chart')}
-            </button>
-          )}
-          {mode === 'view' && (
-            <button className="export-btn" onClick={handleExportPDF}>
-              <i className="fas fa-file-pdf"></i> Export PDF
             </button>
           )}
         </div>
@@ -614,48 +738,28 @@ const AddPeriodentalChart = () => {
           </div>
         </div>
 
-        {/* Voice Input Section */}
+        {/* Voice Input Button */}
         {!isReadOnly && (
-          <div className="voice-input-section">
-            <div className="voice-input-header">
+          <div className="voice-input-section-compact">
+            <div className="voice-input-header-compact">
               <span>Voice Input</span>
+              <span className="voice-input-subtitle">Record audio for AI summary</span>
             </div>
-            <div className="recording-controls">
-              {!isRecording ? (
-                <button
-                  className="record-btn-circle"
-                  onClick={startRecording}
-                  disabled={isRecordingLoading}
-                  title="Start Recording"
-                >
-                  {isRecordingLoading ? (
-                    <i className="fas fa-spinner fa-spin"></i>
-                  ) : (
-                    <i className="fas fa-microphone"></i>
-                  )}
-                </button>
+            <button
+              className="voice-input-trigger-btn"
+              onClick={startRecording}
+              disabled={isRecordingLoading}
+              title="Start Voice Recording"
+            >
+              {isRecordingLoading ? (
+                <i className="fas fa-spinner fa-spin"></i>
               ) : (
                 <>
-                  <div className="recording-time">{formatTime(recordingTime)}</div>
-                  <button className="stop-btn-circle" onClick={stopRecording} title="Stop Recording">
-                    <i className="fas fa-check"></i>
-                  </button>
+                  <i className="fas fa-microphone"></i>
+                  <span>Start Recording</span>
                 </>
               )}
-            </div>
-
-            {isRecording && (
-              <div className="recording-status">
-                <span className="recording-dot"></span>
-                <span>Recording...</span>
-              </div>
-            )}
-
-            {liveTranscript && (
-              <div className="transcript-preview">
-                <p>{liveTranscript}</p>
-              </div>
-            )}
+            </button>
 
             {audioUrl && (
               <div className="audio-player-compact">
@@ -679,6 +783,100 @@ const AddPeriodentalChart = () => {
           </div>
         )}
       </div>
+
+      {/* Voice Recording Modal */}
+      {showVoiceModal && (
+        <div className="voice-recording-modal-overlay" onClick={(e) => e.stopPropagation()}>
+          <div className="voice-recording-modal">
+            <div className="voice-recording-modal-header">
+              <h3>Voice Recording</h3>
+              <button
+                className="modal-close-btn"
+                onClick={cancelRecording}
+                title="Cancel"
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            <div className="voice-recording-content">
+              <div className="live-transcript-section">
+                <h4 className="live-transcript-title">Live Transcript</h4>
+                <div className="transcript-display-area">
+                  {liveTranscript ? (
+                    <p className="transcript-text">{liveTranscript}</p>
+                  ) : (
+                    <p className="transcript-placeholder">Transcript will appear here...</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="recording-controls-modern">
+                <div className="recording-timer-waveform">
+                  <span className="recording-timer">{formatTime(recordingTime)}</span>
+                  <div className="waveform-visualization">
+                    {waveformBars.map((height, index) => (
+                      <div
+                        key={index}
+                        className="waveform-bar"
+                        style={{ height: `${height}px` }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="recording-action-buttons">
+                  {!isRecording ? (
+                    <button
+                      className="action-btn start-btn"
+                      onClick={initializeRecording}
+                      disabled={isRecordingLoading}
+                      title="Start Recording"
+                    >
+                      {isRecordingLoading ? (
+                        <i className="fas fa-spinner fa-spin"></i>
+                      ) : (
+                        <i className="fas fa-microphone"></i>
+                      )}
+                    </button>
+                  ) : (
+                    <>
+                      <button
+                        className="action-btn accept-btn"
+                        onClick={stopRecording}
+                        title="Stop & Save"
+                      >
+                        <i className="fas fa-check"></i>
+                      </button>
+                      <button
+                        className="action-btn pause-btn"
+                        onClick={isPaused ? resumeRecording : pauseRecording}
+                        title={isPaused ? "Resume" : "Pause"}
+                      >
+                        <i className={`fas fa-${isPaused ? 'play' : 'pause'}`}></i>
+                      </button>
+                      <button
+                        className="action-btn cancel-btn"
+                        onClick={cancelRecording}
+                        title="Cancel"
+                      >
+                        <i className="fas fa-times"></i>
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {isRecording && (
+                <div className="recording-status-modern">
+                  <span className="recording-dot"></span>
+                  <span>{isPaused ? 'Paused' : 'Recording...'}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Chart Section */}
       <div className="chart-section-cover">

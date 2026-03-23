@@ -316,28 +316,18 @@
 }
 
 .add-periodontal-chart-page .icon-btn {
-  width: 40px;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: white;
-  border: 1px solid var(--border, #e0e0e0);
-  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
-  font-size: 16px;
   color: var(--text-primary, #333);
 }
 
 .add-periodontal-chart-page .icon-btn:hover {
-  background: var(--surface, #f5f5f5);
-  border-color: var(--primary, #6F2AC3);
+  color: var(--primary, #f5f5f5);
 }
 
 .add-periodontal-chart-page .save-btn {
   padding: 10px 24px;
-  background: var(--primary, #6F2AC3);
+  background: var(--primary);
   color: white;
   border: none;
   border-radius: 8px;
@@ -358,22 +348,13 @@
 }
 
 .add-periodontal-chart-page .export-btn {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background: #4caf50;
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
+  padding: 10px 10px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .add-periodontal-chart-page .export-btn:hover {
-  background: #45a049;
+  color: var(--primary);
   transform: translateY(-2px);
 }
 
@@ -791,5 +772,341 @@
 
   .add-periodontal-chart-page .voice-input-section {
     padding: 16px;
+  }
+}
+
+/* ============================================
+   MODERN VOICE RECORDING MODAL STYLES
+   ============================================ */
+
+.add-periodontal-chart-page .voice-input-section-compact {
+  width: 280px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.add-periodontal-chart-page .voice-input-header-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.add-periodontal-chart-page .voice-input-header-compact span:first-child {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary, #333);
+}
+
+.add-periodontal-chart-page .voice-input-subtitle {
+  font-size: 12px;
+  color: var(--text-secondary, #666);
+}
+
+.add-periodontal-chart-page .voice-input-trigger-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(111, 42, 195, 0.25);
+}
+
+.add-periodontal-chart-page .voice-input-trigger-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(111, 42, 195, 0.35);
+}
+
+.add-periodontal-chart-page .voice-input-trigger-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Voice Recording Modal Styles */
+.add-periodontal-chart-page .voice-recording-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  backdrop-filter: blur(4px);
+}
+
+.add-periodontal-chart-page .voice-recording-modal {
+  width: min(480px, calc(100vw - 32px));
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  animation: modalSlideIn 0.3s ease;
+}
+
+@keyframes modalSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.add-periodontal-chart-page .voice-recording-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 24px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.add-periodontal-chart-page .voice-recording-modal-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #333;
+}
+
+.add-periodontal-chart-page .modal-close-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f5f5f5;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #666;
+}
+
+.add-periodontal-chart-page .modal-close-btn:hover {
+  background: #e0e0e0;
+  color: #333;
+}
+
+.add-periodontal-chart-page .voice-recording-content {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.add-periodontal-chart-page .live-transcript-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.add-periodontal-chart-page .live-transcript-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #6F2AC3;
+  letter-spacing: -0.3px;
+}
+
+.add-periodontal-chart-page .transcript-display-area {
+  min-height: 120px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 12px;
+  border: 1px solid #e9ecef;
+}
+
+.add-periodontal-chart-page .transcript-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #333;
+}
+
+.add-periodontal-chart-page .transcript-placeholder {
+  margin: 0;
+  font-size: 14px;
+  color: #999;
+  font-style: italic;
+}
+
+.add-periodontal-chart-page .recording-controls-modern {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: center;
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 12px;
+}
+
+.add-periodontal-chart-page .recording-timer-waveform {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  justify-content: center;
+}
+
+.add-periodontal-chart-page .recording-timer {
+  font-size: 18px;
+  font-weight: 600;
+  color: #6F2AC3;
+  font-variant-numeric: tabular-nums;
+  min-width: 50px;
+}
+
+.add-periodontal-chart-page .waveform-visualization {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  height: 40px;
+}
+
+.add-periodontal-chart-page .waveform-bar {
+  width: 4px;
+  background: linear-gradient(180deg, #6F2AC3 0%, #9B4DFF 100%);
+  border-radius: 2px;
+  transition: height 0.15s ease;
+  min-height: 4px;
+}
+
+.add-periodontal-chart-page .recording-action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.add-periodontal-chart-page .action-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.add-periodontal-chart-page .action-btn:hover:not(:disabled) {
+  transform: scale(1.1);
+}
+
+.add-periodontal-chart-page .action-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.add-periodontal-chart-page .action-btn.start-btn {
+  background: linear-gradient(135deg, #6F2AC3 0%, #9B4DFF 100%);
+  color: white;
+  width: 64px;
+  height: 64px;
+  font-size: 24px;
+}
+
+.add-periodontal-chart-page .action-btn.start-btn:hover:not(:disabled) {
+  box-shadow: 0 6px 20px rgba(111, 42, 195, 0.4);
+}
+
+.add-periodontal-chart-page .action-btn.accept-btn {
+  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+  color: white;
+}
+
+.add-periodontal-chart-page .action-btn.accept-btn:hover:not(:disabled) {
+  box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+}
+
+.add-periodontal-chart-page .action-btn.pause-btn {
+  background: linear-gradient(135deg, #6F2AC3 0%, #9B4DFF 100%);
+  color: white;
+}
+
+.add-periodontal-chart-page .action-btn.pause-btn:hover:not(:disabled) {
+  box-shadow: 0 6px 20px rgba(111, 42, 195, 0.4);
+}
+
+.add-periodontal-chart-page .action-btn.cancel-btn {
+  background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+  color: white;
+}
+
+.add-periodontal-chart-page .action-btn.cancel-btn:hover:not(:disabled) {
+  box-shadow: 0 6px 20px rgba(244, 67, 54, 0.4);
+}
+
+.add-periodontal-chart-page .recording-status-modern {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: #f3e5f5;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6F2AC3;
+  align-self: center;
+}
+
+.add-periodontal-chart-page .recording-status-modern .recording-dot {
+  width: 10px;
+  height: 10px;
+  background: #f44336;
+  border-radius: 50%;
+  animation: pulse 1.5s infinite;
+}
+
+/* Responsive styles for voice recording modal */
+@media (max-width: 768px) {
+  .add-periodontal-chart-page .voice-recording-modal {
+    width: calc(100vw - 32px);
+    margin: 16px;
+  }
+
+  .add-periodontal-chart-page .voice-recording-content {
+    padding: 16px;
+  }
+
+  .add-periodontal-chart-page .recording-timer-waveform {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .add-periodontal-chart-page .action-btn {
+    width: 44px;
+    height: 44px;
+    font-size: 16px;
+  }
+
+  .add-periodontal-chart-page .action-btn.start-btn {
+    width: 56px;
+    height: 56px;
+    font-size: 20px;
   }
 }
