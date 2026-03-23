@@ -561,118 +561,122 @@ const AddPeriodentalChart = () => {
         </div>
       </div>
 
-      {/* Form Section */}
-      <div className="form-section">
-        <div className="form-grid">
-          <div className="form-group">
-            <label>Patient *</label>
+      {/* Form and Recording Section Container */}
+      <div className="form-recording-container">
+        {/* Form Section */}
+        <div className="form-section">
+          <div className="form-row">
             <SearchableDropdown
-              options={patients.map(p => ({ value: p.id.toString(), label: p.name }))}
+              label="Patient Name"
+              required={true}
+              options={patients}
               value={selectedPatient}
-              onChange={setSelectedPatient}
+              onChange={(patient) => setSelectedPatient(patient.id.toString())}
               placeholder="Select Patient"
               disabled={isReadOnly}
             />
-          </div>
 
-          <div className="form-group">
-            <label>Doctor *</label>
             <SearchableDropdown
-              options={doctors.map(d => ({ value: d.id.toString(), label: d.name }))}
+              label="Doctor Name"
+              required={true}
+              options={doctors}
               value={selectedDoctor}
-              onChange={setSelectedDoctor}
+              onChange={(doctor) => setSelectedDoctor(doctor.id.toString())}
               placeholder="Select Doctor"
               disabled={isReadOnly}
             />
-          </div>
 
-          <div className="form-group">
-            <label>Date of Birth *</label>
-            <input
-              type="date"
-              value={dateOfBirth}
-              onChange={(e) => setDateOfBirth(e.target.value)}
-              max={new Date().toISOString().split('T')[0]}
-              disabled={isReadOnly}
-              required
-            />
-          </div>
+            <div className="form-group">
+              <label>Date of Birth <span className="required">*</span></label>
+              <input
+                type="date"
+                value={dateOfBirth}
+                onChange={(e) => setDateOfBirth(e.target.value)}
+                max={new Date().toISOString().split('T')[0]}
+                disabled={isReadOnly}
+                required
+              />
+            </div>
 
-          <div className="form-group">
-            <label>Date Created *</label>
-            <input
-              type="date"
-              value={dateCreated}
-              onChange={(e) => setDateCreated(e.target.value)}
-              max={new Date().toISOString().split('T')[0]}
-              disabled={isReadOnly}
-              required
-            />
+            <div className="form-group">
+              <label>Date Created <span className="required">*</span></label>
+              <input
+                type="date"
+                value={dateCreated}
+                onChange={(e) => setDateCreated(e.target.value)}
+                max={new Date().toISOString().split('T')[0]}
+                disabled={isReadOnly}
+                required
+              />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Recording Section */}
-      {!isReadOnly && (
-        <div className="recording-section">
-          <div className="recording-controls">
-            {!isRecording ? (
-              <button 
-                className="record-btn" 
-                onClick={startRecording}
-                disabled={isRecordingLoading}
-              >
-                {isRecordingLoading ? (
-                  <>
-                    <i className="fas fa-spinner fa-spin"></i> Preparing...
-                  </>
-                ) : (
-                  <>
-                    <i className="fas fa-microphone"></i> Start Recording
-                  </>
-                )}
-              </button>
-            ) : (
-              <>
-                <div className="recording-indicator">
-                  <span className="recording-dot"></span>
-                  Recording: {formatTime(recordingTime)}
-                </div>
-                <button className="stop-btn" onClick={stopRecording}>
-                  <i className="fas fa-stop"></i> Stop
+        {/* Voice Input Section */}
+        {!isReadOnly && (
+          <div className="voice-input-section">
+            <div className="voice-input-header">
+              <span>Voice Input</span>
+            </div>
+            <div className="recording-controls">
+              {!isRecording ? (
+                <button 
+                  className="record-btn-circle" 
+                  onClick={startRecording}
+                  disabled={isRecordingLoading}
+                  title="Start Recording"
+                >
+                  {isRecordingLoading ? (
+                    <i className="fas fa-spinner fa-spin"></i>
+                  ) : (
+                    <i className="fas fa-microphone"></i>
+                  )}
                 </button>
-              </>
+              ) : (
+                <>
+                  <div className="recording-time">{formatTime(recordingTime)}</div>
+                  <button className="stop-btn-circle" onClick={stopRecording} title="Stop Recording">
+                    <i className="fas fa-check"></i>
+                  </button>
+                </>
+              )}
+            </div>
+
+            {isRecording && (
+              <div className="recording-status">
+                <span className="recording-dot"></span>
+                <span>Recording...</span>
+              </div>
+            )}
+
+            {liveTranscript && (
+              <div className="transcript-preview">
+                <p>{liveTranscript}</p>
+              </div>
+            )}
+
+            {audioUrl && (
+              <div className="audio-player-compact">
+                <audio controls src={audioUrl}>
+                  Your browser does not support the audio element.
+                </audio>
+              </div>
+            )}
+
+            {isUploadingAudio && (
+              <div className="status-message">
+                <i className="fas fa-spinner fa-spin"></i> Uploading...
+              </div>
+            )}
+
+            {isSummaryGenerating && (
+              <div className="status-message">
+                <i className="fas fa-spinner fa-spin"></i> Generating summary...
+              </div>
             )}
           </div>
-
-          {liveTranscript && (
-            <div className="transcript-box">
-              <h4>Live Transcript:</h4>
-              <p>{liveTranscript}</p>
-            </div>
-          )}
-
-          {audioUrl && (
-            <div className="audio-player">
-              <audio controls src={audioUrl}>
-                Your browser does not support the audio element.
-              </audio>
-            </div>
-          )}
-
-          {isUploadingAudio && (
-            <div className="upload-status">
-              <i className="fas fa-spinner fa-spin"></i> Uploading audio...
-            </div>
-          )}
-
-          {isSummaryGenerating && (
-            <div className="summary-status">
-              <i className="fas fa-spinner fa-spin"></i> Generating AI summary...
-            </div>
-          )}
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Chart Section */}
       <div className="chart-section">
