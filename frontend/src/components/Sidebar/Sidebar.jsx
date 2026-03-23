@@ -112,6 +112,13 @@ const Sidebar = () => {
                         <i className="fas fa-microphone-lines" />
                         <span>Voice Notes</span>
                     </div>
+                    <div
+                        className={`sidebar-sub-item ${isActive('/periodontal-charts') ? 'active' : ''}`}
+                        onClick={() => navigate('/periodontal-charts')}
+                    >
+                        <i className="fas fa-tooth" />
+                        <span>Periodontal Charts</span>
+                    </div>
                 </div>
 
                 <div className="sidebar-divider" />

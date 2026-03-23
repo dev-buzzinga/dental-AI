@@ -28,6 +28,8 @@ import ConfigureTwilioPage from './pages/Settings/ConfigureTwilioPage';
 import VoiceNotesPage from './pages/voiceNotes';
 import AddVoiceNotePage from './pages/voiceNotes/AddVoiceNotePage';
 import VoiceNoteDetailPage from './pages/voiceNotes/[id]';
+import PeriodentalChartPage from './pages/PeriodentalChart';
+import AddPeriodentalChart from './pages/PeriodentalChart/AddPeriodentalChart';
 
 
 
@@ -62,6 +64,10 @@ const AppContent = () => {
                 <Route path="/voice-notes" element={<VoiceNotesPage />} />
                 <Route path="/voice-notes/:id" element={<VoiceNoteDetailPage />} />
                 <Route path="/add-voice-notes" element={<AddVoiceNotePage />} />
+                <Route path="/periodontal-charts" element={<PeriodentalChartPage />} />
+                <Route path="/periodontal-charts/add" element={<AddPeriodentalChart />} />
+                <Route path="/periodontal-charts/view" element={<AddPeriodentalChart />} />
+                <Route path="/periodontal-charts/edit" element={<AddPeriodentalChart />} />
                 <Route path="/patients/:id" element={<PatientDetail />} />
                 <Route path="/patients" element={<PatientsPage />} />
                 <Route path="/campaigns" element={<CampaignsPage />} />
