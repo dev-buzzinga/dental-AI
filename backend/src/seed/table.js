@@ -1,0 +1,224 @@
+export const tableQueries = `
+CREATE TABLE IF NOT EXISTS public.appointment_types (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  user_id uuid DEFAULT gen_random_uuid(),
+  name text,
+  duration text
+);
+
+CREATE TABLE IF NOT EXISTS public.doctors (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  user_id uuid DEFAULT gen_random_uuid(),
+  name text,
+  email text UNIQUE,
+  phone text UNIQUE,
+  type text,
+  about text,
+  weekly_availability json,
+  specialty text,
+  services text[],
+  image_url text,
+  off_days text[],
+  google_refresh_token text,
+  calendar_connected boolean
+);
+
+CREATE TABLE IF NOT EXISTS public.doctors_appointments (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  user_id uuid DEFAULT gen_random_uuid(),
+  timezone text,
+  start_time timestamptz,
+  end_time timestamptz,
+  meeting_date date,
+  appointment_type_id bigint,
+  doctor_id bigint,
+  patient_details json,
+  notes text
+);
+
+CREATE TABLE IF NOT EXISTS public.gmail_appointment_messages (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  user_id uuid DEFAULT gen_random_uuid(),
+  message_id text UNIQUE,
+  processed_at timestamptz
+);
+
+CREATE TABLE IF NOT EXISTS public.gmail_threads (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id uuid NOT NULL DEFAULT auth.uid(),
+  thread_id text NOT NULL,
+  last_message text,
+  last_message_time timestamptz,
+  last_synced_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  sender_name text,
+  sender_email text,
+  subject text,
+  is_new boolean DEFAULT true,
+  receiver_name text,
+  receiver_email text
+);
+
+CREATE TABLE IF NOT EXISTS public.patients (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  user_id uuid DEFAULT gen_random_uuid(),
+  name text,
+  email varchar,
+  phone text,
+  insurance text,
+  dob date,
+  gender text,
+  member_id text,
+  next_appointment date
+);
+
+CREATE TABLE IF NOT EXISTS public.patients_appointment_history (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  patient_id bigint,
+  date date,
+  purpose text,
+  doctor_id bigint,
+  status text,
+  user_id uuid DEFAULT gen_random_uuid()
+);
+
+CREATE TABLE IF NOT EXISTS public.practice_details (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  user_id uuid DEFAULT auth.uid(),
+  general_information json,
+  address json,
+  contact_information json
+);
+
+CREATE TABLE IF NOT EXISTS public.user_gmail_accounts (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  user_id uuid UNIQUE DEFAULT auth.uid(),
+  gmail_email text,
+  access_token text,
+  refresh_token text,
+  token_expiry timestamptz,
+  is_active boolean,
+  updated_at timestamptz DEFAULT now(),
+  ai_auto_reply boolean DEFAULT false
+);
+
+ALTER TABLE appointment_types ENABLE ROW LEVEL SECURITY;
+ALTER TABLE doctors ENABLE ROW LEVEL SECURITY;
+ALTER TABLE doctors_appointments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gmail_appointment_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gmail_threads ENABLE ROW LEVEL SECURITY;
+ALTER TABLE patients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE patients_appointment_history ENABLE ROW LEVEL SECURITY;
+ALTER TABLE practice_details ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_gmail_accounts ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS public.voice_notes_template (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  user_id uuid DEFAULT auth.uid(),
+  name text,
+  details text
+);
+
+ALTER TABLE voice_notes_template ENABLE ROW LEVEL SECURITY;
+
+CREATE TABLE IF NOT EXISTS periodontal_charts (
+  id BIGSERIAL PRIMARY KEY,
+  patient_id BIGINT NOT NULL,
+  user_id UUID NOT NULL,
+  doctor_id BIGINT NOT NULL,
+  dob DATE,
+  chart_date DATE NOT NULL,
+  recording_url TEXT,
+  transcript_url TEXT,
+  tooth_data JSONB NOT NULL,
+  duration_seconds INTEGER DEFAULT 0,
+  aiSummary JSONB,
+  isSummaryGenerating BOOLEAN DEFAULT false,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_periodontal_charts_user_id ON periodontal_charts(user_id);
+CREATE INDEX IF NOT EXISTS idx_periodontal_charts_patient_id ON periodontal_charts(patient_id);
+CREATE INDEX IF NOT EXISTS idx_periodontal_charts_doctor_id ON periodontal_charts(doctor_id);
+CREATE INDEX IF NOT EXISTS idx_periodontal_charts_created_at ON periodontal_charts(created_at);
+
+CREATE TABLE IF NOT EXISTS public.twilio_config (
+  id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  user_id uuid DEFAULT auth.uid(),
+  account_sid text,
+  auth_token text
+);
+
+CREATE TABLE IF NOT EXISTS ai_scribes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL,
+  patient_id BIGINT NOT NULL,
+  doctor_id BIGINT NOT NULL,
+  template_id BIGINT,
+  description TEXT,
+  date_created DATE NOT NULL DEFAULT CURRENT_DATE,
+  user_recording_url TEXT,
+  duration_seconds INTEGER DEFAULT 0,
+  transcript_url TEXT,
+  live_transcript TEXT,
+  ai_summary_url TEXT,
+  ai_summary TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_ai_scribes_user ON ai_scribes(user_id);
+CREATE INDEX IF NOT EXISTS idx_ai_scribes_patient ON ai_scribes(patient_id);
+CREATE INDEX IF NOT EXISTS idx_ai_scribes_doctor ON ai_scribes(doctor_id);
+CREATE INDEX IF NOT EXISTS idx_ai_scribes_date ON ai_scribes(date_created);
+
+-- Foreign keys and constraints (using DO blocks or ALTER to avoid errors if exists)
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'gmail_threads_user_id_fkey') THEN
+    ALTER TABLE public.gmail_threads ADD CONSTRAINT gmail_threads_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'patient_history_doctor_fkey') THEN
+    ALTER TABLE public.patients_appointment_history ADD CONSTRAINT patient_history_doctor_fkey FOREIGN KEY (doctor_id) REFERENCES public.doctors(id);
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'patient_history_patient_fkey') THEN
+    ALTER TABLE public.patients_appointment_history ADD CONSTRAINT patient_history_patient_fkey FOREIGN KEY (patient_id) REFERENCES public.patients(id);
+  END IF;
+  
+  -- Foreign Keys for ai_scribes
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ai_scribes_patient_id_fkey') THEN
+    ALTER TABLE ai_scribes ADD CONSTRAINT ai_scribes_patient_id_fkey FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ai_scribes_doctor_id_fkey') THEN
+    ALTER TABLE ai_scribes ADD CONSTRAINT ai_scribes_doctor_id_fkey FOREIGN KEY (doctor_id) REFERENCES doctors(id) ON DELETE CASCADE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ai_scribes_template_id_fkey') THEN
+    ALTER TABLE ai_scribes ADD CONSTRAINT ai_scribes_template_id_fkey FOREIGN KEY (template_id) REFERENCES voice_notes_template(id) ON DELETE SET NULL;
+  END IF;
+  
+  -- Foreign Keys for periodontal_charts
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_patient') THEN
+    ALTER TABLE periodontal_charts ADD CONSTRAINT fk_patient FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_doctor') THEN
+    ALTER TABLE periodontal_charts ADD CONSTRAINT fk_doctor FOREIGN KEY (doctor_id) REFERENCES doctors(id) ON DELETE CASCADE;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_user') THEN
+    ALTER TABLE periodontal_charts ADD CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+  END IF;
+END $$;
+`;
