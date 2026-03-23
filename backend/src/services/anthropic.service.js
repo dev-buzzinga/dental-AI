@@ -611,13 +611,15 @@ Generate the summary now:`;
                 : "");
 
         if (!summary) {
-            return `Summary could not be generated. Transcript: ${transcript.substring(0, 200)}...`;
+            const transcriptText = typeof transcript === "string" ? transcript : "";
+            return `Summary could not be generated. Transcript: ${transcriptText.substring(0, 200)}...`;
         }
 
         return summary.trim();
     } catch (error) {
         console.error("Anthropic generateAISummary error:", error?.response?.data || error.message);
-        return `Summary generation failed. Transcript excerpt: ${transcript.substring(0, 200)}...`;
+        const transcriptText = typeof transcript === "string" ? transcript : "";
+        return `Summary generation failed. Transcript excerpt: ${transcriptText.substring(0, 200)}...`;
     }
 };
 

@@ -1,6 +1,61 @@
 import { supabase } from "../config/database.js";
 import { generateAISummary } from "./anthropic.service.js";
 
+function isMissingColumnError(error) {
+  const message = error?.message || "";
+  return (
+    message.includes("Could not find the '") &&
+    message.includes("' column of 'periodontal_charts'")
+  );
+}
+
+async function updateSummaryState(chartId, user_id, updates) {
+  const variants = [
+    {
+      ...(updates.isSummaryGenerating !== undefined
+        ? { isSummaryGenerating: updates.isSummaryGenerating }
+        : {}),
+      ...(updates.aiSummary !== undefined ? { aiSummary: updates.aiSummary } : {}),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      ...(updates.isSummaryGenerating !== undefined
+        ? { issummarygenerating: updates.isSummaryGenerating }
+        : {}),
+      ...(updates.aiSummary !== undefined ? { aisummary: updates.aiSummary } : {}),
+      updated_at: new Date().toISOString(),
+    },
+    {
+      ...(updates.isSummaryGenerating !== undefined
+        ? { is_summary_generating: updates.isSummaryGenerating }
+        : {}),
+      ...(updates.aiSummary !== undefined ? { ai_summary: updates.aiSummary } : {}),
+      updated_at: new Date().toISOString(),
+    },
+  ];
+
+  let lastNonMissingColumnError = null;
+
+  for (const payload of variants) {
+    const { error } = await supabase
+      .from('periodontal_charts')
+      .update(payload)
+      .eq('id', chartId)
+      .eq('user_id', user_id);
+
+    if (!error) return;
+
+    if (!isMissingColumnError(error)) {
+      lastNonMissingColumnError = error;
+      break;
+    }
+  }
+
+  if (lastNonMissingColumnError) {
+    throw lastNonMissingColumnError;
+  }
+}
+
 // Create periodontal chart
 export async function createPeriodontalChart({
   patient_id,
@@ -44,7 +99,7 @@ export async function findChartsByUserId(user_id, limit, offset, search = '') {
     const selectBase = `
       *,
       patients (id, name, phone, email),
-      doctors${search ? '!inner' : ''} (id, name, profile_img)
+      doctors${search ? '!inner' : ''} (id, name)
     `;
 
     let query = supabase
@@ -104,7 +159,7 @@ export async function getPeriodontalChartById(id, user_id) {
       .select(`
         *,
         patients (id, name, phone, email),
-        doctors (id, name, profile_img)
+        doctors (id, name)
       `)
       .eq('id', id)
       .eq('user_id', user_id)
@@ -247,46 +302,38 @@ export async function uploadPeriodentalChartSummary(chartId, user_id, transcript
     
     const publicUrl = publicUrlData.publicUrl;
 
-    // Update with transcript URL and set generating flag
-    await supabase
+    // Always persist transcript URL first.
+    const { error: transcriptUpdateError } = await supabase
       .from('periodontal_charts')
       .update({
         transcript_url: publicUrl,
         updated_at: new Date().toISOString(),
-        isSummaryGenerating: true
       })
       .eq('id', chartId)
       .eq('user_id', user_id)
-      .select()
+      .select('id')
       .single();
+
+    if (transcriptUpdateError) throw transcriptUpdateError;
+
+    // Set async generation state with column-name fallback support.
+    await updateSummaryState(chartId, user_id, { isSummaryGenerating: true });
 
     // Generate AI summary asynchronously (don't wait)
     generateAIChartSummary({ transcript, patient_name: chart.patients?.name || "" })
       .then((result) => {
-        return supabase
-          .from('periodontal_charts')
-          .update({
-            aiSummary: result,
-            updated_at: new Date().toISOString(),
-            isSummaryGenerating: false
-          })
-          .eq('id', chartId)
-          .eq('user_id', user_id)
-          .select()
-          .single();
+        return updateSummaryState(chartId, user_id, {
+          aiSummary: result,
+          isSummaryGenerating: false,
+        });
       })
       .catch((err) => {
         console.error("Error in generating chart summary", err);
-        return supabase
-          .from('periodontal_charts')
-          .update({
-            updated_at: new Date().toISOString(),
-            isSummaryGenerating: false
-          })
-          .eq('id', chartId)
-          .eq('user_id', user_id)
-          .select()
-          .single();
+        return updateSummaryState(chartId, user_id, { isSummaryGenerating: false }).catch(
+          (updateErr) => {
+            console.error("Error resetting summary generation flag", updateErr);
+          }
+        );
       });
 
     return { url: publicUrl };
@@ -323,7 +370,7 @@ Only include teeth that are mentioned in the transcript. Return valid JSON only.
 
     if (!response || !response.summary) {
       console.error("AI service returned no summary");
-      return [];
+      return null;
     }
 
     // Try to parse the summary as JSON
@@ -332,13 +379,13 @@ Only include teeth that are mentioned in the transcript. Return valid JSON only.
         ? JSON.parse(response.summary) 
         : response.summary;
       
-      return Array.isArray(summary) ? summary : [];
+      return Array.isArray(summary) ? summary : null;
     } catch (parseError) {
       console.error("Error parsing AI summary:", parseError);
-      return [];
+      return null;
     }
   } catch (error) {
     console.error('AI summary generation error:', error);
-    return [];
+    return null;
   }
 }

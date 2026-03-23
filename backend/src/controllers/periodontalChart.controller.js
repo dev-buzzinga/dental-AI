@@ -221,8 +221,12 @@ export async function getSummaryStatus(req, res, next) {
     return res.status(200).json({
       success: true,
       data: {
-        isSummaryGenerating: !!chart.isSummaryGenerating,
-        summary: chart.aiSummary
+        isSummaryGenerating: Boolean(
+          chart.isSummaryGenerating ??
+            chart.issummarygenerating ??
+            chart.is_summary_generating
+        ),
+        summary: chart.aiSummary ?? chart.aisummary ?? chart.ai_summary ?? null
       }
     });
   } catch (error) {

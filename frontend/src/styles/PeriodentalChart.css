@@ -5,6 +5,40 @@
   min-height: 100vh;
 }
 
+/* List page layout aligned with Appointment Types */
+.add-periodontal-chart-page.periodontal-chart-page {
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--background, #f5f5f5);
+}
+
+.add-periodontal-chart-page.periodontal-chart-page .page-header {
+  margin-bottom: 0;
+  padding: 20px 24px;
+  background: #fff;
+  border-bottom: 1px solid var(--border);
+}
+
+.add-periodontal-chart-page.periodontal-chart-page .page-content {
+  flex: 1;
+  overflow: hidden;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.add-periodontal-chart-page.periodontal-chart-page .table-container {
+  flex: 1;
+  overflow: auto;
+  padding: 0 24px 24px;
+}
+
+.add-periodontal-chart-page.periodontal-chart-page .periodontal-charts-table {
+  margin-top: 16px;
+}
+
 .add-periodontal-chart-page .page-header {
   display: flex;
   justify-content: space-between;
@@ -22,6 +56,7 @@
 
   gap: 12px;
 }
+
 .add-periodontal-chart-page .header-left h2 {
   font-size: 20px;
   font-weight: 700;
@@ -84,9 +119,13 @@
 
 .add-periodontal-chart-page .table-container {
   padding: 0;
+  flex: 1;
+  overflow: auto;
+  padding: 0 24px 24px;
 }
 
 /* Table Specific Styles */
+
 .add-periodontal-chart-page .periodontal-charts-table {
   width: 100%;
 }
@@ -151,6 +190,92 @@
 .add-periodontal-chart-page .delete-btn:hover {
   background: #ffcdd2;
   transform: scale(1.1);
+}
+
+.add-periodontal-chart-page .periodontal-delete-modal {
+  width: min(460px, calc(100vw - 32px));
+  background: #fff;
+  border-radius: 14px;
+  padding: 24px;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1000;
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.2);
+  text-align: center;
+}
+
+.add-periodontal-chart-page .periodontal-delete-modal-icon {
+  width: 54px;
+  height: 54px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--primary-light, #ede9fe);
+  color: var(--primary, #6f2ac3);
+  font-size: 20px;
+}
+
+.add-periodontal-chart-page .periodontal-delete-modal h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary, #1f2937);
+}
+
+.add-periodontal-chart-page .periodontal-delete-modal p {
+  margin: 10px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary, #6b7280);
+}
+
+.add-periodontal-chart-page .periodontal-delete-modal-actions {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.add-periodontal-chart-page .periodontal-delete-cancel-btn,
+.add-periodontal-chart-page .periodontal-delete-confirm-btn {
+  min-width: 110px;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.add-periodontal-chart-page .periodontal-delete-cancel-btn {
+  border: 1px solid var(--border, #e5e7eb);
+  color: var(--text-secondary, #6b7280);
+  background: #fff;
+}
+
+.add-periodontal-chart-page .periodontal-delete-cancel-btn:hover:not(:disabled) {
+  border-color: var(--primary, #6f2ac3);
+  color: var(--primary, #6f2ac3);
+}
+
+.add-periodontal-chart-page .periodontal-delete-confirm-btn {
+  border: 1px solid var(--primary, #6f2ac3);
+  color: #fff;
+  background: var(--primary, #6f2ac3);
+}
+
+.add-periodontal-chart-page .periodontal-delete-confirm-btn:hover:not(:disabled) {
+  background: var(--primary-dark, #5b21b6);
+  border-color: var(--primary-dark, #5b21b6);
+}
+
+.add-periodontal-chart-page .periodontal-delete-cancel-btn:disabled,
+.add-periodontal-chart-page .periodontal-delete-confirm-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 
 /* Add/Edit/View Periodontal Chart Styles */

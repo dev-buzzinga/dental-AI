@@ -18,6 +18,8 @@ const PeriodentalChartPage = () => {
     const [charts, setCharts] = useState([]);
     const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [chartToDelete, setChartToDelete] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const pageSize = 10;
     const totalPages = Math.ceil(totalCount / pageSize);
@@ -77,19 +79,27 @@ const PeriodentalChartPage = () => {
     };
 
     const handleDeleteChart = async (row) => {
-        const confirmed = window.confirm(
-            `Are you sure you want to delete this periodontal chart for ${row.patients?.name || 'this patient'}?`
-        );
+        setChartToDelete(row);
+    };
 
-        if (!confirmed) return;
+    const closeDeleteModal = () => {
+        if (isDeleting) return;
+        setChartToDelete(null);
+    };
 
+    const confirmDeleteChart = async () => {
+        if (!chartToDelete) return;
         try {
-            await periodontalChartService.deletePeriodontalChart(row.id);
+            setIsDeleting(true);
+            await periodontalChartService.deletePeriodontalChart(chartToDelete.id);
             showToast('Chart deleted successfully', 'success');
+            closeDeleteModal();
             fetchCharts(); // Refresh list
         } catch (error) {
             console.error('Error deleting chart:', error);
             showToast(error.response?.data?.message || 'Failed to delete chart', 'error');
+        } finally {
+            setIsDeleting(false);
         }
     };
 
@@ -105,7 +115,7 @@ const PeriodentalChartPage = () => {
     const renderCell = (column, row, index) => {
         switch (column.key) {
             case 'sno':
-                return currentPage * pageSize + index + 1;
+                return totalCount - (currentPage * pageSize + index);
 
             case 'patient':
                 return row.patients?.name || 'N/A';
@@ -113,13 +123,6 @@ const PeriodentalChartPage = () => {
             case 'doctor':
                 return (
                     <div className="doctor-cell">
-                        {row.doctors?.profile_img && (
-                            <img
-                                src={row.doctors.profile_img}
-                                alt={row.doctors.name}
-                                className="doctor-avatar"
-                            />
-                        )}
                         <span>{row.doctors?.name || 'N/A'}</span>
                     </div>
                 );
@@ -206,6 +209,39 @@ const PeriodentalChartPage = () => {
                     />
                 </div>
             </div>
+
+            {chartToDelete && (
+                <div className="modal-overlay" onClick={closeDeleteModal}>
+                    <div className="periodontal-delete-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="periodontal-delete-modal-icon">
+                            <i className="fas fa-trash"></i>
+                        </div>
+                        <h3>Delete Periodontal Chart?</h3>
+                        <p>
+                            This will permanently delete the chart for{' '}
+                            <strong>{chartToDelete.patients?.name || 'this patient'}</strong>.
+                        </p>
+                        <div className="periodontal-delete-modal-actions">
+                            <button
+                                type="button"
+                                className="periodontal-delete-cancel-btn"
+                                onClick={closeDeleteModal}
+                                disabled={isDeleting}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="button"
+                                className="periodontal-delete-confirm-btn"
+                                onClick={confirmDeleteChart}
+                                disabled={isDeleting}
+                            >
+                                {isDeleting ? 'Deleting...' : 'Delete'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

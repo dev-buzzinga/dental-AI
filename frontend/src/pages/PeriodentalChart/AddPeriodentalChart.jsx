@@ -82,7 +82,7 @@ const AddPeriodentalChart = () => {
   // Fetch patients and doctors on mount
   useEffect(() => {
     fetchPatientsAndDoctors();
-  }, [user]);
+  }, []);
 
   // Load existing chart data in view/edit mode
   useEffect(() => {
