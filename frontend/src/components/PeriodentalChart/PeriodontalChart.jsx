@@ -633,10 +633,13 @@ const PeriodontalChart = ({ chartData, setChartData }) => {
         </table>
       </div>
 
-      <div style={{ position: 'relative',   width: "-webkit-fill-available", marginLeft: "70px", 
-         }}>
+      <div style={{ position: 'relative', width: '-webkit-fill-available', marginLeft: '70px', paddingTop: '150px' }}>
         {/* Chart in background */}
-        <ResponsiveContainer width="100%" height={200} style={{ transform: 'rotate(180deg)', paddingBottom: '150px'}}>
+        <ResponsiveContainer
+          width="100%"
+          height={200}
+          style={{ transform: 'rotate(180deg)' }}
+        >
           <AreaChart
             data={getLowerAreaData()}
             margin={{ top: 10, right: 30, left: 0, bottom: 0 }}

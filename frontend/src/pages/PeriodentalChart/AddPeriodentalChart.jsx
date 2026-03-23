@@ -532,14 +532,16 @@ const AddPeriodentalChart = () => {
     <div className={`add-periodontal-chart-page ${isFullscreen ? 'fullscreen' : ''}`}>
       {/* Header */}
       <div className="page-header">
-        <button className="back-btn" onClick={() => navigate('/periodontal-charts')}>
-          <i className="fas fa-arrow-left"></i> Back
-        </button>
-        <h2>
-          {mode === 'create' && 'Add New Periodontal Chart'}
-          {mode === 'view' && 'View Periodontal Chart'}
-          {mode === 'edit' && 'Edit Periodontal Chart'}
-        </h2>
+        <div className="header-left">
+          <button className="back-btn" onClick={() => navigate('/periodontal-charts')}>
+            <i className="fas fa-arrow-left"></i>
+          </button>
+          <h2>
+            {mode === 'create' && 'Add New Periodontal Chart'}
+            {mode === 'view' && 'View Periodontal Chart'}
+            {mode === 'edit' && 'Edit Periodontal Chart'}
+          </h2>
+        </div>
         <div className="header-actions">
           <button className="icon-btn" onClick={toggleFullscreen} title="Toggle Fullscreen">
             <i className={`fas fa-${isFullscreen ? 'compress' : 'expand'}`}></i>

@@ -1,45 +1,54 @@
 /* Periodontal Chart Page Styles */
-.periodontal-chart-page {
+.add-periodontal-chart-page .periodontal-chart-page {
   padding: 24px;
   background: var(--background, #f5f5f5);
   min-height: 100vh;
 }
 
-.page-header {
+.add-periodontal-chart-page .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
   padding: 20px;
   background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  border-bottom: 1px solid var(--border);
 }
 
-.header-left {
+.add-periodontal-chart-page .header-left {
   flex: 1;
+  display: flex;
+  align-items: center;
+
+  gap: 12px;
+}
+.add-periodontal-chart-page .header-left h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary, #333);
+  margin: 0;
 }
 
-.page-title {
+.add-periodontal-chart-page .page-title {
   font-size: 28px;
   font-weight: 700;
   color: var(--text-primary, #333);
   margin: 0 0 4px 0;
 }
 
-.page-subtitle {
+/* .add-periodontal-chart-page .page-subtitle {
   font-size: 14px;
   color: var(--text-secondary, #666);
   margin: 0;
-}
+} */
 
-.header-actions {
+.add-periodontal-chart-page .header-actions {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.btn-primary {
+.add-periodontal-chart-page .btn-primary {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -54,54 +63,54 @@
   transition: all 0.3s ease;
 }
 
-.btn-primary:hover {
+.add-periodontal-chart-page .btn-primary:hover {
   background: var(--primary-dark, #5a229a);
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(111, 42, 195, 0.3);
 }
 
-.btn-primary:disabled {
+.add-periodontal-chart-page .btn-primary:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
 }
 
-.page-content {
+.add-periodontal-chart-page .page-content {
   background: white;
   border-radius: 12px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   overflow: hidden;
 }
 
-.table-container {
+.add-periodontal-chart-page .table-container {
   padding: 0;
 }
 
 /* Table Specific Styles */
-.periodontal-charts-table {
+.add-periodontal-chart-page .periodontal-charts-table {
   width: 100%;
 }
 
-.doctor-cell {
+.add-periodontal-chart-page .doctor-cell {
   display: flex;
   align-items: center;
   gap: 10px;
 }
 
-.doctor-avatar {
+.add-periodontal-chart-page .doctor-avatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
   object-fit: cover;
 }
 
-.action-buttons {
+.add-periodontal-chart-page .action-buttons {
   display: flex;
   justify-content: center;
   gap: 8px;
 }
 
-.btn-icon {
+.add-periodontal-chart-page .btn-icon {
   width: 32px;
   height: 32px;
   display: flex;
@@ -114,32 +123,32 @@
   font-size: 14px;
 }
 
-.view-btn {
+.add-periodontal-chart-page .view-btn {
   background: #e3f2fd;
   color: #1976d2;
 }
 
-.view-btn:hover {
+.add-periodontal-chart-page .view-btn:hover {
   background: #bbdefb;
   transform: scale(1.1);
 }
 
-.edit-btn {
+.add-periodontal-chart-page .edit-btn {
   background: #fff3e0;
   color: #f57c00;
 }
 
-.edit-btn:hover {
+.add-periodontal-chart-page .edit-btn:hover {
   background: #ffe0b2;
   transform: scale(1.1);
 }
 
-.delete-btn {
+.add-periodontal-chart-page .delete-btn {
   background: #ffebee;
   color: #d32f2f;
 }
 
-.delete-btn:hover {
+.add-periodontal-chart-page .delete-btn:hover {
   background: #ffcdd2;
   transform: scale(1.1);
 }
@@ -163,26 +172,25 @@
   padding: 20px;
 }
 
-.back-btn {
+.add-periodontal-chart-page .back-btn {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 8px 16px;
   background: transparent;
-  border: 1px solid var(--border, #e0e0e0);
-  border-radius: 6px;
+  /* border: 1px solid var(--border, #e0e0e0); */
+  /* border-radius: 6px; */
   color: var(--text-primary, #333);
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.back-btn:hover {
-  background: var(--surface, #f5f5f5);
-  border-color: var(--primary, #6F2AC3);
+.add-periodontal-chart-page .back-btn:hover {
+  color: var(--primary, #6F2AC3);
 }
 
-.icon-btn {
+.add-periodontal-chart-page .icon-btn {
   width: 40px;
   height: 40px;
   display: flex;
@@ -197,12 +205,12 @@
   color: var(--text-primary, #333);
 }
 
-.icon-btn:hover {
+.add-periodontal-chart-page .icon-btn:hover {
   background: var(--surface, #f5f5f5);
   border-color: var(--primary, #6F2AC3);
 }
 
-.save-btn {
+.add-periodontal-chart-page .save-btn {
   padding: 10px 24px;
   background: var(--primary, #6F2AC3);
   color: white;
@@ -214,17 +222,17 @@
   transition: all 0.2s ease;
 }
 
-.save-btn:hover:not(:disabled) {
+.add-periodontal-chart-page .save-btn:hover:not(:disabled) {
   background: var(--primary-dark, #5a229a);
   transform: translateY(-2px);
 }
 
-.save-btn:disabled {
+.add-periodontal-chart-page .save-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.export-btn {
+.add-periodontal-chart-page .export-btn {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -239,13 +247,13 @@
   transition: all 0.2s ease;
 }
 
-.export-btn:hover {
+.add-periodontal-chart-page .export-btn:hover {
   background: #45a049;
   transform: translateY(-2px);
 }
 
 /* Form and Recording Container */
-.form-recording-container {
+.add-periodontal-chart-page .form-recording-container {
   display: flex;
   gap: 24px;
   margin-bottom: 24px;
@@ -254,7 +262,7 @@
 }
 
 /* Form Section */
-.form-section {
+.add-periodontal-chart-page .form-section {
   flex: 1;
   padding: 20px;
   background: white;
@@ -262,30 +270,30 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
-.form-row {
+.add-periodontal-chart-page .form-row {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 16px;
 }
 
-.form-group {
+.add-periodontal-chart-page .form-group {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.form-group label {
+.add-periodontal-chart-page .form-group label {
   font-size: 14px;
   font-weight: 600;
   color: var(--text-primary, #333);
 }
 
-.form-group .required {
+.add-periodontal-chart-page .form-group .required {
   color: #f44336;
 }
 
-.form-group input,
-.form-group select {
+.add-periodontal-chart-page .form-group input,
+.add-periodontal-chart-page .form-group select {
   padding: 10px 12px;
   border: 1px solid var(--border, #e0e0e0);
   border-radius: 6px;
@@ -293,21 +301,21 @@
   transition: all 0.2s ease;
 }
 
-.form-group input:focus,
-.form-group select:focus {
+.add-periodontal-chart-page .form-group input:focus,
+.add-periodontal-chart-page .form-group select:focus {
   outline: none;
   border-color: var(--primary, #6F2AC3);
   box-shadow: 0 0 0 3px rgba(111, 42, 195, 0.1);
 }
 
-.form-group input:disabled,
-.form-group select:disabled {
+.add-periodontal-chart-page .form-group input:disabled,
+.add-periodontal-chart-page .form-group select:disabled {
   background-color: #f5f5f5;
   cursor: not-allowed;
 }
 
 /* Voice Input Section */
-.voice-input-section {
+.add-periodontal-chart-page .voice-input-section {
   width: 280px;
   padding: 20px;
   background: white;
@@ -318,7 +326,7 @@
   gap: 16px;
 }
 
-.voice-input-header {
+.add-periodontal-chart-page .voice-input-header {
   font-size: 16px;
   font-weight: 600;
   color: var(--text-primary, #333);
@@ -326,7 +334,7 @@
   border-bottom: 2px solid var(--border, #e0e0e0);
 }
 
-.recording-controls {
+.add-periodontal-chart-page .recording-controls {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -334,8 +342,8 @@
   flex-direction: column;
 }
 
-.record-btn-circle,
-.stop-btn-circle {
+.add-periodontal-chart-page .record-btn-circle,
+.add-periodontal-chart-page .stop-btn-circle {
   width: 64px;
   height: 64px;
   border-radius: 50%;
@@ -349,39 +357,39 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.record-btn-circle {
+.add-periodontal-chart-page .record-btn-circle {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
 }
 
-.record-btn-circle:hover:not(:disabled) {
+.add-periodontal-chart-page .record-btn-circle:hover:not(:disabled) {
   transform: scale(1.1);
   box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
 }
 
-.record-btn-circle:disabled {
+.add-periodontal-chart-page .record-btn-circle:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.stop-btn-circle {
+.add-periodontal-chart-page .stop-btn-circle {
   background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
   color: white;
 }
 
-.stop-btn-circle:hover {
+.add-periodontal-chart-page .stop-btn-circle:hover {
   transform: scale(1.1);
   box-shadow: 0 6px 16px rgba(76, 175, 80, 0.4);
 }
 
-.recording-time {
+.add-periodontal-chart-page .recording-time {
   font-size: 18px;
   font-weight: 600;
   color: var(--primary, #6F2AC3);
   text-align: center;
 }
 
-.recording-status {
+.add-periodontal-chart-page .recording-status {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -394,7 +402,7 @@
   color: #6F2AC3;
 }
 
-.recording-dot {
+.add-periodontal-chart-page .recording-dot {
   width: 10px;
   height: 10px;
   background: #f44336;
@@ -403,17 +411,20 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
+
   50% {
     opacity: 0.5;
     transform: scale(1.3);
   }
 }
 
-.transcript-preview {
+.add-periodontal-chart-page .transcript-preview {
   max-height: 120px;
   overflow-y: auto;
   padding: 12px;
@@ -424,20 +435,20 @@
   color: var(--text-secondary, #666);
 }
 
-.transcript-preview p {
+.add-periodontal-chart-page .transcript-preview p {
   margin: 0;
 }
 
-.audio-player-compact {
+.add-periodontal-chart-page .audio-player-compact {
   width: 100%;
 }
 
-.audio-player-compact audio {
+.add-periodontal-chart-page .audio-player-compact audio {
   width: 100%;
   height: 40px;
 }
 
-.status-message {
+.add-periodontal-chart-page .status-message {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -450,7 +461,7 @@
 }
 
 /* Recording Section */
-.recording-section {
+.add-periodontal-chart-page .recording-section {
   margin-bottom: 24px;
   padding: 20px;
   background: white;
@@ -458,14 +469,14 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
-.recording-controls {
+.add-periodontal-chart-page .recording-controls {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 16px;
 }
 
-.record-btn {
+.add-periodontal-chart-page .record-btn {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -480,17 +491,17 @@
   transition: all 0.2s ease;
 }
 
-.record-btn:hover:not(:disabled) {
+.add-periodontal-chart-page .record-btn:hover:not(:disabled) {
   background: #d32f2f;
   transform: translateY(-2px);
 }
 
-.record-btn:disabled {
+.add-periodontal-chart-page .record-btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
 
-.recording-indicator {
+.add-periodontal-chart-page .recording-indicator {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -502,7 +513,7 @@
   color: #d32f2f;
 }
 
-.recording-dot {
+.add-periodontal-chart-page .recording-dot {
   width: 12px;
   height: 12px;
   background: #f44336;
@@ -511,17 +522,20 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
+
   50% {
     opacity: 0.5;
     transform: scale(1.2);
   }
 }
 
-.stop-btn {
+.add-periodontal-chart-page .stop-btn {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -536,24 +550,24 @@
   transition: all 0.2s ease;
 }
 
-.stop-btn:hover {
+.add-periodontal-chart-page .stop-btn:hover {
   background: #616161;
 }
 
-.transcript-box {
+.add-periodontal-chart-page .transcript-box {
   padding: 16px;
   background: #f5f5f5;
   border-radius: 8px;
   margin-bottom: 16px;
 }
 
-.transcript-box h4 {
+.add-periodontal-chart-page .transcript-box h4 {
   margin: 0 0 12px 0;
   font-size: 16px;
   color: var(--text-primary, #333);
 }
 
-.transcript-box p {
+.add-periodontal-chart-page .transcript-box p {
   margin: 0;
   font-size: 14px;
   line-height: 1.6;
@@ -561,17 +575,17 @@
   white-space: pre-wrap;
 }
 
-.audio-player {
+.add-periodontal-chart-page .audio-player {
   margin-bottom: 16px;
 }
 
-.audio-player audio {
+.add-periodontal-chart-page .audio-player audio {
   width: 100%;
   height: 40px;
 }
 
-.upload-status,
-.summary-status {
+.add-periodontal-chart-page .upload-status,
+.add-periodontal-chart-page .summary-status {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -582,16 +596,17 @@
   color: #1976d2;
 }
 
-.summary-status {
+.add-periodontal-chart-page .summary-status {
   background: #fff3e0;
   color: #f57c00;
 }
 
 /* Chart Section */
-.chart-section-cover {
+.add-periodontal-chart-page .chart-section-cover {
   padding: 0 24px 24px 24px;
 }
-.chart-section {
+
+.add-periodontal-chart-page .chart-section {
   padding: 20px;
   background: white;
   border-radius: 12px;
@@ -600,55 +615,56 @@
 
 /* Responsive Design */
 @media (max-width: 1200px) {
-  .form-row {
+  .add-periodontal-chart-page .form-row {
     grid-template-columns: repeat(2, 1fr);
   }
-  
-  .form-recording-container {
+
+  .add-periodontal-chart-page .form-recording-container {
     flex-direction: column;
   }
-  
-  .voice-input-section {
+
+  .add-periodontal-chart-page .voice-input-section {
     width: 100%;
   }
 }
 
 @media (max-width: 1024px) {
-  .page-header {
+  .add-periodontal-chart-page .page-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 16px;
   }
 
-  .header-actions {
+  .add-periodontal-chart-page .header-actions {
     width: 100%;
     justify-content: flex-end;
   }
 }
 
 @media (max-width: 768px) {
-  .periodontal-chart-page,
+
+  .add-periodontal-chart-page .periodontal-chart-page,
   .add-periodontal-chart-page {
     padding: 16px;
   }
 
-  .page-title {
+  .add-periodontal-chart-page .page-title {
     font-size: 24px;
   }
-  
-  .form-row {
+
+  .add-periodontal-chart-page .form-row {
     grid-template-columns: 1fr;
   }
 
-  .action-buttons {
+  .add-periodontal-chart-page .action-buttons {
     flex-direction: column;
   }
-  
-  .page-header h2 {
+
+  .add-periodontal-chart-page .page-header h2 {
     font-size: 20px;
   }
-  
-  .voice-input-section {
+
+  .add-periodontal-chart-page .voice-input-section {
     padding: 16px;
   }
 }

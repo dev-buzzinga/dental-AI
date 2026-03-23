@@ -18,7 +18,7 @@ const PeriodentalChartPage = () => {
     const [charts, setCharts] = useState([]);
     const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(true);
-    
+
     const pageSize = 10;
     const totalPages = Math.ceil(totalCount / pageSize);
 
@@ -37,7 +37,7 @@ const PeriodentalChartPage = () => {
         if (user) {
             fetchCharts();
         }
-    }, [user, currentPage, debouncedSearchTerm]);
+    }, [currentPage, debouncedSearchTerm]);
 
     const fetchCharts = async () => {
         try {
@@ -65,14 +65,14 @@ const PeriodentalChartPage = () => {
     };
 
     const handleViewChart = (row) => {
-        navigate('/periodontal-charts/view', { 
-            state: { mode: 'view', chartData: row } 
+        navigate('/periodontal-charts/view', {
+            state: { mode: 'view', chartData: row }
         });
     };
 
     const handleEditChart = (row) => {
-        navigate('/periodontal-charts/edit', { 
-            state: { mode: 'edit', chartData: row } 
+        navigate('/periodontal-charts/edit', {
+            state: { mode: 'edit', chartData: row }
         });
     };
 
@@ -106,49 +106,49 @@ const PeriodentalChartPage = () => {
         switch (column.key) {
             case 'sno':
                 return currentPage * pageSize + index + 1;
-            
+
             case 'patient':
                 return row.patients?.name || 'N/A';
-            
+
             case 'doctor':
                 return (
                     <div className="doctor-cell">
                         {row.doctors?.profile_img && (
-                            <img 
-                                src={row.doctors.profile_img} 
-                                alt={row.doctors.name} 
+                            <img
+                                src={row.doctors.profile_img}
+                                alt={row.doctors.name}
                                 className="doctor-avatar"
                             />
                         )}
                         <span>{row.doctors?.name || 'N/A'}</span>
                     </div>
                 );
-            
+
             case 'dob':
                 return row.dob ? new Date(row.dob).toLocaleDateString() : 'N/A';
-            
+
             case 'chartDate':
                 return row.chart_date ? new Date(row.chart_date).toLocaleDateString() : 'N/A';
-            
+
             case 'actions':
                 return (
                     <div className="action-buttons">
-                        <button 
-                            className="btn-icon view-btn" 
+                        <button
+                            className="btn-icon view-btn"
                             onClick={() => handleViewChart(row)}
                             title="View Chart"
                         >
                             <i className="fas fa-eye"></i>
                         </button>
-                        <button 
-                            className="btn-icon edit-btn" 
+                        <button
+                            className="btn-icon edit-btn"
                             onClick={() => handleEditChart(row)}
                             title="Edit Chart"
                         >
                             <i className="fas fa-edit"></i>
                         </button>
-                        <button 
-                            className="btn-icon delete-btn" 
+                        <button
+                            className="btn-icon delete-btn"
                             onClick={() => handleDeleteChart(row)}
                             title="Delete Chart"
                         >
@@ -156,24 +156,23 @@ const PeriodentalChartPage = () => {
                         </button>
                     </div>
                 );
-            
+
             default:
                 return row[column.key] ?? '-';
         }
     };
 
     return (
-        <div className="periodontal-chart-page">
+        <div className="add-periodontal-chart-page periodontal-chart-page">
             <div className="page-header">
                 <div className="header-left">
                     <h2 className="page-title">Periodontal Charts</h2>
-                    <p className="page-subtitle">Manage patient periodontal charts</p>
                 </div>
                 <div className="header-actions">
-                    <SearchInput 
-                        placeholder="Search by doctor name..." 
-                        value={searchTerm} 
-                        onChange={setSearchTerm} 
+                    <SearchInput
+                        placeholder="Search by doctor name..."
+                        value={searchTerm}
+                        onChange={setSearchTerm}
                     />
                     <button className="btn-primary" onClick={handleAddChart}>
                         <i className="fas fa-plus" /> Add New Chart
@@ -200,8 +199,8 @@ const PeriodentalChartPage = () => {
                         emptyState={{
                             icon: 'fas fa-tooth',
                             title: 'No periodontal charts found',
-                            description: searchTerm 
-                                ? 'Try adjusting your search terms' 
+                            description: searchTerm
+                                ? 'Try adjusting your search terms'
                                 : 'Create your first periodontal chart to get started'
                         }}
                     />
