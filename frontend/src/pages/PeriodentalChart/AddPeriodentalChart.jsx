@@ -57,6 +57,8 @@ const AddPeriodentalChart = () => {
   const [wsConnection, setWsConnection] = useState(null);
   const [isConnected, setIsConnected] = useState(false);
   const [liveTranscript, setLiveTranscript] = useState('');
+  const [transcriptUrl, setTranscriptUrl] = useState('');
+  const [isTranscriptLoading, setIsTranscriptLoading] = useState(false);
 
   // Audio player states
   const [isPlaying, setIsPlaying] = useState(false);
@@ -146,6 +148,7 @@ const AddPeriodentalChart = () => {
       setChartData(originalChartData.tooth_data || defaultChartData);
       setAudioUrl(originalChartData.recording_url || '');
       setDuration(originalChartData.duration_seconds || 0);
+      setTranscriptUrl(originalChartData.transcript_url || '');
 
       // Load transcript if exists
       if (originalChartData.transcript_url) {
@@ -224,12 +227,21 @@ const AddPeriodentalChart = () => {
 
   // Fetch transcript from URL
   const fetchTranscript = async (url) => {
+    if (!url) return;
+
     try {
+      setIsTranscriptLoading(true);
       const response = await fetch(url, { cache: 'no-cache' });
+      if (!response.ok) {
+        throw new Error(`Transcript fetch failed: ${response.status}`);
+      }
       const text = await response.text();
       setLiveTranscript(text);
     } catch (error) {
       console.error('Error fetching transcript:', error);
+      setLiveTranscript('');
+    } finally {
+      setIsTranscriptLoading(false);
     }
   };
 
@@ -700,9 +712,34 @@ const AddPeriodentalChart = () => {
             <i className={`fas fa-${isFullscreen ? 'compress' : 'expand'}`}></i>
           </button>
           {(mode === 'view' || mode === 'edit') && (
-            <button className="export-btn" onClick={handleExportPDF}>
-              <i className="fas fa-download"></i>
-            </button>
+            <>
+              <button className="export-btn" onClick={handleExportPDF} type="button">
+                <i className="fas fa-download"></i>
+              </button>
+              <div className="transcript-info-wrapper">
+                <button
+                  className="transcript-info-btn"
+                  type="button"
+                  aria-label="View transcript"
+                  onMouseEnter={() => {
+                    if (!liveTranscript.trim() && transcriptUrl && !isTranscriptLoading) {
+                      fetchTranscript(transcriptUrl);
+                    }
+                  }}
+                >
+                  <i className="fas fa-info-circle"></i>
+                </button>
+                <div className="transcript-tooltip">
+                  {isTranscriptLoading
+                    ? 'Loading transcript...'
+                    : liveTranscript.trim()
+                      ? liveTranscript
+                      : transcriptUrl
+                        ? 'Transcript not available.'
+                        : 'No transcript available for this chart.'}
+                </div>
+              </div>
+            </>
           )}
           {!isReadOnly && (
             <button

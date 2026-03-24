@@ -215,7 +215,7 @@ const PeriodontalChart = ({ chartData, setChartData }) => {
                   const isDisabled = tooth.isImplant && ['Mobility', 'Furcation', 'BOP', 'GR', 'PD'].includes(label);
                   const siteStart = 0; // Buccal side (MB, B, DB)
                   return (
-                    <td key={toothIdx} style={{ textAlign: 'center', padding: 0, border: '1px solid #ccc', padding: '2px 2px', verticalAlign: 'middle', minWidth: 50, maxWidth: 80, width: 50, }}>
+                    <td key={toothIdx} style={{ textAlign: 'center', border: '1px solid #ccc', padding: '2px 2px', verticalAlign: 'middle', minWidth: 50, maxWidth: 80, width: 50, }}>
                       <div style={{ display: 'flex', justifyContent: 'center', gap: 4, padding: '4px 0px' }}>
                         {Array.from({ length: cells }).map((_, siteIdx) => {
                           const globalSiteIdx = siteStart + siteIdx;
@@ -461,7 +461,7 @@ const PeriodontalChart = ({ chartData, setChartData }) => {
                 const isDisabled = tooth.isImplant && ['Mobility', 'Furcation', 'BOP', 'GR', 'PD'].includes(label);
                 const siteStart = 3; // Lingual side (ML, L, DL)
                 return (
-                  <td key={toothIdx} style={{ textAlign: 'center', padding: 0, border: '1px solid #ccc', padding: '2px 2px', verticalAlign: 'middle', minWidth: 50, maxWidth: 80, width: 50, }}>
+                  <td key={toothIdx} style={{ textAlign: 'center', border: '1px solid #ccc', padding: '2px 2px', verticalAlign: 'middle', minWidth: 50, maxWidth: 80, width: 50, }}>
                     <div style={{ display: 'flex', justifyContent: 'center', gap: 4, padding: '4px 0px' }}>
                       {Array.from({ length: cells }).map((_, siteIdx) => {
                         const globalSiteIdx = siteStart + siteIdx;
@@ -562,7 +562,7 @@ const PeriodontalChart = ({ chartData, setChartData }) => {
                   const isDisabled = tooth.isImplant && ['Mobility', 'Furcation', 'BOP', 'GR', 'PD'].includes(label);
                   const siteStart = 0; // Buccal side (MB, B, DB)
                   return (
-                    <td key={toothIdx} style={{ textAlign: 'center', padding: 0, border: '1px solid #ccc', padding: '2px 2px', verticalAlign: 'middle', minWidth: 50, maxWidth: 80, width: 50, }}>
+                    <td key={toothIdx} style={{ textAlign: 'center', border: '1px solid #ccc', padding: '2px 2px', verticalAlign: 'middle', minWidth: 50, maxWidth: 80, width: 50, }}>
                       <div style={{ display: 'flex', justifyContent: 'center', gap: 4, padding: '4px 0px' }}>
                         {Array.from({ length: cells }).map((_, siteIdx) => {
                           const globalSiteIdx = siteStart + siteIdx;
@@ -713,7 +713,7 @@ const PeriodontalChart = ({ chartData, setChartData }) => {
                 const isDisabled = tooth.isImplant && ['Mobility', 'Furcation', 'BOP', 'GR', 'PD'].includes(label);
                 const siteStart = 3; // Lingual side (ML, L, DL)
                 return (
-                  <td key={toothIdx} style={{ textAlign: 'center', padding: 0, border: '1px solid #ccc', padding: '2px 2px', verticalAlign: 'middle', minWidth: 50, maxWidth: 80, width: 50, }}>
+                  <td key={toothIdx} style={{ textAlign: 'center', border: '1px solid #ccc', padding: '2px 2px', verticalAlign: 'middle', minWidth: 50, maxWidth: 80, width: 50, }}>
                     <div style={{ display: 'flex', justifyContent: 'center', gap: 4, padding: '4px 0px' }}>
                       {Array.from({ length: cells }).map((_, siteIdx) => {
                         const globalSiteIdx = siteStart + siteIdx;
