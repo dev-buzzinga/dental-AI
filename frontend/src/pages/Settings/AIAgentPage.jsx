@@ -57,75 +57,81 @@ const AIAgentPage = () => {
             <div className="settings-page-content">
                 <div className="ai-agent-layout">
                     {/* Left Column */}
-                    <div>
+                    <div className="ai-agent-left-column">
                         {/* Voice Selector */}
                         <div className="ai-agent-card" style={{ marginBottom: 24 }}>
                             <div className="ai-agent-section-title"><i className="fas fa-microphone" /> Voice</div>
-                            <button
-                                className="voice-picker-btn"
-                                onClick={() => setVoiceDropdownOpen(!voiceDropdownOpen)}
-                            >
-                                <i className="fas fa-waveform" style={{ marginRight: 8 }} />
-                                <span>{selectedVoice.name} - {selectedVoice.attitude}</span>
-                                <i className="fas fa-chevron-down" style={{ fontSize: 12, color: '#9CA3AF', transition: 'transform 0.2s', transform: voiceDropdownOpen ? 'rotate(180deg)' : 'rotate(0)' }} />
-                            </button>
+                            
+                            <div className="voice-picker-wrapper" style={{ position: 'relative' }}>
+                                <button
+                                    className="voice-picker-btn"
+                                    onClick={() => setVoiceDropdownOpen(!voiceDropdownOpen)}
+                                >
+                                    <i className="fas fa-waveform" style={{ marginRight: 8 }} />
+                                    <span>{selectedVoice.name} - {selectedVoice.attitude}</span>
+                                    <i className="fas fa-chevron-down" style={{ fontSize: 12, color: '#9CA3AF', transition: 'transform 0.2s', transform: voiceDropdownOpen ? 'rotate(180deg)' : 'rotate(0)' }} />
+                                </button>
 
-                            {voiceDropdownOpen && (
-                                <div className="voice-picker-dropdown fade-in">
-                                    <div className="voice-dropdown-header">
-                                        <div className="voice-filters">
-                                            <div className="filter-section">
+                                {voiceDropdownOpen && (
+                                    <div className="voice-picker-dropdown fade-in">
+                                        <div className="voice-picker-sidebar">
+                                            {/* <div className="filter-section-header">
                                                 <span className="filter-title">Filters</span>
-                                                <button className="clear-filters-btn">Clear Filters</button>
-                                            </div>
-                                            <div className="filter-section">
-                                                <span className="filter-title">Gender</span>
-                                                <i className="fas fa-chevron-up" style={{ fontSize: 10, color: '#9CA3AF' }} />
+                                                <button className="clear-filters-btn" onClick={() => setGenderFilter('All')}>Clear Filters</button>
+                                            </div> */}
+                                            <div className="filter-group">
+                                                <div className="filter-group-title">
+                                                    <span className="filter-title-large">Gender</span>
+                                                    {/* <i className="fas fa-chevron-up" style={{ fontSize: 12, color: '#9CA3AF' }} /> */}
+                                                </div>
                                                 <label className="checkbox-container">
                                                     <input type="checkbox" checked={genderFilter === 'All'} onChange={() => setGenderFilter('All')} />
-                                                    <span className="checkmark"></span>
                                                     All
                                                 </label>
                                                 <label className="checkbox-container">
                                                     <input type="checkbox" checked={genderFilter === 'Male'} onChange={() => setGenderFilter('Male')} />
-                                                    <span className="checkmark"></span>
                                                     Male
                                                 </label>
                                                 <label className="checkbox-container">
                                                     <input type="checkbox" checked={genderFilter === 'Female'} onChange={() => setGenderFilter('Female')} />
-                                                    <span className="checkmark"></span>
                                                     Female
                                                 </label>
                                             </div>
                                         </div>
-                                        <div className="voice-search">
-                                            <i className="fas fa-search" style={{ color: '#9CA3AF' }} />
-                                            <input
-                                                type="text"
-                                                placeholder="Search for a voice..."
-                                                value={searchTerm}
-                                                onChange={(e) => setSearchTerm(e.target.value)}
-                                            />
+                                        <div className="voice-picker-main">
+                                            <div className="voice-search-container">
+                                                <div className="voice-search">
+                                                    <i className="fas fa-search" style={{ color: '#9CA3AF' }} />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search for a voice..."
+                                                        value={searchTerm}
+                                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="voice-list custom-scrollbar">
+                                                {filteredVoices.map((voice) => (
+                                                    <div
+                                                        key={voice.id}
+                                                        className={`voice-list-item ${selectedVoice.id === voice.id ? 'selected' : ''}`}
+                                                        onClick={() => handleVoiceSelect(voice)}
+                                                    >
+                                                        <div className="voice-play-circle">
+                                                            <i className="fas fa-play" style={{ fontSize: '10px', marginLeft: '2px' }} />
+                                                        </div>
+                                                        <div className="voice-details">
+                                                            <div className="voice-name">{voice.name} - {voice.attitude}</div>
+                                                            <div className="voice-gender"><span className="gender-dot"></span>{voice.gender}</div>
+                                                        </div>
+                                                        {selectedVoice.id === voice.id && <i className="fas fa-check" style={{ color: '#6F2AC3', fontSize: '16px' }} />}
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
-                                    <div className="voice-list custom-scrollbar">
-                                        {filteredVoices.map((voice) => (
-                                            <div
-                                                key={voice.id}
-                                                className={`voice-list-item ${selectedVoice.id === voice.id ? 'selected' : ''}`}
-                                                onClick={() => handleVoiceSelect(voice)}
-                                            >
-                                                <i className="fas fa-play-circle" style={{ color: '#9CA3AF', fontSize: 16 }} />
-                                                <div className="voice-details">
-                                                    <div className="voice-name">{voice.name} - {voice.attitude}</div>
-                                                    <div className="voice-gender">• {voice.gender}</div>
-                                                </div>
-                                                {selectedVoice.id === voice.id && <i className="fas fa-check" style={{ color: 'var(--primary)' }} />}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
+                                )}
+                            </div>
                         </div>
 
                         {/* Agent Prompt */}
@@ -165,7 +171,7 @@ const AIAgentPage = () => {
                     </div>
 
                     {/* Right Column - Preview */}
-                    <div>
+                    <div className="ai-agent-right-column">
                         <div className="ai-agent-card">
                             <div className="ai-agent-section-title"><i className="fas fa-eye" /> Agent</div>
                             <div className="agent-display-card">
@@ -174,7 +180,7 @@ const AIAgentPage = () => {
                                         <img src={AiAgentModelImage} alt="Agent" style={{ width: 240, height: 240, borderRadius: '16px', objectFit: 'cover' }} />
                                     </div>
                                 </div>
-                                <div className="agent-info">
+                                <div className="agent-info" style={{ textAlign: 'center' }}>
                                     <h3 className="agent-name">Agent</h3>
                                     <p className="agent-voice-info">{selectedVoice.name}</p>
                                 </div>
@@ -183,18 +189,6 @@ const AIAgentPage = () => {
                                 </button>
                             </div>
                         </div>
-
-                        {/* <div style={{ marginTop: 16 }}>
-                            <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 8 }}>Active Features</div>
-                            {Object.entries(behaviours).map(([key, on]) => (
-                                <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0' }}>
-                                    <i className={`fas ${on ? 'fa-circle-check' : 'fa-circle-xmark'}`} style={{ color: on ? 'var(--success)' : '#D1D5DB', fontSize: 13 }} />
-                                    <span style={{ fontSize: 13 }}>
-                                        {key === 'autoAnswer' ? 'Auto-Answer' : key === 'recordCalls' ? 'Recording' : key === 'transcribe' ? 'Transcription' : 'Smart Escalation'}
-                                    </span>
-                                </div>
-                            ))}
-                        </div> */}
                     </div>
                 </div>
             </div>
