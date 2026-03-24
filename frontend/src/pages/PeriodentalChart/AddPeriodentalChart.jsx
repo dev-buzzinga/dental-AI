@@ -717,142 +717,124 @@ const AddPeriodentalChart = () => {
       </div>
 
       {/* Form and Recording Section Container */}
-      <div className="form-recording-container">
-        {/* Form Section */}
-        <div className="form-section">
-          <div className="form-row">
-            <SearchableDropdown
-              label="Patient Name"
-              required={true}
-              options={patients}
-              value={selectedPatient}
-              onChange={(patient) => setSelectedPatient(patient.id.toString())}
-              placeholder="Select Patient"
+      <div className="form-section integrated-form-section">
+        <div className="form-row">
+          <SearchableDropdown
+            label="Patient Name"
+            required={true}
+            options={patients}
+            value={selectedPatient}
+            onChange={(patient) => setSelectedPatient(patient.id.toString())}
+            placeholder="Select Patient"
+            disabled={isReadOnly}
+          />
+
+          <SearchableDropdown
+            label="Doctor Name"
+            required={true}
+            options={doctors}
+            value={selectedDoctor}
+            onChange={(doctor) => setSelectedDoctor(doctor.id.toString())}
+            placeholder="Select Doctor"
+            disabled={isReadOnly}
+          />
+
+          <div className="form-group">
+            <label>Date of Birth <span className="required">*</span></label>
+            <input
+              type="date"
+              value={dateOfBirth}
+              onChange={(e) => setDateOfBirth(e.target.value)}
+              max={new Date().toISOString().split('T')[0]}
               disabled={isReadOnly}
+              required
             />
+          </div>
 
-            <SearchableDropdown
-              label="Doctor Name"
-              required={true}
-              options={doctors}
-              value={selectedDoctor}
-              onChange={(doctor) => setSelectedDoctor(doctor.id.toString())}
-              placeholder="Select Doctor"
+          <div className="form-group">
+            <label>Date Created <span className="required">*</span></label>
+            <input
+              type="date"
+              value={dateCreated}
+              onChange={(e) => setDateCreated(e.target.value)}
+              max={new Date().toISOString().split('T')[0]}
               disabled={isReadOnly}
+              required
             />
-
-            <div className="form-group">
-              <label>Date of Birth <span className="required">*</span></label>
-              <input
-                type="date"
-                value={dateOfBirth}
-                onChange={(e) => setDateOfBirth(e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
-                disabled={isReadOnly}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Date Created <span className="required">*</span></label>
-              <input
-                type="date"
-                value={dateCreated}
-                onChange={(e) => setDateCreated(e.target.value)}
-                max={new Date().toISOString().split('T')[0]}
-                disabled={isReadOnly}
-                required
-              />
-            </div>
           </div>
         </div>
 
-        {/* Voice Input Button */}
+        {!isReadOnly && <div className="divider-vertical"></div>}
+
+        {/* Voice Input Section */}
         {!isReadOnly && (
-          <div className="voice-input-section-compact">
-            <div className="voice-input-header-compact">
-              <span>Voice Input</span>
-              <span className="voice-input-subtitle">Record audio for AI summary</span>
+          <div className="voice-input-section-inline">
+            <div className="voice-input-header-inline">
+              <span className="voice-input-title">Voice Input</span>
+              
+              <button
+                className="voice-input-start-btn"
+                onClick={startRecording}
+                disabled={isRecordingLoading}
+                title="Start Voice Recording"
+              >
+                {isRecordingLoading ? (
+                  <i className="fas fa-spinner fa-spin"></i>
+                ) : (
+                  <>
+                    <i className="fas fa-microphone" style={{fontSize: "12px"}}></i>
+                    <span>Start Recording</span>
+                  </>
+                )}
+              </button>
             </div>
-            <button
-              className="voice-input-trigger-btn"
-              onClick={startRecording}
-              disabled={isRecordingLoading}
-              title="Start Voice Recording"
-            >
-              {isRecordingLoading ? (
-                <i className="fas fa-spinner fa-spin"></i>
-              ) : (
-                <>
-                  <i className="fas fa-microphone"></i>
-                  <span>Start Recording</span>
-                </>
-              )}
-            </button>
 
-            {audioUrl && (
-              <div className="periodontal-audio-player">
-                <div className="periodontal-audio-title">Voice Recording</div>
-
-                <div className="periodontal-integrated-player">
-                  {/* Top part: Play button */}
-                  <div className="periodontal-audio-top">
-                    <div
-                      className="periodontal-audio-play"
-                      onClick={handlePlayPause}
-                    >
-                      <i className={`fas fa-${isPlaying ? 'pause' : 'play'}`} />
-                    </div>
-                    <div className="periodontal-audio-info">
-                      <span className="periodontal-audio-label">Recording</span>
-                      <span className="periodontal-audio-duration">{formatAudioTime(duration || 0)}</span>
-                    </div>
-                  </div>
-
-                  {/* Bottom part: Custom audio controls */}
-                  <div className="periodontal-audio-container">
-                    <div className="periodontal-audio-controls">
-                      <input
-                        type="range"
-                        min="0"
-                        max={sliderMax}
-                        value={currentTime}
-                        className="periodontal-audio-slider"
-                        style={{ '--slider-progress': `${sliderProgressPercent}%` }}
-                        onChange={(e) => {
-                          const time = parseFloat(e.target.value || 0);
-                          setCurrentTime(time);
-                          if (audioRef.current) {
-                            audioRef.current.currentTime = time;
-                          }
-                        }}
-                      />
-                      <span className="periodontal-audio-time">
-                        {formatAudioTime(currentTime)} / {formatAudioTime(sliderMax)}
-                      </span>
-                      {/* <a
-                        href={audioUrl}
-                        className="periodontal-audio-download"
-                        download="voice-recording.webm"
-                        title="Download recording"
-                      >
-                        <i className="fas fa-download" />
-                      </a> */}
-                    </div>
-                    <audio
-                      ref={audioRef}
-                      src={audioUrl}
-                      onPlay={() => setIsPlaying(true)}
-                      onPause={() => setIsPlaying(false)}
-                      onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime || 0)}
-                      onLoadedMetadata={() => setAudioDuration(audioRef.current?.duration || 0)}
-                      onEnded={() => setIsPlaying(false)}
-                      style={{ display: 'none' }}
-                    />
-                  </div>
+            <div className={`periodontal-audio-player inline-player ${!audioUrl ? 'disabled-player' : ''}`}>
+              <div className="periodontal-compact-player">
+                {/* Play button */}
+                <div
+                  className={`periodontal-audio-play ${!audioUrl ? 'disabled' : ''}`}
+                  onClick={audioUrl ? handlePlayPause : undefined}
+                >
+                  <i className={`fas fa-${isPlaying ? 'pause' : 'play'}`} />
                 </div>
+                
+                {/* Progress bar */}
+                <div className="periodontal-audio-progress">
+                  <input
+                    type="range"
+                    min="0"
+                    max={sliderMax || 100}
+                    value={currentTime}
+                    className={`periodontal-audio-slider ${!audioUrl ? 'disabled-slider' : ''}`}
+                    style={{ '--slider-progress': `${!audioUrl ? 0 : sliderProgressPercent}%` }}
+                    onChange={(e) => {
+                      if (!audioUrl) return;
+                      const time = parseFloat(e.target.value || 0);
+                      setCurrentTime(time);
+                      if (audioRef.current) {
+                        audioRef.current.currentTime = time;
+                      }
+                    }}
+                    disabled={!audioUrl}
+                  />
+                  <span className="periodontal-audio-time">
+                    {formatAudioTime(currentTime)} / {formatAudioTime(sliderMax || 0)}
+                  </span>
+                </div>
+                
+                <audio
+                  ref={audioRef}
+                  src={audioUrl || ''}
+                  onPlay={() => setIsPlaying(true)}
+                  onPause={() => setIsPlaying(false)}
+                  onTimeUpdate={() => setCurrentTime(audioRef.current?.currentTime || 0)}
+                  onLoadedMetadata={() => setAudioDuration(audioRef.current?.duration || 0)}
+                  onEnded={() => setIsPlaying(false)}
+                  style={{ display: 'none' }}
+                />
               </div>
-            )}
+            </div>
 
             {isUploadingAudio && (
               <div className="status-message">

@@ -1107,14 +1107,6 @@
    CUSTOM AUDIO PLAYER STYLES
    ============================================ */
 
-.add-periodontal-chart-page .periodontal-audio-player {
-  margin-top: 16px;
-  padding: 16px;
-  background: #f8f9fa;
-  border-radius: 12px;
-  border: 1px solid #e9ecef;
-}
-
 .add-periodontal-chart-page .periodontal-audio-title {
   font-size: 14px;
   font-weight: 600;
@@ -1135,8 +1127,8 @@
 }
 
 .add-periodontal-chart-page .periodontal-audio-play {
-  width: 40px;
-  height: 40px;
+  width: 35px;
+  height: 35px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1187,13 +1179,11 @@
 .add-periodontal-chart-page .periodontal-audio-slider {
   flex: 1;
   height: 4px;
-  background: linear-gradient(
-    to right,
-    var(--primary, #6F2AC3) 0%,
-    var(--primary, #6F2AC3) var(--slider-progress, 0%),
-    #e9ecef var(--slider-progress, 0%),
-    #e9ecef 100%
-  );
+  background: linear-gradient(to right,
+      var(--primary, #6F2AC3) 0%,
+      var(--primary, #6F2AC3) var(--slider-progress, 0%),
+      #e9ecef var(--slider-progress, 0%),
+      #e9ecef 100%);
   border-radius: 2px;
   outline: none;
   -webkit-appearance: none;
@@ -1203,13 +1193,11 @@
 .add-periodontal-chart-page .periodontal-audio-slider::-moz-range-track {
   height: 4px;
   border-radius: 2px;
-  background: linear-gradient(
-    to right,
-    var(--primary, #6F2AC3) 0%,
-    var(--primary, #6F2AC3) var(--slider-progress, 0%),
-    #e9ecef var(--slider-progress, 0%),
-    #e9ecef 100%
-  );
+  background: linear-gradient(to right,
+      var(--primary, #6F2AC3) 0%,
+      var(--primary, #6F2AC3) var(--slider-progress, 0%),
+      #e9ecef var(--slider-progress, 0%),
+      #e9ecef 100%);
 }
 
 .add-periodontal-chart-page .periodontal-audio-slider::-webkit-slider-thumb {
@@ -1252,6 +1240,7 @@
   min-width: 70px;
   text-align: center;
   flex-shrink: 0;
+  margin-left: 12px
 }
 
 .add-periodontal-chart-page .periodontal-audio-download {
@@ -1274,4 +1263,116 @@
   border-color: #6F2AC3;
   color: white;
   transform: translateY(-1px);
+}
+
+/* Integrated Form Section */
+.add-periodontal-chart-page .periodontal-compact-player {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.add-periodontal-chart-page .form-section.integrated-form-section {
+  display: flex;
+  align-items: stretch;
+  padding: 16px 20px;
+  margin: 0 24px 24px;
+}
+
+.add-periodontal-chart-page .integrated-form-section .form-row {
+  flex: 1;
+}
+
+.add-periodontal-chart-page .divider-vertical {
+  width: 1px;
+  background-color: var(--border, #e0e0e0);
+  margin: 0 20px;
+}
+
+.add-periodontal-chart-page .voice-input-section-inline {
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.add-periodontal-chart-page .voice-input-header-inline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.add-periodontal-chart-page .voice-input-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary, #333);
+  display: flex;
+  flex-direction: column;
+}
+
+.add-periodontal-chart-page .voice-input-start-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--primary);
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 4px 12px;
+  background-color: var(--primary-light);
+  border-radius: 15px;
+}
+
+.add-periodontal-chart-page .voice-input-start-btn:hover:not(:disabled) {
+  /* background: var(--primary-dark); */
+  transform: translateY(-1px);
+}
+
+.add-periodontal-chart-page .voice-input-start-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.add-periodontal-chart-page .inline-player {
+  /* margin-top: 4px;
+  padding: 8px 12px; */
+  background: transparent;
+  /* border-radius: 8px; */
+  /* border: 1px solid #e9ecef; */
+}
+
+.add-periodontal-chart-page .disabled-player {
+  background: #fdfdfd;
+  opacity: 0.6;
+}
+
+.add-periodontal-chart-page .disabled-player .periodontal-audio-play {
+  background: #f0f0f0;
+  color: #aaa;
+  cursor: not-allowed;
+}
+
+.add-periodontal-chart-page .disabled-player .periodontal-audio-slider {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Override existing form row inside integrated */
+@media (max-width: 1200px) {
+  .add-periodontal-chart-page .form-section.integrated-form-section {
+    flex-direction: column;
+  }
+
+  .add-periodontal-chart-page .divider-vertical {
+    width: 100%;
+    height: 1px;
+    margin: 16px 0;
+  }
+
+  .add-periodontal-chart-page .voice-input-section-inline {
+    width: 100%;
+  }
 }
