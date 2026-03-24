@@ -609,7 +609,7 @@ Generate the summary now:`;
             (Array.isArray(response?.content)
                 ? response.content.map((c) => c.text || "").join("\n")
                 : "");
-
+        // console.log("summary==>", summary);
         if (!summary) {
             const transcriptText = typeof transcript === "string" ? transcript : "";
             return `Summary could not be generated. Transcript: ${transcriptText.substring(0, 200)}...`;
@@ -663,3 +663,156 @@ export const callAISummary = async (transcript = []) => {
         return null;
     }
 };
+
+
+export async function generatePeriodentalChartSummary(transcript) {
+    try {
+        // console.log("generatePeriodentalChartSummary check payload==>", transcript);
+        const prompt = `ROLE: You are a JSON data extractor for dental periodontal charts.
+
+      TASK: Convert the transcript below into exactly 32 tooth objects in JSON format.
+      
+      CRITICAL REQUIREMENTS:
+      1. Output MUST start with [ and end with ]
+      2. NO text before or after the JSON array
+      3. NO explanations, comments, or markdown
+      4. EXACTLY 32 objects (tooth numbers 1-32)
+      5. Each object MUST have ALL these fields with exact spelling
+      
+      EXACT OBJECT FORMAT:
+      {
+        "id": 1,
+        "number": 1,
+        "isImplant": false,
+        "mobility": 0,
+        "furcation": "None",
+        "furcationLingual": "None",
+        "plaque": [false, false, false, false, false, false],
+        "bop": [false, false, false, false, false, false],
+        "gr": [0, 0, 0, 0, 0, 0],
+        "pd": [1, 1, 1, 1, 1, 1]
+      }
+      
+      FIELD RULES:
+      - id: Sequential 1-32
+      - number: Tooth number 1-32
+      - isImplant: true if implant/crown mentioned, otherwise false
+      - mobility: 0-3 (0=none, 1=slight, 2=moderate, 3=severe)
+      - furcation/furcationLingual: "None", "Class I", "Class II", or "Class III"
+      - plaque/bop: Arrays of 6 booleans (true if mentioned positive/present)
+      - gr/pd: Arrays of 6 numbers (measurements in mm, use 0 for gr, 1 for pd if not mentioned)
+      
+      DEFAULT VALUES (use when not mentioned in transcript):
+      - isImplant: false
+      - mobility: 0
+      - furcation: "None"
+      - furcationLingual: "None"
+      - plaque: [false, false, false, false, false, false]
+      - bop: [false, false, false, false, false, false]
+      - gr: [0, 0, 0, 0, 0, 0]
+      - pd: [1, 1, 1, 1, 1, 1]
+      
+      TRANSCRIPT:
+      ${transcript}
+      
+      OUTPUT FORMAT EXAMPLE:
+      [{"id":1,"number":1,"isImplant":false,"mobility":0,"furcation":"None","furcationLingual":"None","plaque":[false,false,false,false,false,false],"bop":[false,false,false,false,false,false],"gr":[0,0,0,0,0,0],"pd":[1,1,1,1,1,1]},{"id":2,"number":2,"isImplant":false,"mobility":0,"furcation":"None","furcationLingual":"None","plaque":[false,false,false,false,false,false],"bop":[false,false,false,false,false,false],"gr":[0,0,0,0,0,0],"pd":[1,1,1,1,1,1]}]
+      
+      IMPORTANT: Start output immediately with [ - no other text allowed.`;
+
+        const response = await anthropic.messages.create({
+            model: "claude-sonnet-4-20250514",
+            max_tokens: 3000,
+            messages: [{ role: "user", content: prompt }],
+        });
+        // console.log("response==>", response);
+        if (!response || !response.content?.[0]?.text) {
+            console.error("Periodental chart no returned from summary generation");
+            return [];
+        }
+        // Try to parse the summary as JSON
+        const raw = response?.content?.[0]?.text || "";
+        if (!raw) return [];
+
+        const parsePeriodontalArray = (input) => {
+            const cleaned = String(input || "").replace(/```json|```/g, "").trim();
+            if (!cleaned) return [];
+
+            // First try strict parsing.
+            const direct = JSON.parse(cleaned);
+            if (Array.isArray(direct)) return direct;
+            return [];
+        };
+
+        const recoverTruncatedPeriodontalArray = (input) => {
+            const cleaned = String(input || "").replace(/```json|```/g, "").trim();
+            const startIdx = cleaned.indexOf("[");
+            if (startIdx === -1) return [];
+
+            const src = cleaned.slice(startIdx);
+            let inString = false;
+            let escaped = false;
+            let objDepth = 0;
+            let arrDepth = 0;
+            let lastCompleteObjectEnd = -1;
+
+            for (let i = 0; i < src.length; i += 1) {
+                const ch = src[i];
+
+                if (escaped) {
+                    escaped = false;
+                    continue;
+                }
+
+                if (ch === "\\") {
+                    escaped = true;
+                    continue;
+                }
+
+                if (ch === "\"") {
+                    inString = !inString;
+                    continue;
+                }
+
+                if (inString) continue;
+
+                if (ch === "[") arrDepth += 1;
+                else if (ch === "]") arrDepth -= 1;
+                else if (ch === "{") objDepth += 1;
+                else if (ch === "}") {
+                    objDepth -= 1;
+                    // object completed at top array level
+                    if (arrDepth >= 1 && objDepth === 0) {
+                        lastCompleteObjectEnd = i;
+                    }
+                }
+            }
+
+            if (lastCompleteObjectEnd === -1) return [];
+
+            const repaired = `${src.slice(0, lastCompleteObjectEnd + 1)}]`;
+            try {
+                const parsed = JSON.parse(repaired);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch {
+                return [];
+            }
+        };
+
+        // JSON parse karo
+        try {
+            return parsePeriodontalArray(raw);
+        } catch (error) {
+            const recovered = recoverTruncatedPeriodontalArray(raw);
+            if (recovered.length > 0) {
+                console.warn(`Recovered ${recovered.length} teeth from truncated AI JSON response.`);
+                return recovered;
+            }
+            console.error("Error parsing AI summary:", error);
+            return [];
+        }
+    } catch (error) {
+        console.error('AI summary generation error:', error);
+        return null;
+    }
+}

@@ -375,13 +375,14 @@
 .add-periodontal-chart-page .form-group {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .add-periodontal-chart-page .form-group label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text-primary, #333);
+  margin-bottom: 0;
 }
 
 .add-periodontal-chart-page .form-group .required {
@@ -390,11 +391,12 @@
 
 .add-periodontal-chart-page .form-group input,
 .add-periodontal-chart-page .form-group select {
-  padding: 10px 12px;
+  padding: 8.5px 12px;
   border: 1px solid var(--border, #e0e0e0);
   border-radius: 6px;
   font-size: 14px;
   transition: all 0.2s ease;
+  background-color: #fff;
 }
 
 .add-periodontal-chart-page .form-group input:focus,

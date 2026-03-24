@@ -3,7 +3,7 @@ import { authenticateUser } from '../middleware/authMiddleware.js';
 import {
   createPeriodontalChart,
   getAllPeriodontalCharts,
-  getPeriodontalChartById,
+  getOnePeriodontalChart,
   updatePeriodontalChart,
   deletePeriodontalChart,
   uploadPeriodentalChartAudio,
@@ -19,7 +19,7 @@ router.use(authenticateUser);
 // Core CRUD operations
 router.post('/', createPeriodontalChart);
 router.get('/user', getAllPeriodontalCharts);
-router.get('/:id', getPeriodontalChartById);
+router.get('/:id', getOnePeriodontalChart);
 router.put('/:id', updatePeriodontalChart);
 router.delete('/:id', deletePeriodontalChart);
 

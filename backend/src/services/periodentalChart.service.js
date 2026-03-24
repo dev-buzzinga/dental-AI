@@ -1,5 +1,5 @@
 import { supabase } from "../config/database.js";
-import { generateAISummary } from "./anthropic.service.js";
+import { generatePeriodentalChartSummary } from "./anthropic.service.js";
 
 function isMissingColumnError(error) {
   const message = error?.message || "";
@@ -117,7 +117,7 @@ export async function findChartsByUserId(user_id, limit, offset, search = '') {
       .range(offset, offset + limit - 1);
 
     const { data, error } = await query;
-    
+
     if (error) throw error;
     return data || [];
   } catch (error) {
@@ -142,7 +142,7 @@ export async function countChartsByUserId(user_id, search = '') {
     }
 
     const { count, error } = await query;
-    
+
     if (error) throw error;
     return count || 0;
   } catch (error) {
@@ -152,7 +152,7 @@ export async function countChartsByUserId(user_id, search = '') {
 }
 
 // Get single chart by ID (with user verification)
-export async function getPeriodontalChartById(id, user_id) {
+export async function getOnePeriodontalChart(id, user_id) {
   try {
     const { data, error } = await supabase
       .from('periodontal_charts')
@@ -164,14 +164,14 @@ export async function getPeriodontalChartById(id, user_id) {
       .eq('id', id)
       .eq('user_id', user_id)
       .single();
-
+    // console.log("getOnePeriodontalChart check data==>", data);
     if (error) {
       if (error.code === 'PGRST116') {
         return null; // Not found
       }
       throw error;
     }
-    
+
     return data;
   } catch (error) {
     console.error("Error getting periodontal chart by ID:", error);
@@ -231,7 +231,7 @@ export async function uploadPeriodentalChartAudio(
 ) {
   try {
     // Verify chart belongs to user
-    const chart = await getPeriodontalChartById(chartId, user_id);
+    const chart = await getOnePeriodontalChart(chartId, user_id);
     if (!chart) {
       throw new Error("Periodontal chart not found or access denied");
     }
@@ -245,14 +245,14 @@ export async function uploadPeriodentalChartAudio(
         contentType: mimetype,
         upsert: false,
       });
-    
+
     if (error) throw error;
 
     // Get public URL
     const { data: publicUrlData } = supabase.storage
       .from('audio')
       .getPublicUrl(filename);
-    
+
     const publicUrl = publicUrlData.publicUrl;
 
     // Update database with audio URL and duration
@@ -267,7 +267,7 @@ export async function uploadPeriodentalChartAudio(
       .eq('user_id', user_id)
       .select()
       .single();
-    
+
     if (updateError) throw updateError;
 
     return { url: publicUrl, chart: updated };
@@ -281,7 +281,7 @@ export async function uploadPeriodentalChartAudio(
 export async function uploadPeriodentalChartSummary(chartId, user_id, transcript, filename) {
   try {
     // Verify chart belongs to user
-    const chart = await getPeriodontalChartById(chartId, user_id);
+    const chart = await getOnePeriodontalChart(chartId, user_id);
     if (!chart) {
       throw new Error("Periodontal chart not found or access denied");
     }
@@ -293,13 +293,13 @@ export async function uploadPeriodentalChartSummary(chartId, user_id, transcript
         contentType: 'text/plain',
         upsert: false,
       });
-    
+
     if (error) throw error;
 
     const { data: publicUrlData } = supabase.storage
       .from('transcripts')
       .getPublicUrl(filename);
-    
+
     const publicUrl = publicUrlData.publicUrl;
 
     // Always persist transcript URL first.
@@ -320,8 +320,9 @@ export async function uploadPeriodentalChartSummary(chartId, user_id, transcript
     await updateSummaryState(chartId, user_id, { isSummaryGenerating: true });
 
     // Generate AI summary asynchronously (don't wait)
-    generateAIChartSummary({ transcript, patient_name: chart.patients?.name || "" })
+    generatePeriodentalChartSummary(transcript)
       .then((result) => {
+        // console.log("check result==>", result);
         return updateSummaryState(chartId, user_id, {
           aiSummary: result,
           isSummaryGenerating: false,
@@ -343,49 +344,3 @@ export async function uploadPeriodentalChartSummary(chartId, user_id, transcript
   }
 }
 
-// Generate AI summary using Claude/Anthropic
-export async function generateAIChartSummary(payload) {
-  try {
-    const prompt = `You are a dental assistant. Extract periodontal chart data from the following voice transcript.
-
-Patient: ${payload.patient_name || "Unknown"}
-Transcript: ${payload.transcript}
-
-Please extract and return a JSON array containing tooth data. Each tooth should have:
-- Tooth number (1-32)
-- Mobility (0-3)
-- Furcation ('None', '1', '2', '3')
-- Plaque (array of 6 boolean values for sites MB, B, DB, ML, L, DL)
-- BOP - Bleeding on Probing (array of 6 boolean values)
-- GR - Gingival Recession (array of 6 numeric values)
-- PD - Pocket Depth (array of 6 numeric values)
-
-Only include teeth that are mentioned in the transcript. Return valid JSON only.`;
-
-    const response = await generateAISummary({
-      prompt,
-      template_id: null,
-      patient_name: payload.patient_name
-    });
-
-    if (!response || !response.summary) {
-      console.error("AI service returned no summary");
-      return null;
-    }
-
-    // Try to parse the summary as JSON
-    try {
-      const summary = typeof response.summary === 'string' 
-        ? JSON.parse(response.summary) 
-        : response.summary;
-      
-      return Array.isArray(summary) ? summary : null;
-    } catch (parseError) {
-      console.error("Error parsing AI summary:", parseError);
-      return null;
-    }
-  } catch (error) {
-    console.error('AI summary generation error:', error);
-    return null;
-  }
-}

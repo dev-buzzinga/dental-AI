@@ -56,12 +56,12 @@ export async function getAllPeriodontalCharts(req, res, next) {
 }
 
 // Get single chart by ID
-export async function getPeriodontalChartById(req, res, next) {
+export async function getOnePeriodontalChart(req, res, next) {
   try {
     const id = parseInt(req.params.id);
     const { id: user_id } = req.user;
     
-    const chart = await periodentalChartService.getPeriodontalChartById(id, user_id);
+    const chart = await periodentalChartService.getOnePeriodontalChart(id, user_id);
     
     if (!chart) {
       return res.status(404).json({
@@ -209,7 +209,7 @@ export async function getSummaryStatus(req, res, next) {
     const id = parseInt(req.params.id);
     const { id: user_id } = req.user;
     
-    const chart = await periodentalChartService.getPeriodontalChartById(id, user_id);
+    const chart = await periodentalChartService.getOnePeriodontalChart(id, user_id);
     
     if (!chart) {
       return res.status(404).json({
