@@ -1,20 +1,19 @@
 import { useState, useMemo, useEffect, useContext } from 'react';
-import { supabase } from '../../config/supabase';
-import { AuthContext } from '../../context/AuthContext';
-import { SearchInput } from '../../components/common/SearchInput';
-import Table from '../../components/common/Table';
-import { useToast } from '../../components/Toast/Toast';
-import AppointmentTypeModal from '../../components/Settings/AppointmentTypeModal';
-import '../../styles/Settings.css';
-import '../../styles/Patients.css'; // Reusing some table and header styles
+import { useNavigate } from 'react-router-dom';
+import { supabase } from '../../../config/supabase';
+import { AuthContext } from '../../../context/AuthContext';
+import { SearchInput } from '../../../components/common/SearchInput';
+import Table from '../../../components/common/Table';
+import { useToast } from '../../../components/Toast/Toast';
+import '../../../styles/Settings.css';
+import '../../../styles/Patients.css'; // Reusing some table and header styles
 
 const AppointmentTypes = () => {
     const { user } = useContext(AuthContext);
+    const navigate = useNavigate();
     const [appointmentTypes, setAppointmentTypes] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [editingType, setEditingType] = useState(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
     const showToast = useToast();
 
     useEffect(() => {
@@ -46,41 +45,9 @@ const AppointmentTypes = () => {
         }
     };
 
-    const handleSaveType = async (formData) => {
-        try {
-            const dataToSave = {
-                name: formData.name,
-                duration: parseInt(formData.duration, 10)
-            };
-
-            if (editingType) {
-                const { data, error } = await supabase
-                    .from('appointment_types')
-                    .update(dataToSave)
-                    .eq('id', editingType.id)
-                    .select();
-
-                if (error) throw error;
-                showToast("Appointment type updated successfully!", "success");
-            } else {
-                const { error } = await supabase
-                    .from('appointment_types')
-                    .insert({ ...dataToSave, user_id: user.id });
-                if (error) throw error;
-                showToast("Appointment type added successfully!", "success");
-            }
-            setIsModalOpen(false);
-            setEditingType(null);
-            fetchAppointmentTypes();
-        } catch (error) {
-            showToast(error.message, 'error');
-        }
-    };
-
     const handleEditType = (type, e) => {
         e.stopPropagation();
-        setEditingType(type);
-        setIsModalOpen(true);
+        navigate(`/settings/appointment-types/edit/${type.id}`);
     };
 
     const handleDeleteType = async (id, e) => {
@@ -99,10 +66,7 @@ const AppointmentTypes = () => {
         }
     };
 
-    const handleAddType = () => {
-        setEditingType(null);
-        setIsModalOpen(true);
-    };
+    const handleAddType = () => navigate('/settings/appointment-types/add');
 
     const filteredTypes = useMemo(() =>
         appointmentTypes.filter((t) =>
@@ -131,13 +95,13 @@ const AppointmentTypes = () => {
 
         if (column.key === 'actions') {
             return (
-                <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
                     <button
                         className="btn-outline"
                         onClick={(e) => handleEditType(row, e)}
                         style={{ padding: '6px 12px', fontSize: 13 }}
                     >
-                        <i className="fas fa-edit" />
+                        <i className="fas fas fa-pencil" />
                     </button>
                     <button
                         className="btn-outline"
@@ -184,15 +148,6 @@ const AppointmentTypes = () => {
                 />
             </div>
 
-            <AppointmentTypeModal
-                isOpen={isModalOpen}
-                onClose={() => {
-                    setIsModalOpen(false);
-                    setEditingType(null);
-                }}
-                onSave={handleSaveType}
-                appointmentType={editingType}
-            />
         </div>
     );
 };

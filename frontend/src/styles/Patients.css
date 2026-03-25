@@ -64,12 +64,11 @@
     align-items: center;
     gap: 8px;
     padding: 10px 20px;
-    border-radius: var(--radius-btn);
-    background: #fff;
+    /* border-radius: var(--radius-btn); */
     color: var(--text-secondary);
     font-weight: 500;
     font-size: 14px;
-    border: 1px solid var(--border);
+    /* border: 1px solid var(--border); */
     cursor: pointer;
     transition: all 0.15s;
 }

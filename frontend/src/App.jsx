@@ -18,6 +18,7 @@ import DoctorDetails from './pages/Doctors/DoctorDetails';
 import PatientDetail from './pages/Patients/PatientDetail';
 import AddNumberPage from './pages/Settings/AddNumberPage';
 import AppointmentTypes from './pages/Settings/AppointmentTypes';
+import AddAppointmentTypePage from './pages/Settings/AppointmentTypes/AddType';
 import ConnectGoogleCalender from './pages/Settings/ConnectGoogleCalender';
 import PracticeDetails from './pages/Settings/PracticeDetails';
 import CalendarPage from './pages/Calendar/index';
@@ -74,6 +75,8 @@ const AppContent = () => {
                 <Route path="/settings/doctors/:id" element={<DoctorDetails />} />
                 <Route path="/settings/doctors" element={<DoctorsPage />} />
                 <Route path="/settings/appointment-types" element={<AppointmentTypes />} />
+                <Route path="/settings/appointment-types/add" element={<AddAppointmentTypePage />} />
+                <Route path="/settings/appointment-types/edit/:id" element={<AddAppointmentTypePage />} />
                 <Route path="/settings/add-number" element={<AddNumberPage />} />
                 <Route path="/settings/connect-google-calendar" element={<ConnectGoogleCalender />} />
                 <Route path="/settings/connect-google-gmail" element={<ConnectGoogleGmail />} />

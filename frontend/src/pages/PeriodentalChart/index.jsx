@@ -21,8 +21,8 @@ const PeriodentalChartPage = () => {
     const [chartToDelete, setChartToDelete] = useState(null);
     const [isDeleting, setIsDeleting] = useState(false);
 
-    const pageSize = 10;
-    const totalPages = Math.ceil(totalCount / pageSize);
+    const [pageSize, setPageSize] = useState(10);
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize) || 1);
 
     // Debounce search term
     useEffect(() => {
@@ -39,7 +39,7 @@ const PeriodentalChartPage = () => {
         if (user) {
             fetchCharts();
         }
-    }, [currentPage, debouncedSearchTerm]);
+    }, [currentPage, debouncedSearchTerm, pageSize]);
 
     const fetchCharts = async () => {
         try {
@@ -109,8 +109,9 @@ const PeriodentalChartPage = () => {
         { key: 'doctor', label: 'Doctor', align: 'left' },
         { key: 'dob', label: 'Date of Birth', align: 'left' },
         { key: 'chartDate', label: 'Chart Date', align: 'left' },
-        { key: 'view', label: 'View', align: 'left' },
-        { key: 'actions', label: 'Actions', align: 'center' },
+        { key: 'chart', label: 'Chart', align: 'left' },
+        { key: 'edit', label: 'Edit', align: 'left' },
+        { key: 'delete', label: 'Delete', align: 'left' },
     ];
 
     const renderCell = (column, row, index) => {
@@ -134,36 +135,40 @@ const PeriodentalChartPage = () => {
             case 'chartDate':
                 return row.chart_date ? new Date(row.chart_date).toLocaleDateString() : 'N/A';
 
-            case 'view':
+            case 'chart':
                 return (
                     <Link
-                        className="view-btn"
+                        className="chart-pill-btn"
                         to="/periodontal-charts/view"
                         state={{ mode: 'view', chartData: row }}
                         title="View Chart"
                     >
-                        View
+                        VIEW
                     </Link>
                 );
 
-            case 'actions':
+            case 'edit':
                 return (
-                    <div className="action-buttons">
-                        <button
-                            className="btn-icon edit-btn"
-                            onClick={() => handleEditChart(row)}
-                            title="Edit Chart"
-                        >
-                            <i className="fas fa-edit"></i>
-                        </button>
-                        <button
-                            className="btn-icon delete-btn"
-                            onClick={() => handleDeleteChart(row)}
-                            title="Delete Chart"
-                        >
-                            <i className="fas fa-trash"></i>
-                        </button>
-                    </div>
+                    <button
+                        className="btn-icon edit-btn"
+                        onClick={() => handleEditChart(row)}
+                        title="Edit Chart"
+                        type="button"
+                    >
+                        <i className="fas fa-pencil"></i>
+                    </button>
+                );
+
+            case 'delete':
+                return (
+                    <button
+                        className="btn-icon delete-btn"
+                        onClick={() => handleDeleteChart(row)}
+                        title="Delete Chart"
+                        type="button"
+                    >
+                        <i className="fas fa-trash"></i>
+                    </button>
                 );
 
             default:
@@ -203,7 +208,11 @@ const PeriodentalChartPage = () => {
                             totalPages,
                             totalItems: totalCount,
                             pageSize,
-                            onPageChange: (page) => setCurrentPage(page - 1) // Convert back to 0-based
+                            onPageChange: (page) => setCurrentPage(page - 1), // Convert back to 0-based
+                            onPageSizeChange: (newPageSize) => {
+                                setPageSize(newPageSize);
+                                setCurrentPage(0); // reset to first page
+                            }
                         }}
                         emptyState={{
                             icon: 'fas fa-tooth',

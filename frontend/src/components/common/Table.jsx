@@ -165,32 +165,60 @@ const Table = ({
                         ))}
                     </tbody>
                 </table>
+
+                {/* Pagination (inside the bordered table wrapper) */}
+                {pagination && pagination.enabled && paginationInfo && (
+                    <div className="table-pagination">
+                        <div className="table-pagination-rows">
+                            <span className="table-pagination-rows-label">Rows per page:</span>
+                            <div className="table-pagination-rows-select-wrap">
+                                <select
+                                    className="table-pagination-rows-select"
+                                    value={pagination.pageSize || 10}
+                                    disabled={!pagination.onPageSizeChange}
+                                    onChange={(e) => {
+                                        if (!pagination.onPageSizeChange) return;
+                                        pagination.onPageSizeChange(parseInt(e.target.value, 10));
+                                    }}
+                                >
+                                    {(pagination.pageSizeOptions && pagination.pageSizeOptions.length
+                                        ? pagination.pageSizeOptions
+                                        : [5, 10, 25, 50, 100]
+                                    ).map((opt) => (
+                                        <option key={opt} value={opt}>
+                                            {opt}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <span className="table-pagination-info">
+                            {paginationInfo.start}-{paginationInfo.end} of {paginationInfo.total}
+                        </span>
+
+                        <div className="table-pagination-nav">
+                            <button
+                                className="table-pagination-btn"
+                                onClick={() => handlePageChange(pagination.currentPage - 1)}
+                                disabled={pagination.currentPage === 1 || paginationInfo.total === 0}
+                                type="button"
+                            >
+                                <i className="fas fa-chevron-left" />
+                            </button>
+
+                            <button
+                                className="table-pagination-btn"
+                                onClick={() => handlePageChange(pagination.currentPage + 1)}
+                                disabled={pagination.currentPage >= pagination.totalPages || paginationInfo.total === 0}
+                                type="button"
+                            >
+                                <i className="fas fa-chevron-right" />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
-
-            {/* Pagination */}
-            {pagination && pagination.enabled && paginationInfo && (
-                <div className="table-pagination">
-                    <button
-                        className="table-pagination-btn"
-                        onClick={() => handlePageChange(pagination.currentPage - 1)}
-                        disabled={pagination.currentPage === 1}
-                    >
-                        <i className="fas fa-chevron-left" />
-                    </button>
-
-                    <span className="table-pagination-info">
-                        Showing {paginationInfo.start}-{paginationInfo.end} of {paginationInfo.total}
-                    </span>
-
-                    <button
-                        className="table-pagination-btn"
-                        onClick={() => handlePageChange(pagination.currentPage + 1)}
-                        disabled={pagination.currentPage >= pagination.totalPages || paginationInfo.total === 0}
-                    >
-                        <i className="fas fa-chevron-right" />
-                    </button>
-                </div>
-            )}
         </div>
     );
 };

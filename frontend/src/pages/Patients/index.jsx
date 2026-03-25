@@ -20,7 +20,7 @@ const PatientsPage = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
-    const pageSize = 10;
+    const [pageSize, setPageSize] = useState(10);
     const navigate = useNavigate();
     const showToast = useToast();
 
@@ -38,7 +38,7 @@ const PatientsPage = () => {
             fetchPatients(currentPage, active);
         }
         return () => { active = false; };
-    }, [currentPage, debouncedSearchTerm]);
+    }, [currentPage, debouncedSearchTerm, pageSize]);
 
     const fetchPatients = async (page = 1, active = true) => {
         if (!user) return;
@@ -174,7 +174,7 @@ const PatientsPage = () => {
                     onClick={(e) => handleEditPatient(row, e)}
                     style={{ padding: '6px 12px', fontSize: 13 }}
                 >
-                    <i className="fas fa-edit" /> Edit
+                    <i className="fas fas fa-pencil" />
                 </button>
             );
         }
@@ -225,7 +225,11 @@ const PatientsPage = () => {
                         totalPages,
                         totalItems: totalCount,
                         pageSize,
-                        onPageChange: setCurrentPage
+                        onPageChange: setCurrentPage,
+                        onPageSizeChange: (newPageSize) => {
+                            setPageSize(newPageSize);
+                            setCurrentPage(1);
+                        }
                     }}
                     emptyState={{
                         icon: 'fas fa-users',

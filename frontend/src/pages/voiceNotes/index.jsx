@@ -32,7 +32,7 @@ const VoiceNotesPage = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [noteToDelete, setNoteToDelete] = useState(null);
-    const ITEMS_PER_PAGE = 10;
+    const [pageSize, setPageSize] = useState(10);
 
     useEffect(() => {
         if (!user?.id) return;
@@ -58,13 +58,13 @@ const VoiceNotesPage = () => {
 
     const totalPages = useMemo(() => {
         if (!voiceNotes.length) return 1;
-        return Math.ceil(voiceNotes.length / ITEMS_PER_PAGE);
-    }, [voiceNotes.length]);
+        return Math.ceil(voiceNotes.length / pageSize);
+    }, [voiceNotes.length, pageSize]);
 
     const paginatedNotes = useMemo(() => {
-        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-        return voiceNotes.slice(startIndex, startIndex + ITEMS_PER_PAGE);
-    }, [voiceNotes, currentPage]);
+        const startIndex = (currentPage - 1) * pageSize;
+        return voiceNotes.slice(startIndex, startIndex + pageSize);
+    }, [voiceNotes, currentPage, pageSize]);
 
     const handleDeleteClick = (note) => {
         if (!note) return;
@@ -114,7 +114,7 @@ const VoiceNotesPage = () => {
     // Custom cell renderer
     const renderCell = (column, rowData, index) => {
         if (column.key === 'id') {
-            const globalIndex = (currentPage - 1) * ITEMS_PER_PAGE + index;
+            const globalIndex = (currentPage - 1) * pageSize + index;
             const serialNumber = voiceNotes.length - globalIndex;
             return serialNumber;
         }
@@ -198,8 +198,12 @@ const VoiceNotesPage = () => {
                         currentPage: currentPage,
                         totalPages: totalPages,
                         totalItems: voiceNotes.length,
-                        pageSize: ITEMS_PER_PAGE,
-                        onPageChange: (page) => setCurrentPage(page)
+                        pageSize,
+                        onPageChange: (page) => setCurrentPage(page),
+                        onPageSizeChange: (newPageSize) => {
+                            setPageSize(newPageSize);
+                            setCurrentPage(1);
+                        }
                     }}
                     emptyState={{
                         icon: 'fas fa-microphone',
