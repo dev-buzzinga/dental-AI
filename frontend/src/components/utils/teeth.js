@@ -167,3 +167,35 @@ export const TOOTH_IMG_URL = {
   , "t16_U_Plaque": "https://fcutqihxlawcydubysal.supabase.co/storage/v1/object/public/doctor-images/periodental-assets/t16_U_Plaque.png"
   , "t16_U_Plaque_Bleed": "https://fcutqihxlawcydubysal.supabase.co/storage/v1/object/public/doctor-images/periodental-assets/t16_U_Plaque_Bleed.png"
 };
+
+/**
+ * Same image selection as the periodontal chart UI (buccal plaque/BOP sites 0–2, implant).
+ */
+export function getPeriodontalToothImageUrl(tooth, isUpper) {
+  const id = tooth.id ?? tooth.number;
+  let tNumber = id;
+  if (!isUpper) {
+    tNumber = id - 16;
+  }
+  const base = `t${tNumber}_${isUpper ? 'U' : 'L'}`;
+
+  if (tooth.isImplant) {
+    return TOOTH_IMG_URL[`${base}_Implant`] || TOOTH_IMG_URL[base];
+  }
+
+  const plaque = tooth.plaque || [];
+  const bop = tooth.bop || [];
+  const hasPlaque = plaque.slice(0, 3).some(Boolean);
+  const hasBOP = bop.slice(0, 3).some(Boolean);
+
+  if (hasPlaque && hasBOP) {
+    return TOOTH_IMG_URL[`${base}_Plaque_Bleed`] || TOOTH_IMG_URL[base];
+  }
+  if (hasPlaque) {
+    return TOOTH_IMG_URL[`${base}_Plaque`] || TOOTH_IMG_URL[base];
+  }
+  if (hasBOP) {
+    return TOOTH_IMG_URL[`${base}_Bleed`] || TOOTH_IMG_URL[base];
+  }
+  return TOOTH_IMG_URL[base];
+}

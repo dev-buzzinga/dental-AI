@@ -112,6 +112,7 @@ const AddPeriodentalChart = () => {
   const wsRef = useRef(null);
   const waveformIntervalRef = useRef(null);
   const [waveformBars, setWaveformBars] = useState(Array(20).fill(3));
+  const pdfCaptureRef = useRef(null);
 
   // Fetch patients and doctors on mount
   useEffect(() => {
@@ -639,29 +640,161 @@ const AddPeriodentalChart = () => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Export to PDF
-  const handleExportPDF = () => {
+  /** Export PDF: patient info as text + chart graph as image. */
+  const handleExportPDF = async () => {
+    const pageRoot = pdfCaptureRef.current || document.getElementById('pdf-content');
+    const chartElement = pageRoot?.querySelector('.chart-section-cover');
+    if (!chartElement) {
+      showToast('Could not capture chart', 'error');
+      return;
+    }
+
+    const prevScrollTop = pageRoot.scrollTop;
+    const prevWindowScrollY = window.scrollY;
     try {
-      const doc = new jsPDF();
-      const patient = patients.find(p => p.id === parseInt(selectedPatient));
-      const doctor = doctors.find(d => d.id === parseInt(selectedDoctor));
+      pageRoot.scrollTop = 0;
+      window.scrollTo(0, 0);
+      showToast('Generating PDF...', 'message');
 
-      doc.setFontSize(18);
-      doc.text('Periodontal Chart', 105, 20, { align: 'center' });
+      const html2canvas = (await import('html2canvas')).default;
 
-      doc.setFontSize(12);
-      doc.text(`Patient: ${patient?.name || 'N/A'}`, 20, 40);
-      doc.text(`Doctor: ${doctor?.name || 'N/A'}`, 20, 50);
-      doc.text(`Date of Birth: ${dateOfBirth}`, 20, 60);
-      doc.text(`Chart Date: ${dateCreated}`, 20, 70);
+      // Wait for all images inside chart to load
+      const imgs = Array.from(chartElement.querySelectorAll('img'));
+      await Promise.all(
+        imgs.map((img) => {
+          if (img.complete) return Promise.resolve();
+          return new Promise((resolve) => {
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+          });
+        }),
+      );
 
-      doc.text('Chart data exported. See digital version for details.', 20, 90);
+      // Capture only the chart section
+      const canvas = await html2canvas(chartElement, {
+        backgroundColor: '#ffffff',
+        scale: 2,
+        useCORS: true,
+        allowTaint: false,
+        scrollX: 0,
+        scrollY: 0,
+        windowWidth: chartElement.scrollWidth,
+        windowHeight: chartElement.scrollHeight,
+        onclone: (clonedDoc, clonedEl) => {
+          // Hide sidebar and force full width on layout containers
+          clonedDoc.querySelectorAll('.sidebar, .app-sidebar, [class*="sidebar"]').forEach((n) => {
+            n.style.display = 'none';
+          });
+          clonedDoc.querySelectorAll('.main-content, .app-content, .layout-content, [class*="main-content"]').forEach((n) => {
+            n.style.marginLeft = '0';
+            n.style.paddingLeft = '0';
+            n.style.width = '100%';
+            n.style.maxWidth = '100%';
+          });
 
-      doc.save(`periodontal_chart_${chartId}_${Date.now()}.pdf`);
+          // Force the chart element to take full width with no offsets
+          clonedEl.style.width = '100%';
+          clonedEl.style.maxWidth = '100%';
+          clonedEl.style.padding = '0';
+          clonedEl.style.margin = '0';
+          clonedEl.style.boxSizing = 'border-box';
+          clonedEl.style.overflow = 'visible';
+
+          // Also force the inner chart-section
+          const innerChart = clonedEl.querySelector('.chart-section');
+          if (innerChart) {
+            innerChart.style.width = '100%';
+            innerChart.style.maxWidth = '100%';
+            innerChart.style.overflow = 'visible';
+          }
+
+          // Remove modals/tooltips/dropdowns from clone
+          clonedDoc.querySelectorAll('.voice-recording-modal-overlay').forEach((n) => n.remove());
+          clonedDoc.querySelectorAll('.transcript-tooltip').forEach((n) => n.remove());
+          clonedDoc.querySelectorAll('.sd-dropdown-unified').forEach((n) => n.remove());
+        },
+      });
+
+      // --- Build PDF with patient info as text + chart image ---
+      const pdf = new jsPDF('p', 'pt', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 20;
+      const availableWidth = pageWidth - margin * 2;
+
+      // Resolve patient & doctor names
+      const patientName = patients.find((p) => p.id.toString() === selectedPatient)?.name || 'N/A';
+      const doctorName = doctors.find((d) => d.id.toString() === selectedDoctor)?.name || 'N/A';
+      const dobDisplay = dateOfBirth || 'N/A';
+      const dateDisplay = dateCreated || 'N/A';
+
+      // Draw header text
+      let cursorY = margin + 10;
+      pdf.setFontSize(16);
+      pdf.setFont(undefined, 'bold');
+      pdf.text('Periodontal Chart', pageWidth / 2, cursorY, { align: 'center' });
+      cursorY += 28;
+
+      pdf.setFontSize(11);
+      pdf.setFont(undefined, 'normal');
+      const col1X = margin;
+      const col2X = pageWidth / 2 + 10;
+
+      pdf.setFont(undefined, 'bold');
+      pdf.text('Patient Name:', col1X, cursorY);
+      pdf.setFont(undefined, 'normal');
+      pdf.text(patientName, col1X + 85, cursorY);
+
+      pdf.setFont(undefined, 'bold');
+      pdf.text('Doctor Name:', col2X, cursorY);
+      pdf.setFont(undefined, 'normal');
+      pdf.text(doctorName, col2X + 80, cursorY);
+      cursorY += 18;
+
+      pdf.setFont(undefined, 'bold');
+      pdf.text('Date of Birth:', col1X, cursorY);
+      pdf.setFont(undefined, 'normal');
+      pdf.text(dobDisplay, col1X + 85, cursorY);
+
+      pdf.setFont(undefined, 'bold');
+      pdf.text('Date Created:', col2X, cursorY);
+      pdf.setFont(undefined, 'normal');
+      pdf.text(dateDisplay, col2X + 80, cursorY);
+      cursorY += 14;
+
+      // Separator line
+      pdf.setDrawColor(200, 200, 200);
+      pdf.setLineWidth(0.5);
+      pdf.line(margin, cursorY, pageWidth - margin, cursorY);
+      cursorY += 10;
+
+      // Add chart image
+      const imgData = canvas.toDataURL('image/png');
+      const imgWidth = availableWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      const headerUsed = cursorY;
+
+      let heightLeft = imgHeight;
+      let position = headerUsed;
+
+      pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight, undefined, 'FAST');
+      heightLeft -= pageHeight - position - margin;
+
+      while (heightLeft > 0) {
+        pdf.addPage();
+        position = margin - (imgHeight - heightLeft);
+        pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight, undefined, 'FAST');
+        heightLeft -= pageHeight - margin * 2;
+      }
+
+      pdf.save(`periodontal_chart_${chartId || 'new'}_${Date.now()}.pdf`);
       showToast('PDF exported successfully', 'success');
     } catch (error) {
       console.error('Error exporting PDF:', error);
-      showToast('Failed to export PDF', 'error');
+      showToast('Failed to export PDF. Ensure html2canvas is installed and try again.', 'error');
+    } finally {
+      pageRoot.scrollTop = prevScrollTop;
+      window.scrollTo(0, prevWindowScrollY);
     }
   };
 
@@ -694,7 +827,12 @@ const AddPeriodentalChart = () => {
   const isReadOnly = mode === 'view';
 
   return (
-    <div className={`add-periodontal-chart-page ${isFullscreen ? 'fullscreen' : ''}`}>
+    <div
+      id="pdf-content"
+      ref={pdfCaptureRef}
+      data-pdf-capture-root
+      className={`add-periodontal-chart-page ${isFullscreen ? 'fullscreen' : ''}`}
+    >
       {/* Header */}
       <div className="page-header">
         <div className="header-left">

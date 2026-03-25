@@ -1,5 +1,5 @@
 import React from 'react';
-import { TOOTH_IMG_URL } from '../utils/teeth';
+import { getPeriodontalToothImageUrl } from '../utils/teeth';
 import {
   AreaChart,
   Area,
@@ -64,29 +64,8 @@ const renderChartLines = (teeth) => {
 };
 
 
-function getToothImage(tooth, isUpper) {
-  
-  let tNumber = tooth.id;
-
-  if (!isUpper) {
-    tNumber = tooth.id - 16;
-  }
-  const base = `t${tNumber}_${isUpper ? 'U' : 'L'}`;
-
-  if (tooth.isImplant) return TOOTH_IMG_URL[`${base}_Implant`];
-
-  const hasPlaque = tooth.plaque.slice(0, 3).some(Boolean);
-  const hasBOP = tooth.bop.slice(0, 3).some(Boolean);
-
-  if (hasPlaque && hasBOP) return TOOTH_IMG_URL[`${base}_Plaque_Bleed`];
-  if (hasPlaque) return TOOTH_IMG_URL[`${base}_Plaque`];
-  if (hasBOP) return TOOTH_IMG_URL[`${base}_Bleed`];
-
-  return TOOTH_IMG_URL[base];
-}
-
 const Tooth = ({ tooth, isUpper }) => {
-  const imgUrl = getToothImage(tooth, isUpper);
+  const imgUrl = getPeriodontalToothImageUrl(tooth, isUpper);
 
   if (isUpper) {
     return (
