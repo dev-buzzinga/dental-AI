@@ -20,37 +20,77 @@ const CampaignsPage = () => {
     };
 
     const columns = [
-        { key: 'name', label: 'Campaign Name', align: 'left' },
-        { key: 'status', label: 'Status', align: 'left' },
-        { key: 'date', label: 'Date', align: 'left' },
-        { key: 'actions', label: 'Actions', align: 'left' },
+        { key: 'sno', label: 'S.NO', align: 'left' },
+        { key: 'name', label: 'CAMPAIGN NAME', align: 'left' },
+        { key: 'start_date', label: 'START DATE', align: 'left' },
+        { key: 'end_date', label: 'END DATE', align: 'left' },
+        { key: 'timezone', label: 'TIMEZONE', align: 'left' },
+        { key: 'limit', label: 'LIMIT', align: 'left' },
+        { key: 'status', label: 'STATUS', align: 'left' },
+        { key: 'actions', label: 'ACTIONS', align: 'left' },
     ];
 
     const data = [
         {
-            name: 'Campaign 1',
-            status: 'Active',
-            date: '2026-03-20',
-            actions: <button className="btn-secondary">View</button>
+            id: 1,
+            sno:1,
+            name: 'Teeth Whitening Campaign',
+            status: 'Schedule',
+            start_date: '2026-03-20',
+            end_date: '2026-03-20',
+            timezone: "America/Chicago",
+            limit: 1
         },
         {
-            name: 'Campaign 2',
-            status: 'Inactive',
-            date: '2026-03-20',
-            actions: <button className="btn-secondary">View</button>
+            id: 2,
+            sno:2,
+            name: 'Dental Implant Campaign',
+            status: 'Draft',
+            start_date: '2026-03-20',
+            end_date: '2026-03-20',
+            timezone: "America/Chicago",
+            limit: 1
         },
-
         {
-            name: 'Campaign 3',
-            status: 'Inactive',
-            date: '2026-03-20',
-            actions: <button className="btn-secondary">View</button>
+            id: 3,
+            sno:3,
+            name: 'Dental Implant Campaign',
+            status: 'Draft',
+            start_date: '2026-03-20',
+            end_date: '2026-03-20',
+            timezone: "America/Chicago",
+            limit: 1
         }
-    ]; // UI only, no data for now
-    const totalCount = 0;
-    const totalPages = 1;
+    ];
 
     const renderCell = (column, row, index) => {
+        if (column.key === 'id') {
+            return index + 1;
+        }
+        if (column.key === 'name') {
+            return (
+                <div className="flex items-center gap-2">
+                    <span className="campaign-name-link">{row.name}</span>
+                </div>
+            );
+        }
+        if (column.key === 'status') {
+            return (
+                <span className={`status-badge ${row.status.toLowerCase()}`}>
+                    {row.status}
+                </span>
+            );
+        }
+        if (column.key === 'actions') {
+            return (
+                <div className="flex items-center gap-5 ">
+                    <button> <i className="fas fa-pencil"></i>
+                    </button>
+                    <button> <i className="fas fa-trash"></i>
+                    </button>
+                </div>
+            );
+        }
         return row[column.key] ?? '-';
     };
 
@@ -79,8 +119,8 @@ const CampaignsPage = () => {
                         pagination={{
                             enabled: true,
                             currentPage,
-                            totalPages,
-                            totalItems: totalCount,
+                            totalPages: 1,
+                            totalItems: 3,
                             pageSize,
                             onPageChange: setCurrentPage
                         }}

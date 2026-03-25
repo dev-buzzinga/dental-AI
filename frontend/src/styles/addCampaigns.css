@@ -26,6 +26,14 @@
     margin: 0;
 }
 
+.campaigns-page .campaign-name-link {
+    color: var(--primary);
+    /* text-decoration: underline; */
+    font-weight: 500;
+    cursor: pointer;
+}
+
+
 .campaigns-page .campaigns-badge {
     padding: 4px 12px;
     background: var(--bg-surface);
@@ -85,6 +93,30 @@
     justify-content: space-between;
     align-items: center;
 }
+
+/* Status Badges */
+.status-badge {
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    display: inline-block;
+    text-align: center;
+    min-width: 90px;
+}
+
+.status-badge.schedule {
+    background:rgba(188, 146, 65, 0.08);
+    color: #bc9241;
+    border: 1px solid #bc9241;
+}
+
+.status-badge.draft {
+    background: rgba(188, 65, 65, 0.08);
+    color: #bc4141;
+    border: 1px solid #bc4141;
+}
+
 
 /* add campaigns */
 .practice-details-page {
