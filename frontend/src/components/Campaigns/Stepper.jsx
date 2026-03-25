@@ -1,10 +1,16 @@
 import React from 'react';
-import './CampaignWizard.css';
+import './Stepper.css';
 
 const Stepper = ({ currentStep, steps }) => {
     return (
         <div className="wizard-stepper">
-            <div className="stepper-line"></div>
+            <div className="stepper-progress-container">
+                <div 
+                    className="stepper-progress-line" 
+                    style={{ width: `${((currentStep - 1) / (steps.length - 1)) * 100}%` }}
+                ></div>
+                <div className="stepper-line-bg"></div>
+            </div>
             {steps.map((step, index) => {
                 const stepNum = index + 1;
                 const isCompleted = currentStep > stepNum;

@@ -32,6 +32,7 @@ import VoiceNoteDetailPage from './pages/voiceNotes/[id]';
 import PeriodentalChartPage from './pages/PeriodentalChart';
 import AddPeriodentalChart from './pages/PeriodentalChart/AddPeriodentalChart';
 import AiAgentPage from './pages/Settings/AiAgentPage';
+import AddCampaignsPage from './pages/Campaigns/addCampaigns';
 
 
 
@@ -72,6 +73,7 @@ const AppContent = () => {
                 <Route path="/patients/:id" element={<PatientDetail />} />
                 <Route path="/patients" element={<PatientsPage />} />
                 <Route path="/campaigns" element={<CampaignsPage />} />
+                <Route path="/campaigns/add" element={<AddCampaignsPage />} />
                 <Route path="/settings/doctors/:id" element={<DoctorDetails />} />
                 <Route path="/settings/doctors" element={<DoctorsPage />} />
                 <Route path="/settings/appointment-types" element={<AppointmentTypes />} />

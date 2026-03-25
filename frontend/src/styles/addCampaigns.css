@@ -1,0 +1,635 @@
+/* index page */
+.campaigns-page {
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.campaigns-page .campaigns-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.campaigns-page .campaigns-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.campaigns-page .campaigns-title {
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.campaigns-page .campaigns-badge {
+    padding: 4px 12px;
+    background: var(--bg-surface);
+    /* border: 1px solid var(--border-light); */
+    border-radius: 12px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.campaigns-page .campaigns-header-actions {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+}
+
+.campaigns-page .campaigns-table-container {
+    flex: 1;
+    background: var(--bg-surface);
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    /* border: 1px solid var(--border-light); */
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.campaigns-page .campaigns-table {
+    flex: 1;
+}
+
+.campaigns-page .campaigns-header {
+    padding: 20px 24px;
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.campaigns-page .campaigns-header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.campaigns-page .campaigns-title {
+    font-weight: 700;
+    font-size: 20px;
+}
+
+.campaigns-page .campaigns-header {
+    padding: 20px 24px;
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* add campaigns */
+.practice-details-page {
+    height: 100vh;
+    overflow-y: auto;
+    background: #f8f9fa;
+}
+
+.practice-details-page .practice-header-section {
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    padding: 20px 24px;
+}
+
+.practice-details-page .practice-header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+}
+
+.practice-details-page .settings-title {
+    font-weight: 700;
+    font-size: 20px;
+    margin: 0;
+}
+
+.practice-details-page .add-type-back-link {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 18px;
+    cursor: pointer;
+    transition: color 0.15s;
+}
+
+.practice-details-page .add-type-back-link:hover {
+    color: var(--primary);
+}
+
+.practice-details-page .add-campaign-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding-bottom: 40px;
+}
+
+/* Stepper Overrides */
+.practice-details-page .wizard-stepper {
+    padding: 0 0 32px 0 !important;
+}
+
+/* Card Styling */
+.practice-details-page .add-campaign-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e2e8f0;
+    margin-bottom: 24px;
+    padding: 24px;
+}
+
+.practice-details-page .add-campaign-card.no-padding {
+    padding: 0;
+}
+
+.practice-details-page .card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #1a202c;
+    margin-bottom: 24px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #edf2f7;
+}
+
+.practice-details-page .card-header i {
+    color: #4a5568;
+}
+
+/* Form Styles */
+.practice-details-page .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+.practice-details-page .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.practice-details-page .form-group.full-width {
+    grid-column: 1 / -1;
+}
+
+.practice-details-page .form-group.mb-24 {
+    margin-bottom: 24px;
+}
+
+.practice-details-page .form-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: #4a5568;
+}
+
+.practice-details-page .form-input {
+    padding: 10px 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    color: #1a202c;
+    background: #fff;
+    transition: all 0.2s;
+}
+
+.practice-details-page .form-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(111, 42, 195, 0.1);
+}
+
+.practice-details-page .input-with-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.practice-details-page .input-with-icon input {
+    width: 100%;
+    padding-right: 40px;
+}
+
+.practice-details-page .input-with-icon i {
+    position: absolute;
+    right: 12px;
+    color: #a0aec0;
+    pointer-events: none;
+}
+
+/* Days and Time */
+.practice-details-page .days-section {
+    margin-top: 32px;
+}
+
+.practice-details-page .section-subtitle {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 20px;
+}
+
+.practice-details-page .day-row-minimal {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid #f7fafc;
+}
+
+.practice-details-page .day-toggle-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.practice-details-page .toggle-btn-small {
+    width: 36px;
+    height: 18px;
+    border-radius: 20px;
+    position: relative;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.practice-details-page .toggle-btn-small.off {
+    background: #cbd5e0;
+}
+
+.practice-details-page .toggle-btn-small.on {
+    background: var(--primary);
+}
+
+.practice-details-page .toggle-btn-small .toggle-slider {
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 14px;
+    height: 14px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s;
+}
+
+.practice-details-page .toggle-btn-small.on .toggle-slider {
+    transform: translateX(18px);
+}
+
+.practice-details-page .day-name {
+    font-size: 14px;
+    color: #4a5568;
+    min-width: 100px;
+}
+
+.practice-details-page .day-status-no {
+    font-size: 14px;
+    color: #a0aec0;
+}
+
+.practice-details-page .time-slots-minimal {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.practice-details-page .time-slot-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.practice-details-page .time-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.practice-details-page .time-input-small {
+    width: 100px;
+    padding: 6px 10px;
+    padding-right: 28px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 13px;
+    background: #fff;
+}
+
+.practice-details-page .time-input-wrapper i {
+    position: absolute;
+    right: 8px;
+    color: #a0aec0;
+    font-size: 12px;
+}
+
+.practice-details-page .time-separator-small {
+    font-size: 12px;
+    color: #718096;
+}
+
+.practice-details-page .add-btn-small,
+.practice-details-page .remove-btn-small {
+    width: 24px;
+    height: 24px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    border-radius: 4px;
+    color: #718096;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.practice-details-page .add-btn-small:hover,
+.practice-details-page .remove-btn-small:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+}
+
+.practice-details-page .remove-btn-small {
+    color: #e53e3e;
+}
+
+/* textarea / AI Config */
+.practice-details-page .textarea-wrapper {
+    position: relative;
+}
+
+.practice-details-page .form-textarea-large {
+    width: 100%;
+    height: 200px;
+    padding: 16px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    resize: none;
+    font-family: inherit;
+}
+
+.practice-details-page .char-count-minimal {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    font-size: 12px;
+    color: #a0aec0;
+}
+
+.practice-details-page .helper-text-small {
+    font-size: 12px;
+    color: #718096;
+    margin-top: 4px;
+}
+
+/* Patient List */
+.practice-details-page .search-input-mini {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.practice-details-page .search-input-mini i {
+    position: absolute;
+    left: 12px;
+    color: #a0aec0;
+}
+
+.practice-details-page .search-input-mini input {
+    padding: 8px 12px 8px 36px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    width: 240px;
+}
+
+.practice-details-page .contact-cell {
+    display: flex;
+    flex-direction: column;
+}
+
+.practice-details-page .contact-cell .phone {
+    font-size: 14px;
+    color: #1a202c;
+}
+
+.practice-details-page .contact-cell .email {
+    font-size: 12px;
+    color: var(--primary);
+    text-decoration: underline;
+}
+
+/* Confirmation / Review Step */
+.practice-details-page .confirmation-review-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.practice-details-page .review-section-box {
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+}
+
+.practice-details-page .review-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    cursor: pointer;
+    background: #fff;
+}
+
+.practice-details-page .review-section-header:hover {
+    background: #f8fafc;
+}
+
+.practice-details-page .header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 600;
+    color: #1a202c;
+    font-size: 15px;
+}
+
+.practice-details-page .toggle-icon {
+    color: var(--primary);
+    font-size: 12px;
+}
+
+.practice-details-page .review-section-content {
+    padding: 24px;
+    border-top: 1px solid #edf2f7;
+}
+
+.practice-details-page .review-section-content.no-padding {
+    padding: 0;
+}
+
+.practice-details-page .review-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+}
+
+.practice-details-page .review-grid.three-cols {
+    grid-template-columns: 1fr 1fr 1fr;
+}
+
+.practice-details-page .review-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.practice-details-page .review-item label {
+    font-size: 13px;
+    color: #718096;
+    font-weight: 500;
+}
+
+.practice-details-page .review-item span {
+    font-size: 14px;
+    color: #2d3748;
+}
+
+.practice-details-page .review-helper-text {
+    font-size: 12px;
+    color: #a0aec0;
+    margin-bottom: 4px;
+}
+
+.practice-details-page .review-script-text {
+    background: #f8fafc;
+    padding: 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #4a5568;
+    margin-top: 8px;
+    border: 1px solid #edf2f7;
+}
+
+.practice-details-page .review-days-section {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px dashed #e2e8f0;
+}
+
+.practice-details-page .review-subtitle {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1a202c;
+    margin-bottom: 16px;
+}
+
+.practice-details-page .review-day-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+}
+
+.practice-details-page .review-day-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.practice-details-page .review-toggle-mini {
+    width: 24px;
+    height: 12px;
+    border-radius: 10px;
+    background: #cbd5e0;
+    position: relative;
+}
+
+.practice-details-page .review-toggle-mini.on {
+    background: var(--primary);
+}
+
+.practice-details-page .review-toggle-mini::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 8px;
+    height: 8px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s;
+}
+
+.practice-details-page .review-toggle-mini.on::after {
+    transform: translateX(12px);
+}
+
+.practice-details-page .review-day-name {
+    font-size: 14px;
+    color: #4a5568;
+}
+
+.practice-details-page .review-time-list {
+    font-size: 13px;
+    color: #2d3748;
+    text-align: right;
+}
+
+.practice-details-page .review-day-no {
+    font-size: 13px;
+    color: #a0aec0;
+}
+
+/* Footer Actions */
+.practice-details-page .step-actions-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-top: 32px;
+}
+
+.practice-details-page .btn-action-outline {
+    background: #fff;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    padding: 8px 18px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.practice-details-page .btn-action-outline:hover {
+    background: #f7fafc;
+}
+
+.practice-details-page .btn-action-primary {
+    background: var(--primary);
+    border: none;
+    color: #fff;
+    padding: 8px 24px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 120px;
+}
+
+.practice-details-page .btn-action-primary:hover {
+    background: #5a22a0;
+}

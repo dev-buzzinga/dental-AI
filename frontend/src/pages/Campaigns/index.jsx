@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { SearchInput } from '../../components/common/SearchInput';
 import Table from '../../components/common/Table';
-import CampaignWizard from '../../components/Campaigns/CampaignWizard';
-import '../../styles/Campaigns.css';
+import '../../styles/addCampaigns.css';
 
 const CampaignsPage = () => {
     const navigate = useNavigate();
@@ -13,7 +12,7 @@ const CampaignsPage = () => {
     const pageSize = 10;
 
     const handleAddCampaign = () => {
-        setIsWizardOpen(true);
+        navigate('/campaigns/add');
     };
 
     const handleCloseWizard = () => {
@@ -94,7 +93,7 @@ const CampaignsPage = () => {
                 </div>
             </div>
 
-            <CampaignWizard isOpen={isWizardOpen} onClose={handleCloseWizard} />
+            {/* <CampaignWizard isOpen={isWizardOpen} onClose={handleCloseWizard} /> */}
         </div>
     );
 };
