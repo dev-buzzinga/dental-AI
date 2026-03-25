@@ -111,6 +111,8 @@ const AddPeriodentalChart = () => {
   const summaryStatusIntervalRef = useRef(null);
   const wsRef = useRef(null);
   const waveformIntervalRef = useRef(null);
+  // Used to avoid closing the modal from a previous recording session
+  const voiceSessionIdRef = useRef(0);
   const [waveformBars, setWaveformBars] = useState(Array(20).fill(3));
   const pdfCaptureRef = useRef(null);
 
@@ -341,6 +343,7 @@ const AddPeriodentalChart = () => {
 
   // Start recording
   const startRecording = async () => {
+    voiceSessionIdRef.current += 1;
     setShowVoiceModal(true);
     setLiveTranscript('');
   };
@@ -440,6 +443,9 @@ const AddPeriodentalChart = () => {
 
   // Cancel recording
   const cancelRecording = () => {
+    // Invalidate any pending upload/summary callbacks from the previous session
+    voiceSessionIdRef.current += 1;
+
     if (mediaRecorder && mediaRecorder.state !== 'inactive') {
       mediaRecorder.stop();
       mediaRecorder.stream.getTracks().forEach(track => track.stop());
@@ -449,6 +455,9 @@ const AddPeriodentalChart = () => {
     }
     clearInterval(recordingIntervalRef.current);
     clearInterval(waveformIntervalRef.current);
+    if (summaryStatusIntervalRef.current) {
+      clearInterval(summaryStatusIntervalRef.current);
+    }
     setIsRecording(false);
     setIsPaused(false);
     setRecordingTime(0);
@@ -518,28 +527,31 @@ const AddPeriodentalChart = () => {
         if (wsRef.current) {
           wsRef.current.close();
         }
-
-        // Close modal after a brief delay to show completion
-        setTimeout(() => {
-          setShowVoiceModal(false);
-          setWaveformBars(Array(20).fill(3));
-          resolve();
-        }, 500);
+        resolve();
       } else {
         resolve();
       }
     });
   };
 
+  const isVoiceProcessing = isUploadingAudio || isSummaryGenerating;
+
+  const closeVoiceModalIfSameSession = (sessionId) => {
+    if (voiceSessionIdRef.current !== sessionId) return;
+    setShowVoiceModal(false);
+    setWaveformBars(Array(20).fill(3));
+  };
+
   // Upload audio when recording stops
   useEffect(() => {
     if (!isRecording && audioChunks.length > 0 && shouldUploadOnStop) {
-      uploadAudioToBackend(audioBlob);
+      const sessionId = voiceSessionIdRef.current;
+      uploadAudioToBackend(audioBlob, sessionId);
       setShouldUploadOnStop(false);
     }
   }, [isRecording, audioChunks, shouldUploadOnStop]);
 
-  const uploadAudioToBackend = async (newBlob) => {
+  const uploadAudioToBackend = async (newBlob, sessionId) => {
     if (!newBlob || !chartId) return;
 
     try {
@@ -551,29 +563,29 @@ const AddPeriodentalChart = () => {
 
       await periodontalChartService.uploadPeriodentalChartAudio(chartId, formData);
 
-      // Generate AI summary from transcript
-      if (liveTranscript.trim()) {
-        await generateChartSummary(liveTranscript, chartId);
-      }
+      // Generate AI summary (backend may also derive transcript server-side).
+      // Keep modal open until polling completes.
+      await generateChartSummary(liveTranscript, chartId, sessionId);
 
       showToast('Audio uploaded successfully', 'success');
     } catch (error) {
       console.error('Error uploading audio:', error);
       showToast('Failed to upload audio', 'error');
+      closeVoiceModalIfSameSession(sessionId);
     } finally {
       setIsUploadingAudio(false);
     }
   };
 
   // Generate AI summary from transcript
-  const generateChartSummary = async (transcript, chartId) => {
-    if (!chartId || !transcript) return;
+  const generateChartSummary = async (transcript, chartId, sessionId) => {
+    if (!chartId) return;
 
     try {
       setIsSummaryGenerating(true);
 
       await periodontalChartService.generateAIChartSummary(chartId, {
-        transcript
+        transcript: transcript || ''
       });
 
       // Start polling for summary status
@@ -581,11 +593,13 @@ const AddPeriodentalChart = () => {
         if (summary && Array.isArray(summary)) {
           applyAISummaryToChart(summary);
         }
+        closeVoiceModalIfSameSession(sessionId);
       });
     } catch (error) {
       console.error('Error generating summary:', error);
       showToast('Failed to generate AI summary', 'error');
       setIsSummaryGenerating(false);
+      closeVoiceModalIfSameSession(sessionId);
     }
   };
 
@@ -1035,6 +1049,7 @@ const AddPeriodentalChart = () => {
               <button
                 className="modal-close-btn"
                 onClick={cancelRecording}
+                disabled={isVoiceProcessing}
                 title="Cancel"
               >
                 <i className="fas fa-times"></i>
@@ -1072,10 +1087,10 @@ const AddPeriodentalChart = () => {
                     <button
                       className="action-btn start-btn"
                       onClick={initializeRecording}
-                      disabled={isRecordingLoading}
+                      disabled={isRecordingLoading || isVoiceProcessing}
                       title="Start Recording"
                     >
-                      {isRecordingLoading ? (
+                      {isRecordingLoading || isVoiceProcessing ? (
                         <i className="fas fa-spinner fa-spin"></i>
                       ) : (
                         <i className="fas fa-microphone"></i>
@@ -1100,6 +1115,7 @@ const AddPeriodentalChart = () => {
                       <button
                         className="action-btn cancel-btn"
                         onClick={cancelRecording}
+                        disabled={isVoiceProcessing}
                         title="Cancel"
                       >
                         <i className="fas fa-times"></i>
@@ -1113,6 +1129,18 @@ const AddPeriodentalChart = () => {
                 <div className="recording-status-modern">
                   <span className="recording-dot"></span>
                   <span>{isPaused ? 'Paused' : 'Recording...'}</span>
+                </div>
+              )}
+
+              {isUploadingAudio && (
+                <div className="status-message">
+                  <i className="fas fa-spinner fa-spin"></i> Uploading...
+                </div>
+              )}
+
+              {isSummaryGenerating && (
+                <div className="status-message">
+                  <i className="fas fa-spinner fa-spin"></i> Generating summary...
                 </div>
               )}
             </div>
