@@ -126,6 +126,10 @@
     font-size: 16px;
 }
 
+.faq-tab-btn svg {
+    font-size: 16px;
+}
+
 /* Form Groups */
 .faq-form-group {
     margin-bottom: 20px;
@@ -153,6 +157,14 @@
 }
 
 .faq-input-wrapper i {
+    position: absolute;
+    left: 16px;
+    top: 14px;
+    color: #9CA3AF;
+    font-size: 18px;
+}
+
+.faq-input-wrapper svg {
     position: absolute;
     left: 16px;
     top: 14px;

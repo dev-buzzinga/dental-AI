@@ -193,6 +193,48 @@ CREATE TABLE IF NOT EXISTS ai_agents (
   updated_at      TIMESTAMPTZ DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS public.faqs (
+  id BIGSERIAL PRIMARY KEY,
+  user_id UUID NOT NULL,
+  question TEXT NOT NULL,
+  answer TEXT NOT NULL,
+  link TEXT,
+  embedding vector(1536),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_faqs_embedding_ivfflat
+ON public.faqs
+USING ivfflat (embedding vector_cosine_ops)
+WITH (lists = 100);
+
+CREATE OR REPLACE FUNCTION public.match_faqs (
+  query_embedding vector(1536),
+  match_count int DEFAULT 5,
+  filter_user_id uuid DEFAULT NULL
+)
+RETURNS TABLE (
+  id bigint,
+  question text,
+  answer text,
+  link text,
+  similarity float
+)
+LANGUAGE sql
+STABLE
+AS $$
+  SELECT
+    faqs.id,
+    faqs.question,
+    faqs.answer,
+    faqs.link,
+    1 - (faqs.embedding <=> query_embedding) AS similarity
+  FROM public.faqs
+  WHERE filter_user_id IS NULL OR faqs.user_id = filter_user_id
+  ORDER BY faqs.embedding <=> query_embedding
+  LIMIT match_count;
+$$;
+
 
 -- Foreign keys and constraints (using DO blocks or ALTER to avoid errors if exists)
 DO $$

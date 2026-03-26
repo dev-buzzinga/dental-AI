@@ -11,6 +11,7 @@ ALTER TABLE practice_details ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_gmail_accounts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE twilio_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_scribes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE faqs ENABLE ROW LEVEL SECURITY;
 
 -- Drop existing policies first to make script rerunnable safely
 DROP POLICY IF EXISTS "appointment_types_crud" ON appointment_types;
@@ -26,6 +27,7 @@ DROP POLICY IF EXISTS "periodontal_charts" ON periodontal_charts;
 DROP POLICY IF EXISTS "twilio_config" ON twilio_config;
 DROP POLICY IF EXISTS "ai_scribes_crud" ON ai_scribes;
 DROP POLICY IF EXISTS "voice_notes_template_crud" ON voice_notes_template;
+DROP POLICY IF EXISTS "faqs_crud" ON faqs;
 DROP POLICY IF EXISTS "Allow authenticated upload doctor images" ON storage.objects;
 DROP POLICY IF EXISTS "Allow public read doctor images" ON storage.objects;
 DROP POLICY IF EXISTS "Allow delete doctor images" ON storage.objects;
@@ -154,6 +156,12 @@ WITH CHECK (auth.uid() = user_id);
 
 CREATE POLICY "ai_agents_crud"
 ON ai_agents
+FOR ALL
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "faqs_crud"
+ON faqs
 FOR ALL
 USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
