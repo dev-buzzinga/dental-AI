@@ -100,6 +100,9 @@ const AIAgentPage = () => {
     const showToast = useToast();
     const audioRef = useRef(null);
     const audioPreviewRef = useRef(null);
+    const lottieRef = useRef(null);
+
+
 
     // Data state
     const [voice, setVoice] = useState('');
@@ -113,6 +116,14 @@ const AIAgentPage = () => {
     const [previewLoading, setPreviewLoading] = useState(false);
     const [isPlaying, setIsPlaying] = useState(false);
     const [playingPreview, setPlayingPreview] = useState(null); // voiceId in dropdown
+
+    useEffect(() => {
+        if (isPlaying) {
+            lottieRef.current?.play();
+        } else {
+            lottieRef.current?.stop();
+        }
+    }, [isPlaying]);
 
     // Voice picker state
     const [voiceDropdownOpen, setVoiceDropdownOpen] = useState(false);
@@ -270,10 +281,7 @@ const AIAgentPage = () => {
                     <div>
                         <h2 className="settings-title">AI Agent Configuration</h2>
                     </div>
-                    <button className="btn-primary" onClick={handleSave} disabled={btnLoading}>
-                        {btnLoading ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-save" />}
-                        {' '}Save Agent
-                    </button>
+
                 </div>
             </div>
 
@@ -359,7 +367,7 @@ const AIAgentPage = () => {
                                                             style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                                                         >
                                                             <i
-                                                                className={`fas ${playingPreview === v.voiceId ? 'fa-pause' : 'fa-play'}`}
+                                                                className={`fas ${playingPreview === v.voiceId ? 'fa-light fa-circle-pause' : 'fa-light fa-circle-play'}`}
                                                                 style={{ fontSize: '10px', marginLeft: playingPreview === v.voiceId ? 0 : '2px' }}
                                                             />
                                                         </button>
@@ -413,24 +421,28 @@ const AIAgentPage = () => {
                     {/* Right Column — Agent Preview */}
                     <div className="ai-agent-right-column">
                         <div className="ai-agent-card">
-                            <div className="ai-agent-section-title"><i className="fas fa-eye" /> Agent</div>
+                            <div className="ai-agent-preview-title">Agent</div>
                             <div className="agent-display-card">
+                                <div className="agent-info" style={{ textAlign: 'center' }}>
+                                    <h3 className="agent-name">
+                                        {selectedVoiceDetails ? (
+                                            `${selectedVoiceDetails.name}${selectedVoiceDetails.description ? ` - ${selectedVoiceDetails.description}` : ''}`
+                                        ) : 'Select a Voice'}
+                                    </h3>
+                                </div>
                                 <div className="agent-header">
                                     <div className="agent-avatar">
                                         <img
                                             src={getAvatarSrcForVoiceName(selectedVoiceDetails?.name)}
                                             alt={selectedVoiceDetails?.name || 'AI Agent'}
-                                            style={{ width: 240, height: 240, borderRadius: '16px', objectFit: 'cover' }}
                                         />
                                     </div>
                                 </div>
-                                <div className="agent-info" style={{ textAlign: 'center' }}>
-                                    <h3 className="agent-name">{selectedVoiceDetails?.name || 'Select a Voice'}</h3>
-                                </div>
+
 
                                 {/* Play button */}
                                 <button
-                                    className="agent-play-btn"
+                                    className="agent-play-btn-circular"
                                     onClick={toggleAudio}
                                     disabled={previewLoading}
                                 >
@@ -439,22 +451,29 @@ const AIAgentPage = () => {
                                     ) : (
                                         <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'}`} />
                                     )}
-                                    {' '}{isPlaying ? 'Pause' : 'Play'}
                                 </button>
 
-                                {/* Waveform animation when playing */}
-                                {isPlaying && (
-                                    <div style={{ width: 100, margin: '12px auto 0' }}>
-                                        <Lottie animationData={waveanimation} loop={true} />
-                                    </div>
-                                )}
+                                {/* Waveform animation */}
+                                <div className={`ai-agent-waveform ${!isPlaying ? 'ai-agent-waveform--idle' : ''}`}>
+                                    <Lottie 
+                                        animationData={waveanimation} 
+                                        loop={true} 
+                                        autoplay={false}
+                                        lottieRef={lottieRef}
+                                    />
+                                </div>
 
                                 {/* Hidden audio element for main preview */}
                                 <audio ref={audioRef} onEnded={() => setIsPlaying(false)} />
+
                             </div>
                         </div>
                     </div>
                 </div>
+                <button className="btn-primary" onClick={handleSave} disabled={btnLoading}>
+                    {btnLoading ? <i className="fas fa-spinner fa-spin" /> : ''}
+                    {' '}Save Agent
+                </button>
             </div>
         </div>
     );
