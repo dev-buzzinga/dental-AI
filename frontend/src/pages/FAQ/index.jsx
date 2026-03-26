@@ -6,6 +6,7 @@ import { useToast } from "../../components/Toast/Toast";
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import CommentIcon from '@mui/icons-material/Comment';
 import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined';
+import CachedOutlinedIcon from '@mui/icons-material/CachedOutlined';
 const FAQPage = () => {
     const { user } = useContext(AuthContext);
     const showToast = useToast();
@@ -65,11 +66,21 @@ const FAQPage = () => {
         }
     };
 
+    const handleRefresh = async () => {
+        const response = await faqService.searchFaqs({ query: "", user_id: user.id, match_count: 5 });
+        setFaqs(response.data);
+    };
+
     return (
         <div className="faq-page">
             <div className="faq-header">
                 <div className="faq-header-left">
                     <h2 className="faq-title">FAQ</h2>
+                </div>
+                <div className="faq-header-actions-left">
+                    <button className="btn-secondary" onClick={() => handleRefresh()}>
+                        <CachedOutlinedIcon fontSize="small" />
+                    </button>
                 </div>
                 <div className="faq-header-actions">
                     <button className="btn-primary" onClick={() => setIsSidebarOpen(true)}>

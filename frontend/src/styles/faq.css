@@ -26,6 +26,21 @@
     font-size: 20px;
 }
 
+.faq-page .faq-header-actions-left {
+    margin-left: auto;
+}
+
+.faq-page .btn-secondary {
+    margin-right: 16px;
+    color: var(--primary);
+    cursor: pointer;
+}
+
+.faq-page .btn-secondary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
 /* Sidebar Drawer */
 .faq-sidebar-overlay {
     position: fixed;
@@ -206,7 +221,7 @@
     font-weight: 600;
     color: var(--primary);
     cursor: pointer;
-    font-size:14px
+    font-size: 14px
 }
 
 .btn-add-faq {
@@ -218,7 +233,7 @@
     color: #fff;
     cursor: pointer;
     transition: all 0.2s;
-    font-size:14px
+    font-size: 14px
 }
 
 .btn-add-faq:hover {
@@ -231,7 +246,13 @@
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(4px); }
-    to { opacity: 1; transform: translateY(0); }
-}
+    from {
+        opacity: 0;
+        transform: translateY(4px);
+    }
 
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
