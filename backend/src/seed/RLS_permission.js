@@ -151,4 +151,11 @@ ON voice_notes_template
 FOR ALL
 USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "ai_agents_crud"
+ON ai_agents
+FOR ALL
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
+
 `;

@@ -184,6 +184,16 @@ CREATE INDEX IF NOT EXISTS idx_ai_scribes_patient ON ai_scribes(patient_id);
 CREATE INDEX IF NOT EXISTS idx_ai_scribes_doctor ON ai_scribes(doctor_id);
 CREATE INDEX IF NOT EXISTS idx_ai_scribes_date ON ai_scribes(date_created);
 
+CREATE TABLE IF NOT EXISTS ai_agents (
+  id              SERIAL PRIMARY KEY,
+  user_id         UUID NOT NULL UNIQUE,
+  voice_id        TEXT,
+  introduction_prompt TEXT,
+  prompt_voice_url TEXT,
+  updated_at      TIMESTAMPTZ DEFAULT now()
+);
+
+
 -- Foreign keys and constraints (using DO blocks or ALTER to avoid errors if exists)
 DO $$
 BEGIN

@@ -29,4 +29,7 @@ export const config = {
     
     // Deepgram API for transcription
     DEEPGRAM_API_KEY: process.env.DEEPGRAM_API_KEY,
+
+    // ElevenLabs TTS
+    ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY,
 }
