@@ -6,6 +6,7 @@ import appointmentRoutes from "./appointment.routes.js";
 import gmailRoutes from "./gmail.routes.js";
 import aiScribeRoutes from "./ai-scribe.routes.js";
 import periodontalChartRoutes from "./periodontalChart.routes.js";
+import aiAgentRoutes from "./ai-agent.routes.js";
 
 
 const router = express.Router();
@@ -17,4 +18,5 @@ router.use("/appointment", appointmentRoutes);
 router.use("/gmail", gmailRoutes);
 router.use("/ai-scribe", aiScribeRoutes);
 router.use("/periodontal-charts", periodontalChartRoutes);
+router.use("/ai-agent", aiAgentRoutes);
 export default router;
