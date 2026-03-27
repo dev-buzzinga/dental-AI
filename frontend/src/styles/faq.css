@@ -26,6 +26,102 @@
     font-size: 20px;
 }
 
+.faq-list-header {
+    margin-bottom: 16px;
+    font-size: 22px;
+    font-weight: 500;
+    color: #000000;
+}
+
+.faq-list {
+    padding: 24px 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.faq-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 16px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.faq-card-content {
+    min-width: 0;
+}
+
+.faq-card-question-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.faq-card-question-row svg {
+    color: #111827;
+    flex-shrink: 0;
+}
+
+.faq-card-question {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 500;
+    color: #000000;
+}
+
+.faq-card-answer {
+    margin: 6px 0 0 28px;
+    font-size: 14px;
+    color: #6b7280;
+    line-height: 1.45;
+}
+
+.faq-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    /* flex-shrink: 0; */
+}
+
+.faq-status-badge {
+    border-radius: 999px;
+    padding: 3px 10px;
+    font-size: 13px;
+    background: #f9fafb;
+}
+
+.faq-status-trained {
+    border: 1px solid #2e7d32;
+    color: #2e7d32;
+}
+
+.faq-status-not-trained {
+    border: 1px solid #ed6c02;
+    color: #ed6c02;
+}
+
+.faq-icon-btn {
+    border: none;
+    background: transparent;
+    color: #6b7280;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+}
+
+.faq-icon-btn:hover {
+    color: var(--primary);
+    border-radius: 100%;
+}
+
+.faq-card-link-text {
+    color: var(--primary);
+}
+
 .faq-page .faq-header-actions-left {
     margin-left: auto;
 }

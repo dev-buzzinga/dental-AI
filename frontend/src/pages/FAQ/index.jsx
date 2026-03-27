@@ -7,6 +7,29 @@ import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import CommentIcon from '@mui/icons-material/Comment';
 import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined';
 import CachedOutlinedIcon from '@mui/icons-material/CachedOutlined';
+
+const fale_data = [
+    {
+        id: 1,
+        question: "What is the purpose of this application?",
+        answer: "This application is a tool for managing your FAQs.",
+        status: "trained"
+    },
+    {
+        id: 2,
+        question: "How to add a new FAQ?",
+        answer: "You can add a new FAQ by clicking the 'Add FAQ' button in the header.",
+        link: null,
+        status: "not_trained"
+    },
+    {
+        id: 3,
+        question: "How to edit a FAQ?",
+        answer: "You can edit a FAQ by clicking the 'Edit' button in the FAQ list.",
+        link: "https://www.google.com",
+        status: "trained"
+    }
+]
 const FAQPage = () => {
     const { user } = useContext(AuthContext);
     const showToast = useToast();
@@ -16,6 +39,7 @@ const FAQPage = () => {
     const [answer, setAnswer] = useState("");
     const [link, setLink] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [faqs, setFaqs] = useState(fale_data);
 
     const resetForm = () => {
         setQuestion("");
@@ -90,6 +114,41 @@ const FAQPage = () => {
             </div>
 
             {/* write code for add new FQA UI */}
+            <div className="faq-list">
+                <div className="faq-list-header">
+                    <h3 className="faq-list-title">Provide the content to the AI that you want to train its AI model on</h3>
+                </div>
+                {faqs.map((faq) => (
+                    <div className="faq-card" key={faq.id}>
+                        <div className="faq-card-content">
+                            <div className="faq-card-question-row">
+                                <ForumOutlinedIcon fontSize="medium" />
+                                <h4 className="faq-card-question">{faq.question}</h4>
+                            </div>
+                            <p className="faq-card-answer">{faq.answer}
+                                <div className="faq-card-link-row">
+                                    {faq.link && (
+                                        <a href={faq.link} target="_blank" rel="noopener noreferrer" className="faq-card-link-text">
+                                            {faq.link}
+                                        </a>
+                                    )}
+                                </div>
+                            </p>
+                        </div>
+                        <div className="faq-card-actions">
+                            <span className={`faq-status-badge ${faq.status === "trained" ? "faq-status-trained" : "faq-status-not-trained"}`}>
+                                {faq.status == "trained" ? "Trained" : "Not Trained"}
+                            </span>
+                            <button type="button" className="faq-icon-btn" aria-label="Edit FAQ">
+                                <i className="fas fa-pen" />
+                            </button>
+                            <button type="button" className="faq-icon-btn" aria-label="Delete FAQ">
+                                <i className="fas fa-trash" />
+                            </button>
+                        </div>
+                    </div>
+                ))}
+            </div>
 
             {/* Sidebar Drawer */}
             <div className={`faq-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={handleCloseSidebar}>
