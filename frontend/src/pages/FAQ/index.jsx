@@ -1,4 +1,4 @@
-import { useContext, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import "../../styles/faq.css"
 import faqService from '../../service/faq';
 import { AuthContext } from "../../context/AuthContext";
@@ -7,39 +7,21 @@ import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import CommentIcon from '@mui/icons-material/Comment';
 import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined';
 import CachedOutlinedIcon from '@mui/icons-material/CachedOutlined';
+import LinkIcon from '@mui/icons-material/Link';
 
-const fale_data = [
-    {
-        id: 1,
-        question: "What is the purpose of this application?",
-        answer: "This application is a tool for managing your FAQs.",
-        status: "trained"
-    },
-    {
-        id: 2,
-        question: "How to add a new FAQ?",
-        answer: "You can add a new FAQ by clicking the 'Add FAQ' button in the header.",
-        link: null,
-        status: "not_trained"
-    },
-    {
-        id: 3,
-        question: "How to edit a FAQ?",
-        answer: "You can edit a FAQ by clicking the 'Edit' button in the FAQ list.",
-        link: "https://www.google.com",
-        status: "trained"
-    }
-]
 const FAQPage = () => {
     const { user } = useContext(AuthContext);
     const showToast = useToast();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [selectedFaqId, setSelectedFaqId] = useState(null);
     const [activeTab, setActiveTab] = useState('qna');
     const [question, setQuestion] = useState("");
     const [answer, setAnswer] = useState("");
     const [link, setLink] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [faqs, setFaqs] = useState(fale_data);
+    const [isLoading, setIsLoading] = useState(false);
+    const [faqs, setFaqs] = useState([]);
 
     const resetForm = () => {
         setQuestion("");
@@ -49,50 +31,116 @@ const FAQPage = () => {
 
     const handleCloseSidebar = () => {
         setIsSidebarOpen(false);
+        setIsEditMode(false);
+        setSelectedFaqId(null);
         setActiveTab("qna");
         resetForm();
     };
 
-    const handleAddFaq = async () => {
-        if (!question.trim()) {
-            showToast("Question is required", "error");
-            return;
-        }
-
-        if (!answer.trim()) {
-            showToast("Answer is required", "error");
-            return;
-        }
-
+    const loadFaqs = async () => {
         if (!user?.id) {
-            showToast("User is not authenticated", "error");
+            return;
+        }
+
+        try {
+            setIsLoading(true);
+            const response = await faqService.getAllFaqs();
+            setFaqs(response?.data || []);
+        } catch (error) {
+            const message = error?.response?.data?.message || "Failed to load FAQs";
+            showToast(message, "error");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        loadFaqs();
+    }, [user?.id]);
+
+    const handleSubmitFaq = async () => {
+        if (activeTab === "qna" && (!question.trim() || !answer.trim())) {
+            showToast("Question and answer are required", "error");
+            return;
+        }
+
+        if (activeTab === "link" && !link.trim()) {
+            showToast("Link is required", "error");
             return;
         }
 
         try {
             setIsSubmitting(true);
-            await faqService.addFaq({
-                user_id: user.id,
-                question: question.trim(),
-                answer: answer.trim(),
-                link: link.trim() || null,
-            });
+            if (isEditMode) {
+                const payload = { faq_id: selectedFaqId };
+                if (activeTab === "link") {
+                    payload.link = link.trim();
+                } else {
+                    payload.question = question.trim();
+                    payload.answer = answer.trim();
+                }
+                await faqService.updateFaq(payload);
+                showToast("FAQ updated successfully", "success");
+            } else {
+                const payload = {};
+                if (activeTab === "link") {
+                    payload.link = link.trim();
+                } else {
+                    payload.question = question.trim();
+                    payload.answer = answer.trim();
+                }
+                await faqService.addFaq(payload);
+                showToast("FAQ added successfully", "success");
+            }
 
-            showToast("FAQ added successfully", "success");
             handleCloseSidebar();
+            await loadFaqs();
         } catch (error) {
-            console.error("Failed to add FAQ:", error);
-            const message =
-                error?.response?.data?.message || "Failed to add FAQ";
+            console.error("Failed to submit FAQ:", error);
+            const message = error?.response?.data?.message || "Failed to save FAQ";
             showToast(message, "error");
         } finally {
             setIsSubmitting(false);
         }
     };
 
-    const handleRefresh = async () => {
-        const response = await faqService.searchFaqs({ query: "", user_id: user.id, match_count: 5 });
-        setFaqs(response.data);
+    const handleEditFaq = async (faqId) => {
+        try {
+            setIsSubmitting(true);
+            const response = await faqService.getOneFaq(faqId);
+            const faq = response?.data;
+            if (!faq) {
+                showToast("FAQ not found", "error");
+                return;
+            }
+
+            setIsEditMode(true);
+            setSelectedFaqId(faq.id);
+            setQuestion(faq.question || "");
+            setAnswer(faq.answer || "");
+            setLink(faq.link || "");
+            setActiveTab(faq.link ? "link" : "qna");
+            setIsSidebarOpen(true);
+        } catch (error) {
+            const message = error?.response?.data?.message || "Failed to fetch FAQ details";
+            showToast(message, "error");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleDeleteFaq = async (faqId) => {
+        const isConfirmed = window.confirm("Are you sure you want to delete this FAQ?");
+        if (!isConfirmed) return;
+
+        try {
+            await faqService.deleteFaq(faqId);
+            showToast("FAQ deleted successfully", "success");
+            await loadFaqs();
+        } catch (error) {
+            const message = error?.response?.data?.message || "Failed to delete FAQ";
+            showToast(message, "error");
+        }
     };
 
     return (
@@ -102,7 +150,7 @@ const FAQPage = () => {
                     <h2 className="faq-title">FAQ</h2>
                 </div>
                 <div className="faq-header-actions-left">
-                    <button className="btn-secondary" onClick={() => handleRefresh()}>
+                    <button className="btn-secondary" onClick={loadFaqs} disabled={isLoading}>
                         <CachedOutlinedIcon fontSize="small" />
                     </button>
                 </div>
@@ -118,31 +166,36 @@ const FAQPage = () => {
                 <div className="faq-list-header">
                     <h3 className="faq-list-title">Provide the content to the AI that you want to train its AI model on</h3>
                 </div>
-                {faqs.map((faq) => (
+                {isLoading ? (
+                    <div className="faq-loader-container">
+                        <i className="fas fa-spinner fa-spin faq-loader-icon" />
+                        <p className="faq-loader-text">Loading FAQs...</p>
+                    </div>
+                ) : faqs.map((faq) => (
                     <div className="faq-card" key={faq.id}>
-                        <div className="faq-card-content">
+                        {faq.question && <div className="faq-card-content">
                             <div className="faq-card-question-row">
                                 <ForumOutlinedIcon fontSize="medium" />
                                 <h4 className="faq-card-question">{faq.question}</h4>
                             </div>
-                            <p className="faq-card-answer">{faq.answer}
-                                <div className="faq-card-link-row">
-                                    {faq.link && (
-                                        <a href={faq.link} target="_blank" rel="noopener noreferrer" className="faq-card-link-text">
-                                            {faq.link}
-                                        </a>
-                                    )}
-                                </div>
-                            </p>
-                        </div>
+                            <p className="faq-card-answer">{faq.answer}</p>
+                        </div>}
+                        {faq.link && <div className="faq-card-content">
+                            <div className="faq-card-question-row">
+                                <LinkIcon fontSize="medium" />
+                                <a href={faq.link} target="_blank" rel="noopener noreferrer" className="faq-card-link-text">
+                                    {faq.link}
+                                </a>
+                            </div>  
+                        </div>}
                         <div className="faq-card-actions">
-                            <span className={`faq-status-badge ${faq.status === "trained" ? "faq-status-trained" : "faq-status-not-trained"}`}>
-                                {faq.status == "trained" ? "Trained" : "Not Trained"}
+                            <span className={`faq-status-badge ${faq.embedding ? "faq-status-trained" : "faq-status-not-trained"}`}>
+                                {faq.embedding ? "Trained" : "Not Trained"}
                             </span>
-                            <button type="button" className="faq-icon-btn" aria-label="Edit FAQ">
+                            <button type="button" className="faq-icon-btn" aria-label="Edit FAQ" onClick={() => handleEditFaq(faq.id)}>
                                 <i className="fas fa-pen" />
                             </button>
-                            <button type="button" className="faq-icon-btn" aria-label="Delete FAQ">
+                            <button type="button" className="faq-icon-btn" aria-label="Delete FAQ" onClick={() => handleDeleteFaq(faq.id)}>
                                 <i className="fas fa-trash" />
                             </button>
                         </div>
@@ -154,7 +207,7 @@ const FAQPage = () => {
             <div className={`faq-sidebar-overlay ${isSidebarOpen ? 'active' : ''}`} onClick={handleCloseSidebar}>
                 <div className="faq-sidebar" onClick={(e) => e.stopPropagation()}>
                     <div className="faq-sidebar-header">
-                        <div className="faq-sidebar-title">Add New FAQ</div>
+                        <div className="faq-sidebar-title">{isEditMode ? "Update FAQ" : "Add New FAQ"}</div>
                         <button className="faq-sidebar-close" onClick={handleCloseSidebar}>
                             <i className="fas fa-times" />
                         </button>
@@ -229,10 +282,14 @@ const FAQPage = () => {
                         <button
                             className="btn-add-faq"
                             type="button"
-                            onClick={handleAddFaq}
+                            onClick={handleSubmitFaq}
                             disabled={isSubmitting}
                         >
-                            {isSubmitting ? "ADDING..." : "ADD"}
+                            {isSubmitting ? (
+                                <><i className="fas fa-spinner fa-spin" /> {isEditMode ? "Updating..." : "Adding..."}</>
+                            ) : (
+                                <><i className="fas fa-check" /> {isEditMode ? "Update" : "Add"}</>
+                            )}
                         </button>
                     </div>
                 </div>

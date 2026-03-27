@@ -83,7 +83,8 @@ const buildFaqPayload = async ({ question, answer, link }) => {
     embeddingInput = linkContent;
   }
 
-  const embedding = await generateEmbedding(embeddingInput);
+  // const embedding = await generateEmbedding(embeddingInput);
+  const embedding = null;
   return { dbQuestion, dbAnswer, dbLink, embedding };
 };
 
@@ -159,6 +160,65 @@ export const updateFaq = async ({ faq_id, user_id, question, answer, link }) => 
 
   return data;
 };
+// get all FAQs API
+export const getAllFaqs = async ({ user_id }) => {
+  if (!user_id) {
+    throw new Error("user_id is required");
+  }
+
+  const { data, error } = await supabase
+    .from("faqs")
+    .select("*")
+    .eq("user_id", user_id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw error;
+  }
+
+  return data || [];
+};
+// get one FAQs API
+export const getOneFaq = async ({ faq_id, user_id }) => {
+  if (!faq_id || !user_id) {
+    throw new Error("faq_id and user_id are required");
+  }
+
+  const { data, error } = await supabase
+    .from("faqs")
+    .select("*")
+    .eq("id", faq_id)
+    .eq("user_id", user_id)
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
+// delete FAQ API
+export const deleteFaq = async ({ faq_id, user_id }) => {
+  if (!faq_id || !user_id) {
+    throw new Error("faq_id and user_id are required");
+  }
+
+  const { data, error } = await supabase
+    .from("faqs")
+    .delete()
+    .eq("id", faq_id)
+    .eq("user_id", user_id)
+    .select("*")
+    .single();
+
+  if (error) {
+    throw error;
+  }
+
+  return data;
+};
+
 
 // export const searchFaqs = async ({ query, user_id, match_count = 5 }) => {
 //   const queryEmbedding = await generateEmbedding(query);

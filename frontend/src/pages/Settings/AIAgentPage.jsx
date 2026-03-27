@@ -3,7 +3,7 @@ import Lottie from 'lottie-react';
 import { useToast } from '../../components/Toast/Toast';
 import waveanimation from '../../assets/waveform.json';
 import '../../styles/Settings.css';
-
+import GraphicEqIcon from '@mui/icons-material/GraphicEq';
 import {
     getAIAgentVoices,
     getAIAgentDetails,
@@ -299,7 +299,7 @@ const AIAgentPage = () => {
                                     className="voice-picker-btn"
                                     onClick={() => setVoiceDropdownOpen(!voiceDropdownOpen)}
                                 >
-                                    <i className="fas fa-wave-square" style={{ marginRight: 8 }} />
+                                    <GraphicEqIcon fontSize="small" />
                                     <span>{selectedVoiceDetails ? selectedVoiceDetails.name : 'Select Voice'}</span>
                                     <i
                                         className="fas fa-chevron-down"
