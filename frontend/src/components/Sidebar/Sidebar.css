@@ -1,5 +1,5 @@
 .sidebar {
-    width: 240px;
+    width: 244px;
     background: #fff;
     border-right: 1px solid var(--border);
     display: flex;
@@ -10,10 +10,42 @@
     height: 100vh;
     overflow-y: auto;
     transition: width 0.3s ease;
+    scrollbar-width: thin;
+    scrollbar-color: #cfd4dc #f3f4f6;
+}
+
+.sidebar::-webkit-scrollbar {
+    width: 8px;
+}
+
+.sidebar::-webkit-scrollbar-track {
+    background: #f3f4f6;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+    background: #d7dbe2 !important;
+    border: 2px solid #f3f4f6;
+    border-radius: 8px;
+}
+
+.sidebar:hover::-webkit-scrollbar-thumb {
+    background: #eceef3 !important;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: #eceef3 !important;
 }
 
 .sidebar.collapsed {
     width: 80px;
+}
+
+.sidebar-top {
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    background: #fff;
+    z-index: 2;
 }
 
 .sidebar-header {
@@ -285,7 +317,6 @@
 }
 
 .sidebar-submenu.expanded {
-    max-height: 200px;
     opacity: 1;
 }
 
@@ -333,6 +364,10 @@
 }
 
 .sidebar-footer {
-    margin-top: auto;
+    flex-shrink: 0;
     padding: 0 8px;
+    position: sticky;
+    bottom: 0;
+    background: #fff;
+    z-index: 2;
 }

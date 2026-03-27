@@ -34,6 +34,7 @@ import AddPeriodentalChart from './pages/PeriodentalChart/AddPeriodentalChart';
 import AiAgentPage from './pages/Settings/AIAgentPage';
 import AddCampaignsPage from './pages/Campaigns/addCampaigns';
 import FAQPage from './pages/FAQ';
+import SchedulerPage from './pages/Scheduler';
 
 
 
@@ -87,6 +88,7 @@ const AppContent = () => {
                 <Route path="/settings/configure-twilio" element={<ConfigureTwilioPage />} />
                 <Route path="/settings/ai-agent" element={<AiAgentPage />} />
                 <Route path="/settings/faq" element={<FAQPage />} />
+                <Route path="/settings/scheduler" element={<SchedulerPage />} />
                 <Route path="*" element={<Navigate to="/calls" replace />} />
               </Routes>
             </div>

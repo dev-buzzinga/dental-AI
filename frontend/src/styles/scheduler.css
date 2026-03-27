@@ -1,0 +1,26 @@
+.scheduler-page {
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.scheduler-page .scheduler-header {
+    padding: 20px 24px;
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.scheduler-page .scheduler-header-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+.scheduler-page .scheduler-title {
+    font-weight: 700;
+    font-size: 20px;
+}

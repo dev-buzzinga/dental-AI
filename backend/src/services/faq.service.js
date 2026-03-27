@@ -83,8 +83,8 @@ const buildFaqPayload = async ({ question, answer, link }) => {
     embeddingInput = linkContent;
   }
 
-  // const embedding = await generateEmbedding(embeddingInput);
-  const embedding = null;
+  const embedding = await generateEmbedding(embeddingInput);
+  // const embedding = null;
   return { dbQuestion, dbAnswer, dbLink, embedding };
 };
 

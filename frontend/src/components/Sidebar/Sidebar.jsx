@@ -47,11 +47,12 @@ const Sidebar = () => {
         { path: '/settings/configure-twilio', icon: 'fa-plug', label: 'Configure Twilio' },
         { path: '/settings/ai-agent', icon: 'fa-robot', label: 'AI Agent' },
         { path: '/settings/faq', icon: 'fa-question-circle', label: 'FAQ' },
+        { path: '/settings/scheduler', icon: 'fa-calendar-days', label: 'Scheduler Web Page' },
     ];
 
     return (
         <div className={`sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
-            <div className="sidebar-nav">
+            <div className="sidebar-top">
                 <div className="sidebar-header">
                     <div className="sidebar-logo">
                         {sidebarCollapsed ? (
@@ -79,6 +80,8 @@ const Sidebar = () => {
                         <i className="fas fa-chevron-right" />
                     </button>
                 )}
+            </div>
+            <div className="sidebar-nav">
                 {navItems.map((item) => (
                     <div
                         key={item.path}
