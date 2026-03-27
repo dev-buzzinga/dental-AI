@@ -32,4 +32,8 @@ export const config = {
 
     // ElevenLabs TTS
     ELEVENLABS_API_KEY: process.env.ELEVENLABS_API_KEY,
+
+    // OpenAI Embeddings
+    OPENAI_API_KEY: process.env.OPENAI_API_KEY,
+    OPENAI_EMBEDDING_MODEL: process.env.OPENAI_EMBEDDING_MODEL,
 }

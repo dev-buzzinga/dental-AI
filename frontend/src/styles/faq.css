@@ -104,7 +104,7 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    /* flex-shrink: 0; */
+    flex-shrink: 0;
 }
 
 .faq-page .faq-status-badge {
