@@ -77,6 +77,7 @@ const PracticeDetails = () => {
     const [recordId, setRecordId] = useState(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [uniqueKey, setUniqueKey] = useState(null);
     const [error, setError] = useState('');
     const [activePhoneNumbers, setActivePhoneNumbers] = useState([]);
 
@@ -84,7 +85,6 @@ const PracticeDetails = () => {
 
     useEffect(() => {
         if (user) {
-            console.log("user=>", user);
             fetchPracticeDetails();
         }
     }, []);
@@ -134,6 +134,7 @@ const PracticeDetails = () => {
                                 general_information: baseData.general_information,
                                 address: baseData.address,
                                 contact_information: baseData.contact_information,
+                                unique_key: Math.random().toString(36).substring(2, 8).toUpperCase(),
                             })
                             .select()
                             .single();
@@ -151,6 +152,7 @@ const PracticeDetails = () => {
                                 contact_information: inserted.contact_information || baseData.contact_information,
                             };
                             setRecordId(inserted.id);
+                            setUniqueKey(inserted.unique_key);
                             setFormData(newData);
                             setOriginalData(newData);
                         }
@@ -169,6 +171,7 @@ const PracticeDetails = () => {
 
             if (data) {
                 setRecordId(data.id);
+                setUniqueKey(data.unique_key);
                 let contactInfo = data.contact_information || initialFormState.contact_information;
 
                 // If no email saved yet for this practice, auto-fill and persist the logged-in user's email
@@ -197,6 +200,29 @@ const PracticeDetails = () => {
                     } catch (updateErr) {
                         console.error('Unexpected error auto-updating practice email:', updateErr);
                         contactInfo = updatedContactInfo;
+                    }
+                }
+
+                // Auto-generate unique_key if null
+                if (!data.unique_key) {
+                    const newUniqueKey = Math.random().toString(36).substring(2, 8).toUpperCase();
+                    try {
+                        const { data: updatedRow, error: updateError } = await supabase
+                            .from('practice_details')
+                            .update({
+                                unique_key: newUniqueKey,
+                            })
+                            .eq('id', data.id)
+                            .select()
+                            .single();
+
+                        if (updateError) {
+                            console.error('Error auto-updating unique_key:', updateError);
+                        } else if (updatedRow) {
+                            setUniqueKey(updatedRow.unique_key);
+                        }
+                    } catch (updateErr) {
+                        console.error('Unexpected error auto-updating unique_key:', updateErr);
                     }
                 }
 
@@ -269,11 +295,15 @@ const PracticeDetails = () => {
             // Check if phone number changed
             const phoneChanged = originalData.contact_information.phone !== formData.contact_information.phone;
 
+            const currentUniqueKey = uniqueKey || Math.random().toString(36).substring(2, 8).toUpperCase();
+            if (!uniqueKey) setUniqueKey(currentUniqueKey);
+
             const payload = {
                 // user_id: user.id, auto insert by supabase
                 general_information: formData.general_information,
                 address: formData.address,
                 contact_information: formData.contact_information,
+                unique_key: currentUniqueKey,
             };
 
             if (recordId) {
