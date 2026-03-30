@@ -348,7 +348,7 @@ const Schedulerpage = () => {
                                         {redirectUrlError ? (
                                             <p className="scheduler-error">{redirectUrlError}</p>
                                         ) : (
-                                            <p className="scheduler-help">Optional: redirect after successful booking.</p>
+                                            <p className="scheduler-help">Optional: where to redirect patients after successful booking.</p>
                                         )}
                                     </div>
 

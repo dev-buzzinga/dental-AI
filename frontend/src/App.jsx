@@ -5,7 +5,7 @@ import { ToastProvider } from './components/Toast/Toast';
 import { AuthProvider } from './context/AuthContext';
 import { CallProvider } from './context/CallContext';
 import ProtectedRoute from './components/auth/ProtectedRoute';
-import GuestRoute from './components/auth/GuestRoute';
+import { publicRoutes } from './routes/PublicRoutes';
 
 // Pages
 import CallsPage from './pages/Calls';
@@ -22,8 +22,6 @@ import AddAppointmentTypePage from './pages/Settings/AppointmentTypes/AddType';
 import ConnectGoogleCalender from './pages/Settings/ConnectGoogleCalender';
 import PracticeDetails from './pages/Settings/PracticeDetails';
 import CalendarPage from './pages/Calendar/index';
-import Login from './pages/auth/login';
-import Signup from './pages/auth/signup';
 import ConnectGoogleGmail from './pages/Settings/ConnectGoogleGmail';
 import ConfigureTwilioPage from './pages/Settings/ConfigureTwilioPage';
 import VoiceNotesPage from './pages/voiceNotes';
@@ -41,17 +39,7 @@ import SchedulerPage from './pages/Scheduler';
 const AppContent = () => {
   return (
     <Routes>
-      {/* Auth Routes */}
-      <Route path="/login" element={
-        <GuestRoute>
-          <Login key="login-page" />
-        </GuestRoute>
-      } />
-      <Route path="/signup" element={
-        <GuestRoute>
-          <Signup key="signup-page" />
-        </GuestRoute>
-      } />
+      {publicRoutes}
 
       {/* Protected App Routes */}
       <Route path="/*" element={
