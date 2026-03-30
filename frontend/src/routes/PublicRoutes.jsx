@@ -2,7 +2,7 @@ import { Route } from 'react-router-dom';
 import GuestRoute from '../components/auth/GuestRoute';
 import Login from '../pages/auth/login';
 import Signup from '../pages/auth/signup';
-import SchedulerPage from '../pages/Scheduler';
+import PublicScheduler from '../pages/Scheduler/PublicScheduler';
 
 /**
  * Routes that do not require authentication (no ProtectedRoute).
@@ -27,5 +27,5 @@ export const publicRoutes = [
       </GuestRoute>
     }
   />,
-  <Route key="public-scheduler" path="/public-scheduler" element={<SchedulerPage />} />,
+  <Route key="public-scheduler" path="/public-scheduler" element={<PublicScheduler />} />,
 ];

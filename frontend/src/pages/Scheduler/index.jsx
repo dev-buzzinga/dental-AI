@@ -73,12 +73,7 @@ const Schedulerpage = () => {
     }, [uniqueKey]);
 
     useEffect(() => {
-        const contextUniqueKey =
-            user?.unique_key || user?.user_metadata?.unique_key || user?.app_metadata?.unique_key || "";
-
-        if (contextUniqueKey) {
-            setUniqueKey(contextUniqueKey);
-        }
+        // We will now rely on fetchConfig to set the uniqueKey from the backend
     }, [user]);
 
     useEffect(() => {
@@ -91,13 +86,9 @@ const Schedulerpage = () => {
                     setConfig((prev) => ({ ...prev, ...incoming }));
                     setDeployed(true);
 
-                    const incomingUniqueKey =
-                        response?.data?.unique_key ||
-                        user?.unique_key ||
-                        user?.user_metadata?.unique_key ||
-                        user?.app_metadata?.unique_key ||
-                        "";
-                    if (incomingUniqueKey) setUniqueKey(incomingUniqueKey);
+                    if (response.data.unique_key) {
+                        setUniqueKey(response.data.unique_key);
+                    }
 
                     const redirectError = validateRedirectUrl(incoming.redirect_url);
                     setRedirectUrlError(redirectError);
@@ -150,13 +141,9 @@ const Schedulerpage = () => {
                 setDeployed(true);
                 setActiveStep(STEPS.length - 1);
 
-                const savedUniqueKey =
-                    response?.data?.unique_key ||
-                    user?.unique_key ||
-                    user?.user_metadata?.unique_key ||
-                    user?.app_metadata?.unique_key ||
-                    uniqueKey;
-                if (savedUniqueKey) setUniqueKey(savedUniqueKey);
+                if (response.data.unique_key) {
+                    setUniqueKey(response.data.unique_key);
+                }
 
                 showToast(response?.message || "Scheduler configuration saved successfully", "success");
                 return true;
@@ -192,8 +179,7 @@ const Schedulerpage = () => {
             console.error("Failed to store scheduler preview config:", error);
         }
 
-        const previewKey =
-            uniqueKey || user?.unique_key || user?.user_metadata?.unique_key || user?.app_metadata?.unique_key || "";
+        const previewKey = uniqueKey || "";
         const previewUrl = `${window.location.origin}/public-scheduler?key=${previewKey}&preview=true`;
         window.open(previewUrl, "_blank", "noopener,noreferrer");
     };
