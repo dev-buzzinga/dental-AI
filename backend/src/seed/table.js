@@ -95,7 +95,8 @@ CREATE TABLE IF NOT EXISTS public.practice_details (
   user_id uuid DEFAULT auth.uid(),
   general_information json,
   address json,
-  contact_information json
+  contact_information json,
+  unique_key text
 );
 
 CREATE TABLE IF NOT EXISTS public.user_gmail_accounts (
@@ -161,6 +162,16 @@ CREATE TABLE IF NOT EXISTS public.twilio_config (
   auth_token text
 );
 
+CREATE TABLE IF NOT EXISTS public.scheduler_configs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  script_url text,
+  widget_props jsonb NOT NULL,
+  created_at timestamp without time zone DEFAULT now(),
+  updated_at timestamp without time zone DEFAULT now(),
+  CONSTRAINT scheduler_configs_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS ai_scribes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL,
@@ -183,6 +194,8 @@ CREATE INDEX IF NOT EXISTS idx_ai_scribes_user ON ai_scribes(user_id);
 CREATE INDEX IF NOT EXISTS idx_ai_scribes_patient ON ai_scribes(patient_id);
 CREATE INDEX IF NOT EXISTS idx_ai_scribes_doctor ON ai_scribes(doctor_id);
 CREATE INDEX IF NOT EXISTS idx_ai_scribes_date ON ai_scribes(date_created);
+
+ALTER TABLE scheduler_configs ENABLE ROW LEVEL SECURITY;
 
 CREATE TABLE IF NOT EXISTS ai_agents (
   id              SERIAL PRIMARY KEY,
