@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, Link } from 'react-router-dom';
 import {
     User,
     Phone,
@@ -332,6 +332,8 @@ export default function PatientDetail() {
                 phone: dataToUpdate.phone ?? prev.phone,
                 dob: dataToUpdate.dob ?? prev.dob,
             }));
+
+            refreshPatientData();
         } catch (error) {
             console.error('handleSavePatient error =>', error);
             showToast(error.message || 'Failed to update patient', 'error');
@@ -352,64 +354,74 @@ export default function PatientDetail() {
         setIsModalOpen(true);
     };
 
-    useEffect(() => {
+    const fetchPatientHeader = async () => {
+        if (!routePatientId) return;
+        try {
+            const response = await patientsService.getOnePatient(routePatientId);
+            const apiPatient = response?.data?.data;
+            if (!apiPatient) return;
+
+            setPatientData((prev) => ({
+                ...prev,
+                id: apiPatient?.id || prev.id,
+                name: apiPatient?.name || apiPatient?.full_name || prev.name,
+                phone: apiPatient?.phone || apiPatient?.phone_number || prev.phone,
+                email: apiPatient?.email || prev.email,
+                dob: apiPatient?.dob || apiPatient?.date_of_birth || prev.dob,
+                //   treatmentType: apiPatient?.treatmentType || apiPatient?.treatment_type || prev.treatmentType,
+                //   assignedDoctor: apiPatient?.assignedDoctor || apiPatient?.assigned_doctor || prev.assignedDoctor,
+                status: apiPatient?.status || prev.status,
+                member_id: apiPatient?.member_id ?? apiPatient?.member_id ?? prev.member_id,
+            }));
+        } catch (error) {
+            console.error('fetchPatientHeader error =>', error?.message || error);
+        } finally {
+            setPatientLoading(false);
+        }
+    };
+
+    const fetchUpcomingVisit = async () => {
+        if (!routePatientId) return;
+        try {
+            const response = await patientsService.upcomingAppointment(routePatientId);
+            const upcomingList = response?.data?.data;
+            setUpcomingVisits(Array.isArray(upcomingList) ? upcomingList : []);
+        } catch (error) {
+            console.error('fetchUpcomingVisit error =>', error?.message || error);
+        } finally {
+            setUpcomingLoading(false);
+        }
+    };
+
+    const fetchHistoryVisits = async () => {
+        if (!routePatientId) return;
+        try {
+            const response = await patientsService.historyAppointment(routePatientId);
+            const historyList = response?.data?.data;
+            setHistoryVisits(Array.isArray(historyList) ? historyList : []);
+        } catch (error) {
+            console.error('fetchHistoryVisits error =>', error?.message || error);
+        } finally {
+            setHistoryLoading(false);
+        }
+    };
+
+    const refreshPatientData = async () => {
         if (!routePatientId) return;
         setPatientLoading(true);
         setUpcomingLoading(true);
         setHistoryLoading(true);
 
-        const fetchPatientHeader = async () => {
-            try {
-                const response = await patientsService.getOnePatient(routePatientId);
-                const apiPatient = response?.data?.data;
-                if (!apiPatient) return;
+        await Promise.allSettled([
+            fetchPatientHeader(),
+            fetchUpcomingVisit(),
+            fetchHistoryVisits(),
+        ]);
+    };
 
-                setPatientData((prev) => ({
-                    ...prev,
-                    id: apiPatient?.id || prev.id,
-                    name: apiPatient?.name || apiPatient?.full_name || prev.name,
-                    phone: apiPatient?.phone || apiPatient?.phone_number || prev.phone,
-                    email: apiPatient?.email || prev.email,
-                    dob: apiPatient?.dob || apiPatient?.date_of_birth || prev.dob,
-                    //   treatmentType: apiPatient?.treatmentType || apiPatient?.treatment_type || prev.treatmentType,
-                    //   assignedDoctor: apiPatient?.assignedDoctor || apiPatient?.assigned_doctor || prev.assignedDoctor,
-                    status: apiPatient?.status || prev.status,
-                    member_id: apiPatient?.member_id ?? apiPatient?.member_id ?? prev.member_id,
-                }));
-            } catch (error) {
-                console.error('fetchPatientHeader error =>', error?.message || error);
-            } finally {
-                setPatientLoading(false);
-            }
-        };
-
-        const fetchUpcomingVisit = async () => {
-            try {
-                const response = await patientsService.upcomingAppointment(routePatientId);
-                const upcomingList = response?.data?.data;
-                setUpcomingVisits(Array.isArray(upcomingList) ? upcomingList : []);
-            } catch (error) {
-                console.error('fetchUpcomingVisit error =>', error?.message || error);
-            } finally {
-                setUpcomingLoading(false);
-            }
-        };
-
-        const fetchHistoryVisits = async () => {
-            try {
-                const response = await patientsService.historyAppointment(routePatientId);
-                const historyList = response?.data?.data;
-                setHistoryVisits(Array.isArray(historyList) ? historyList : []);
-            } catch (error) {
-                console.error('fetchHistoryVisits error =>', error?.message || error);
-            } finally {
-                setHistoryLoading(false);
-            }
-        };
-
-        fetchPatientHeader();
-        fetchUpcomingVisit();
-        fetchHistoryVisits();
+    useEffect(() => {
+        if (!routePatientId) return;
+        refreshPatientData();
     }, [routePatientId]);
 
     const filteredCodes = useMemo(() => {
@@ -459,14 +471,14 @@ export default function PatientDetail() {
                                     )}
                                 </div>
                             </div>
-                            <p className="text-sm text-gray-500 font-medium mt-1">
+                            <p className="text-sm text-gray-500 font-medium mt-1 flex gap-2">
                                 {patientLoading
                                     ? 'Fetching patient details...'
                                     : (
                                         <>
                                             Patients ID: {patientData.member_id || 'N/A'}
                                             {/* {routePatientId ? ` • Route: ${routePatientId}` : ''} */}
-                                            • DOB: {patientData.dob || 'N/A'}
+                                            <span className="text-gray-500">• DOB: {patientData.dob || 'N/A'}</span>
                                         </>
                                     )}
                             </p>
@@ -536,7 +548,7 @@ export default function PatientDetail() {
                                             <span className="font-bold text-sm uppercase tracking-wider">Upcoming Visit</span>
                                         </div>
                                         <Badge color={upcomingLoading ? 'gray' : 'blue'}>
-                                            {upcomingLoading ? 'Loading...' : `${upcomingVisits.length} Visits`}
+                                            {upcomingLoading ? 'Loading...' : `Confirmed`}
                                         </Badge>
                                     </div>
                                     <div className="p-6 space-y-4">
@@ -569,13 +581,7 @@ export default function PatientDetail() {
                                                 </div>
                                             </div>
                                         ))}
-                                        <button
-                                            type="button"
-                                            disabled={upcomingLoading || !hasUpcomingVisits}
-                                            className="w-full py-2.5 bg-[var(--primary-light)] text-[color:var(--primary)] rounded-xl text-sm font-bold hover:brightness-[0.97] transition-colors flex items-center justify-center gap-2"
-                                        >
-                                            Reschedule <ArrowRight size={16} />
-                                        </button>
+                                        <Link to={`/calendar`} className="flex items-center gap-2 w-full py-2.5 bg-[var(--primary-light)] text-[color:var(--primary)] rounded-xl text-sm font-bold hover:brightness-[0.97] transition-colors flex items-center justify-center gap-2"><span>Reschedule</span><ArrowRight size={16} /></Link>
                                     </div>
                                 </div>
                             </div>
@@ -692,8 +698,8 @@ export default function PatientDetail() {
                                         key={label}
                                         onClick={() => setInsuranceSubTab(idx)}
                                         className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${insuranceSubTab === idx
-                                                ? 'bg-[var(--primary)] text-white border-[var(--primary)] shadow-md shadow-[0_6px_20px_-6px_var(--primary-light)]'
-                                                : 'bg-white text-gray-500 border-gray-100 hover:border-[var(--primary-light)] hover:text-[color:var(--primary)]'
+                                            ? 'bg-[var(--primary)] text-white border-[var(--primary)] shadow-md shadow-[0_6px_20px_-6px_var(--primary-light)]'
+                                            : 'bg-white text-gray-500 border-gray-100 hover:border-[var(--primary-light)] hover:text-[color:var(--primary)]'
                                             }`}
                                     >
                                         {label}
@@ -859,8 +865,8 @@ export default function PatientDetail() {
                                                     key={cat}
                                                     onClick={() => setCodeFilter(cat)}
                                                     className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${codeFilter === cat
-                                                            ? 'bg-[var(--primary-light)] text-[color:var(--primary-dark)]'
-                                                            : 'text-gray-400 hover:bg-gray-50'
+                                                        ? 'bg-[var(--primary-light)] text-[color:var(--primary-dark)]'
+                                                        : 'text-gray-400 hover:bg-gray-50'
                                                         }`}
                                                 >
                                                     {cat}
@@ -1000,6 +1006,7 @@ export default function PatientDetail() {
                     onClose={() => {
                         setIsModalOpen(false);
                         setEditingPatient(null);
+                        refreshPatientData();
                     }}
                     onSave={handleSavePatient}
                     patient={editingPatient}
