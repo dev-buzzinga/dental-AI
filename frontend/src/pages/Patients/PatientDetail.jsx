@@ -1,376 +1,742 @@
-import { useState, useEffect, useContext, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '../../config/supabase';
-import { AuthContext } from '../../context/AuthContext';
-import { useCall } from '../../context/CallContext';
-import { useToast } from '../../components/Toast/Toast';
-import AddAppointmentModal from '../../components/Patients/AddAppointmentModal';
-import PatientModal from '../../components/Patients/PatientModal';
-import '../../styles/Patients.css';
+import { useState, useMemo } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { 
+  User, 
+  Phone, 
+  Mail, 
+  Calendar, 
+  Clock, 
+  Stethoscope, 
+  ShieldCheck, 
+  FileText, 
+  History, 
+  ChevronRight, 
+  Search, 
+  Filter, 
+  CheckCircle2, 
+  XCircle, 
+  AlertCircle,
+  Info,
+  ArrowRight,
+  Printer,
+  Download,
+  MoreVertical,
+  ArrowLeft,
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
-const PatientDetail = () => {
-    const { id } = useParams();
-    const navigate = useNavigate();
-    const { user } = useContext(AuthContext);
-    const { makeCall } = useCall();
-    const [patient, setPatient] = useState(null);
-    const [appointments, setAppointments] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [isPatientModalOpen, setIsPatientModalOpen] = useState(false);
-    const [editingAppointment, setEditingAppointment] = useState(null);
-    const showToast = useToast();
+// --- Demo data (UI only; connect to DB in next step) ---
 
-    const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 5;
-
-    useEffect(() => {
-        if (user && id) {
-            fetchPatientData();
-        }
-    }, []);
-
-    const fetchPatientData = async () => {
-        try {
-            setLoading(true);
-            // Fetch Patient Info
-            const { data: pData, error: pError } = await supabase
-                .from('patients')
-                .select('*')
-                .eq('id', id)
-                .single();
-            if (pError) throw pError;
-            setPatient(pData);
-
-            const { data: aData, error: aError } = await supabase
-                .from('patients_appointment_history')
-                .select(`
-                    *,
-                    doctors:doctor_id (name)
-                `)
-                .eq('patient_id', id)
-                .order('date', { ascending: false });
-
-            if (aError && aError.code !== 'PGRST116') { // Handle "no rows" differently if needed
-                // Check if table exists error? 
-                console.error(aError);
-            }
-            setAppointments(aData || []);
-        } catch (error) {
-            showToast(error.message, 'error');
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleBack = () => {
-        navigate('/patients');
-    };
-
-    const handleEditPatient = () => {
-        setIsPatientModalOpen(true);
-    };
-
-    const handleCallPatient = () => {
-        if (!patient?.phone) {
-            showToast('No phone number available for this patient', 'error');
-            return;
-        }
-        console.log('📞 Calling patient:', patient.name, patient.phone);
-        makeCall(patient.phone);
-    };
-
-    const handleSavePatientDetails = async (formData) => {
-        try {
-            const dataToUpdate = { ...formData };
-            if (dataToUpdate.next_appointment == "") {
-                delete dataToUpdate.next_appointment;
-            }
-
-            const { error } = await supabase
-                .from('patients')
-                .update(dataToUpdate)
-                .eq('id', id);
-
-            if (error) throw error;
-            showToast("Patient updated successfully!", "success");
-            setIsPatientModalOpen(false);
-            fetchPatientData(); // Refresh page data
-        } catch (error) {
-            showToast(error.message, 'error');
-        }
-    };
-
-    const handleEditAppointment = (app) => {
-        setEditingAppointment(app);
-        setIsModalOpen(true);
-    };
-
-    const handleSaveAppointment = async (appointmentData) => {
-        try {
-            if (appointmentData.id) {
-                // Update existing
-                const { error } = await supabase
-                    .from('patients_appointment_history')
-                    .update({
-                        doctor_id: appointmentData.doctor_id,
-                        purpose: appointmentData.purpose,
-                        date: appointmentData.date,
-                        status: appointmentData.status
-                    })
-                    .eq('id', appointmentData.id);
-                if (error) throw error;
-                showToast("Appointment updated successfully", "success");
-            } else {
-                // Insert new
-                const { error } = await supabase
-                    .from('patients_appointment_history')
-                    .insert({ ...appointmentData, patient_id: id });
-
-                if (error) throw error;
-                showToast("Appointment added successfully", "success");
-            }
-            setEditingAppointment(null);
-            fetchPatientData(); // Refresh list
-        } catch (error) {
-            showToast(error.message, 'error');
-        }
-    };
-
-    // Sort by date descending (newest first), then paginate
-    const sortedAppointments = useMemo(
-        () =>
-            [...appointments].sort(
-                (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
-            ),
-        [appointments]
-    );
-
-    const indexOfLastItem = currentPage * itemsPerPage;
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentAppointments = sortedAppointments.slice(indexOfFirstItem, indexOfLastItem);
-    const totalPages = Math.ceil(sortedAppointments.length / itemsPerPage);
-
-    const formatDateBlock = (dateStr) => {
-        const date = new Date(dateStr);
-        const dayName = date.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-        const monthName = date.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-        const dayNum = date.getDate();
-        return { dayName, dayNum, monthName };
-    };
-
-    const getBannerDates = () => {
-        const formatDate = (dateStr) => {
-            if (!dateStr) return '—';
-            return new Date(dateStr).toLocaleDateString('en-US', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric'
-            });
-        };
-
-        const now = new Date();
-        const pastAppointments = (appointments || [])
-            .filter(a => new Date(a.date) < now)
-            .sort((a, b) => new Date(b.date) - new Date(a.date));
-
-        const futureAppointments = (appointments || [])
-            .filter(a => new Date(a.date) >= now)
-            .sort((a, b) => new Date(a.date) - new Date(b.date));
-
-        let nextVisitValue = 'None';
-        if (futureAppointments.length > 0) {
-            nextVisitValue = formatDate(futureAppointments[0].date);
-        } else if (patient && patient.next_appointment) {
-            nextVisitValue = formatDate(patient.next_appointment);
-        } else if (appointments && appointments.length > 0) {
-            nextVisitValue = 'Not scheduled';
-        }
-
-        let lastVisitValue = 'No history';
-        if (pastAppointments.length > 0) {
-            lastVisitValue = formatDate(pastAppointments[0].date);
-        } else if (appointments && appointments.length > 0) {
-            lastVisitValue = 'New Patient';
-        }
-
-        return {
-            lastVisit: lastVisitValue,
-            nextVisit: nextVisitValue
-        };
-    };
-
-    const { lastVisit, nextVisit } = getBannerDates();
-
-    if (loading) {
-        return (
-            <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                <i className="fas fa-spinner fa-spin" style={{ fontSize: '2rem', marginBottom: '1rem' }} />
-                <p>Loading patient details...</p>
-            </div>
-        );
-    }
-
-    if (!patient) return <div style={{ padding: '2rem' }}>Patient not found</div>;
-
-    return (
-        <div className="patient-detail custom-scrollbar">
-            <button className="patient-detail-back" onClick={handleBack}>
-                <i className="fas fa-arrow-left" /> Back to Patients
-            </button>
-
-            <div className="patient-detail-banner">
-                <div className="banner-main">
-                    <div className="patient-detail-avatar">{patient.name.charAt(0)}</div>
-                    <div>
-                        <div className="patient-detail-name">{patient.name}</div>
-                        <div className="patient-type-tag">Patient</div>
-                    </div>
-                </div>
-
-                <div className="banner-info-grid">
-                    <div className="banner-section">
-                        <div className="banner-label">Phone</div>
-                        <div className="banner-value">{patient.phone}</div>
-                    </div>
-                    <div className="banner-section">
-                        <div className="banner-label">Email</div>
-                        <div className="banner-value">{patient.email}</div>
-                    </div>
-                    <div className="banner-section">
-                        <div className="banner-label">Next Appointment</div>
-                        <div className="banner-value">{nextVisit}</div>
-                    </div>
-                </div>
-
-                <div className="patient-detail-actions">
-                    <button className="btn-outline" onClick={handleCallPatient}>
-                        <i className="fas fa-phone" /> Call
-                    </button>
-                    <button className="btn-outline"><i className="fas fa-message" /> SMS</button>
-                    <button className="btn-outline" onClick={handleEditPatient}>
-                        <i className="fas fa-edit" /> Edit
-                    </button>
-                    <button className="btn-primary" onClick={() => { setEditingAppointment(null); setIsModalOpen(true); }}>
-                        <i className="fas fa-plus" /> Add Appointment
-                    </button>
-                </div>
-            </div>
-
-            <div className="patient-detail-grid">
-                {/* Appointment History - Left Side (1.8fr) */}
-                <div className="patient-info-card">
-                    <div className="patient-info-card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                        <div className="patient-info-card-title" style={{ marginBottom: 0 }}>
-                            <i className="fas fa-calendar-check" /> Appointment History
-                        </div>
-                    </div>
-
-                    <div className="appointment-list-modern">
-                        {currentAppointments.length === 0 ? (
-                            <p style={{ color: 'var(--text-secondary)', fontSize: '0.875rem', textAlign: 'center', padding: '2rem' }}>
-                                No appointments found.
-                            </p>
-                        ) : (
-                            <>
-                                {currentAppointments.map((app) => {
-                                    const { dayName, dayNum, monthName } = formatDateBlock(app.date);
-                                    return (
-                                        <div key={app.id} className="appointment-item-card">
-                                            <div className="appointment-date-block">
-                                                <span className="appt-day-name">{dayName}</span>
-                                                <span className="appt-day-num">{dayNum}</span>
-                                                <span className="appt-month-name">{monthName}</span>
-                                            </div>
-                                            <div className="appointment-info-main">
-                                                <div className="appointment-purpose">{app.purpose}</div>
-                                                <div className="appointment-doctor-tag">
-                                                    <div className="doctor-initial-circle">
-                                                        {app.doctors?.name?.charAt(0) || 'D'}
-                                                    </div>
-                                                    Dr. {app.doctors?.name || 'Unknown'}
-                                                </div>
-                                            </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                                <span className={`status-pill status-${app.status?.toLowerCase().replace(' ', '-')}`}>
-                                                    {app.status}
-                                                </span>
-                                                <button
-                                                    className="appt-edit-btn"
-                                                    onClick={() => handleEditAppointment(app)}
-                                                    title="Edit Appointment"
-                                                >
-                                                    <i className="fas fa-edit" />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-
-                                {totalPages > 1 && (
-                                    <div className="pagination-controls">
-                                        <button
-                                            className="pagination-btn"
-                                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                                            disabled={currentPage === 1}
-                                        >
-                                            <i className="fas fa-chevron-left" />
-                                        </button>
-                                        <span className="pagination-info">
-                                            Page {currentPage} of {totalPages}
-                                        </span>
-                                        <button
-                                            className="pagination-btn"
-                                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                                            disabled={currentPage === totalPages}
-                                        >
-                                            <i className="fas fa-chevron-right" />
-                                        </button>
-                                    </div>
-                                )}
-                            </>
-                        )}
-                    </div>
-                </div>
-
-                {/* Patient Summary - Right Side (1fr) */}
-                <div className="patient-info-card">
-                    <div className="patient-info-card-title">
-                        <i className="fas fa-user" /> Patient Summary
-                    </div>
-                    {[
-                        ['DOB', patient.dob],
-                        ['Gender', patient.gender],
-                        ['Insurance', patient.insurance || '—'],
-                        ['Member ID', patient.member_id || '—'],
-                    ].map(([label, val]) => (
-                        <div key={label} className="patient-info-row">
-                            <span className="patient-info-label">{label}</span>
-                            <span className="patient-info-value" style={{ color: label === 'Outstanding Balance' ? '#ef4444' : 'inherit' }}>
-                                {val}
-                            </span>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            <AddAppointmentModal
-                isOpen={isModalOpen}
-                onClose={() => { setIsModalOpen(false); setEditingAppointment(null); }}
-                onSave={handleSaveAppointment}
-                patientId={id}
-                userId={user.id}
-                appointment={editingAppointment}
-            />
-
-            <PatientModal
-                isOpen={isPatientModalOpen}
-                onClose={() => setIsPatientModalOpen(false)}
-                onSave={handleSavePatientDetails}
-                patient={patient}
-            />
-        </div>
-    );
+const PATIENT_DATA = {
+  id: 'P-10294',
+  name: 'Sarah Montgomery',
+  phone: '(555) 123-4567',
+  email: 'sarah.m@example.com',
+  dob: '1988-05-14',
+  ssn: 'XXX-XX-8842',
+  treatmentType: 'Invisalign / Cosmetic',
+  assignedDoctor: 'Dr. James Wilson',
+  status: 'Active',
+  insuranceVerified: true,
 };
 
-export default PatientDetail;
+const UPCOMING_VISIT = {
+  id: 'V-992',
+  date: '2026-04-12',
+  time: '10:30 AM',
+  treatment: 'Invisalign Adjustment',
+  doctor: 'Dr. James Wilson',
+  status: 'Confirmed',
+};
+
+const HISTORY = [
+  { id: 'H-001', date: '2026-01-15', time: '09:00 AM', treatment: 'Routine Cleaning', doctor: 'Dr. Sarah Chen', status: 'Completed' },
+  { id: 'H-002', date: '2025-11-20', time: '02:30 PM', treatment: 'Initial Consultation', doctor: 'Dr. James Wilson', status: 'Completed' },
+  { id: 'H-003', date: '2025-10-05', time: '11:15 AM', treatment: 'X-Ray & Exam', doctor: 'Dr. Sarah Chen', status: 'Completed' },
+];
+
+const INSURANCE_PLAN = {
+  subscriberName: 'Sarah Montgomery',
+  ssnMasked: 'XXX-XX-8842',
+  memberId: 'DELTA-9928374',
+  dob: '1988-05-14',
+  company: 'Delta Dental PPO',
+  phone: '1-800-DELTA-D',
+  groupName: 'TechCorp Global Benefits',
+  groupNumber: 'GRP-88271',
+  payerId: '60061',
+  effectiveDate: '2025-01-01',
+  emailFax: 'claims@deltadental.com',
+  timelyFiling: '12 months from DOS',
+};
+
+const COVERAGE_DETAILS = {
+  networkStatus: 'In-Network',
+  feeSchedule: 'PPO',
+  planYearType: 'Calendar Year',
+  planYearStart: '2026-01-01',
+  planYearEnd: '2026-12-31',
+  yearlyMax: 2500,
+  yearlyMaxUsed: 850,
+  deductibleIndividual: 50,
+  deductibleIndividualMet: 50,
+  deductibleFamily: 150,
+  deductibleFamilyMet: 100,
+  coverageType: 'Employee + Family',
+  dependentAgeLimit: 26,
+  cobRule: 'Standard',
+  waitingPeriod: { has: false, details: 'None' },
+  missingToothClause: { has: true, details: 'Applies to teeth missing prior to effective date' },
+  poBox: 'P.O. Box 9120, Farmington Hills, MI 48333',
+};
+
+const COVERAGE_CATEGORIES = [
+  { category: 'Preventive/Perio', percentage: 100, deductibleApplies: false, restorative: false, endo: false, perio: true, oralSurgery: false },
+  { category: 'Basic', percentage: 80, deductibleApplies: true, restorative: true, endo: true, perio: true, oralSurgery: true },
+  { category: 'Major', percentage: 50, deductibleApplies: true, restorative: true, endo: true, perio: true, oralSurgery: true },
+  { 
+    category: 'Orthodontic', 
+    percentage: 50, 
+    deductibleApplies: false, 
+    restorative: false, 
+    endo: false, 
+    perio: false, 
+    oralSurgery: false,
+    orthoDetails: {
+      codes: ['D8080', 'D8090'],
+      lifetimeMax: 2000,
+      ageLimit: 19,
+      workInProgress: true,
+      paymentFrequency: 'Monthly'
+    }
+  },
+];
+
+const PROCEDURE_CODES = [
+  { code: 'D0120', description: 'Periodic Oral Evaluation', category: 'Diagnostic', frequency: '2x per year', interval: '6 months', percentage: 100, deductibleApplies: false, covered: true, txSameDay: true, notes: 'Includes bitewings' },
+  { code: 'D0150', description: 'Comprehensive Oral Eval', category: 'Diagnostic', frequency: '1x per 3 years', interval: '36 months', percentage: 100, deductibleApplies: false, covered: true, txSameDay: true, notes: 'New patients only' },
+  { code: 'D0210', description: 'Intraoral - Complete Series', category: 'Diagnostic', frequency: '1x per 5 years', interval: '60 months', percentage: 100, deductibleApplies: false, covered: true, txSameDay: true, notes: 'FMX' },
+  { code: 'D1110', description: 'Prophylaxis - Adult', category: 'Preventive', frequency: '2x per year', interval: '6 months', percentage: 100, deductibleApplies: false, covered: true, txSameDay: true, notes: 'Standard cleaning' },
+  { code: 'D1206', description: 'Topical Fluoride Varnish', category: 'Preventive', frequency: '2x per year', interval: '6 months', percentage: 100, deductibleApplies: false, covered: true, txSameDay: true, notes: 'Up to age 19' },
+  { code: 'D1351', description: 'Sealant - Per Tooth', category: 'Preventive', frequency: '1x per lifetime', interval: 'N/A', percentage: 100, deductibleApplies: false, covered: true, txSameDay: true, notes: 'Molars only' },
+  { code: 'D2140', description: 'Amalgam - 1 Surface', category: 'Restorative', frequency: 'N/A', interval: 'N/A', percentage: 80, deductibleApplies: true, covered: true, txSameDay: true, notes: 'Silver filling' },
+  { code: 'D2330', description: 'Resin-Based Composite - 1 Surf', category: 'Restorative', frequency: 'N/A', interval: 'N/A', percentage: 80, deductibleApplies: true, covered: true, txSameDay: true, notes: 'Anterior teeth' },
+  { code: 'D2391', description: 'Resin-Based Composite - 1 Surf', category: 'Restorative', frequency: 'N/A', interval: 'N/A', percentage: 80, deductibleApplies: true, covered: true, txSameDay: true, notes: 'Posterior teeth' },
+  { code: 'D2740', description: 'Crown - Porcelain/Ceramic', category: 'Restorative', frequency: '1x per 7 years', interval: '84 months', percentage: 50, deductibleApplies: true, covered: true, txSameDay: false, notes: 'High strength' },
+  { code: 'D3310', description: 'Endodontic Therapy - Anterior', category: 'Endodontics', frequency: '1x per tooth', interval: 'N/A', percentage: 80, deductibleApplies: true, covered: true, txSameDay: false, notes: 'Root canal' },
+  { code: 'D3330', description: 'Endodontic Therapy - Molar', category: 'Endodontics', frequency: '1x per tooth', interval: 'N/A', percentage: 80, deductibleApplies: true, covered: true, txSameDay: false, notes: 'Root canal' },
+  { code: 'D4341', description: 'Perio Scaling & Root Planing', category: 'Periodontics', frequency: '1x per 2 years', interval: '24 months', percentage: 80, deductibleApplies: true, covered: true, txSameDay: false, notes: 'Deep cleaning' },
+  { code: 'D4910', description: 'Periodontal Maintenance', category: 'Periodontics', frequency: '4x per year', interval: '3 months', percentage: 100, deductibleApplies: false, covered: true, txSameDay: true, notes: 'Following SRP' },
+  { code: 'D5110', description: 'Complete Denture - Maxillary', category: 'Prosthodontics', frequency: '1x per 7 years', interval: '84 months', percentage: 50, deductibleApplies: true, covered: true, txSameDay: false, notes: 'Upper' },
+  { code: 'D6010', description: 'Surgical Placement Implant', category: 'Prosthodontics', frequency: '1x per lifetime', interval: 'N/A', percentage: 50, deductibleApplies: true, covered: true, txSameDay: false, notes: 'Titanium' },
+  { code: 'D7140', description: 'Extraction - Erupted Tooth', category: 'Oral Surgery', frequency: 'N/A', interval: 'N/A', percentage: 80, deductibleApplies: true, covered: true, txSameDay: true, notes: 'Simple' },
+  { code: 'D7210', description: 'Surgical Extraction', category: 'Oral Surgery', frequency: 'N/A', interval: 'N/A', percentage: 80, deductibleApplies: true, covered: true, txSameDay: false, notes: 'Complex' },
+  { code: 'D8080', description: 'Comprehensive Orthodontic', category: 'Orthodontics', frequency: '1x per lifetime', interval: 'N/A', percentage: 50, deductibleApplies: false, covered: true, txSameDay: false, notes: 'Adolescent' },
+  { code: 'D8090', description: 'Comprehensive Orthodontic', category: 'Orthodontics', frequency: '1x per lifetime', interval: 'N/A', percentage: 50, deductibleApplies: false, covered: true, txSameDay: false, notes: 'Adult' },
+  { code: 'D9222', description: 'Deep Sedation/Anesthesia', category: 'Anesthesia', frequency: 'N/A', interval: 'N/A', percentage: 80, deductibleApplies: true, covered: true, txSameDay: true, notes: 'First 15 min' },
+  { code: 'D9999', description: 'Unspecified Procedure', category: 'Other', frequency: 'N/A', interval: 'N/A', percentage: 0, deductibleApplies: false, covered: false, txSameDay: false, notes: 'Requires review' },
+  { code: 'D0330', description: 'Panoramic Radiographic Image', category: 'Diagnostic', frequency: '1x per 3 years', interval: '36 months', percentage: 100, deductibleApplies: false, covered: true, txSameDay: true, notes: 'Pano' },
+  { code: 'D0274', description: 'Bitewings - Four Images', category: 'Diagnostic', frequency: '1x per year', interval: '12 months', percentage: 100, deductibleApplies: false, covered: true, txSameDay: true, notes: 'BWX' },
+  { code: 'D2750', description: 'Crown - Porcelain to Metal', category: 'Restorative', frequency: '1x per 7 years', interval: '84 months', percentage: 50, deductibleApplies: true, covered: true, txSameDay: false, notes: 'Standard crown' },
+];
+
+const COVERED_MEMBERS = [
+  { name: 'Sarah Montgomery', dob: '1988-05-14', prophy: '2026-01-15', fmd: 'N/A', srp: '2024-06-10', fmx: '2023-01-10', pano: '2025-05-20', bwx: '2026-01-15', regularExam: '2026-01-15', emergencyExam: 'N/A' },
+  { name: 'Michael Montgomery', dob: '1985-09-22', prophy: '2025-12-01', fmd: 'N/A', srp: 'N/A', fmx: '2022-08-15', pano: '2024-11-10', bwx: '2025-12-01', regularExam: '2025-12-01', emergencyExam: '2026-02-14' },
+  { name: 'Lily Montgomery', dob: '2015-03-12', prophy: '2025-11-10', fmd: 'N/A', srp: 'N/A', fmx: 'N/A', pano: '2025-11-10', bwx: '2025-11-10', regularExam: '2025-11-10', emergencyExam: 'N/A' },
+];
+
+const VERIFICATION_LOG = {
+  verifiedBy: 'Emily Parker (Front Desk)',
+  dateVerified: '2026-03-25',
+  referenceNumber: 'REF-99283-XYZ',
+  notes: 'Spoke with agent Mark. Confirmed that Invisalign is covered under Orthodontic benefits. Waiting period waived for new group. Missing tooth clause applies. FMX and Pano are interchangeable for frequency limits.',
+};
+
+// --- Components ---
+
+const Badge = ({ children, color }) => {
+  const colors = {
+    green: 'bg-green-100 text-green-700 border-green-200',
+    red: 'bg-red-100 text-red-700 border-red-200',
+    blue: 'bg-[var(--primary-light)] text-[color:var(--primary)] border-gray-200/80',
+    amber: 'bg-amber-100 text-amber-700 border-amber-200',
+    gray: 'bg-gray-100 text-gray-700 border-gray-200',
+  };
+  return (
+    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${colors[color]}`}>
+      {children}
+    </span>
+  );
+};
+
+const ProgressBar = ({ value, max, label, color = 'bg-[var(--primary)]' }) => {
+  const percentage = Math.min(Math.round((value / max) * 100), 100);
+  return (
+    <div className="space-y-1.5">
+      <div className="flex justify-between text-xs font-medium text-gray-600">
+        <span>{label}</span>
+        <span>${value.toLocaleString()} / ${max.toLocaleString()} ({percentage}%)</span>
+      </div>
+      <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden border border-gray-200">
+        <motion.div 
+          initial={{ width: 0 }}
+          animate={{ width: `${percentage}%` }}
+          transition={{ duration: 1, ease: "easeOut" }}
+          className={`h-full ${color}`}
+        />
+      </div>
+    </div>
+  );
+};
+
+const SectionHeader = ({ title, icon: Icon }) => (
+  <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">
+    <div className="p-1.5 bg-[var(--primary-light)] rounded-lg text-[color:var(--primary)]">
+      <Icon size={18} />
+    </div>
+    <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider">{title}</h3>
+  </div>
+);
+
+const InfoItem = ({ label, value, icon: Icon }) => (
+  <div className="flex flex-col gap-0.5">
+    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{label}</span>
+    <div className="flex items-center gap-1.5">
+      {Icon && <Icon size={14} className="text-[color:var(--primary)] opacity-75" />}
+      <span className="text-sm font-medium text-gray-700">{value || 'N/A'}</span>
+    </div>
+  </div>
+);
+
+export default function PatientDetail() {
+  const navigate = useNavigate();
+  const { id: routePatientId } = useParams();
+  const [activeTab, setActiveTab] = useState('overview');
+  const [insuranceSubTab, setInsuranceSubTab] = useState(0);
+  const [codeFilter, setCodeFilter] = useState('All');
+
+  const filteredCodes = useMemo(() => {
+    if (codeFilter === 'All') return PROCEDURE_CODES;
+    return PROCEDURE_CODES.filter(code => code.category === codeFilter);
+  }, [codeFilter]);
+
+  const categories = ['All', ...new Set(PROCEDURE_CODES.map(c => c.category))];
+
+  const getPercentageColor = (pct) => {
+    if (pct === 100) return 'text-green-600';
+    if (pct >= 80) return 'text-blue-600';
+    if (pct >= 50) return 'text-amber-600';
+    return 'text-red-600';
+  };
+
+  return (
+    <div className="min-h-screen bg-[#F8F9FC] text-gray-900 font-sans px-3 py-4 md:px-6 md:py-6 lg:px-8">
+      <div className="w-full max-w-none mx-auto space-y-6">
+        <button
+          type="button"
+          onClick={() => navigate('/patients')}
+          className="inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--primary)] hover:text-[color:var(--primary-dark)] transition-colors"
+        >
+          <ArrowLeft size={18} />
+          Back to Patients
+        </button>
+
+        {/* --- Header / Patient Summary --- */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div className="flex items-center gap-5">
+            <div className="w-16 h-16 bg-[var(--primary-light)] rounded-2xl flex items-center justify-center text-[color:var(--primary)] shadow-inner">
+              <User size={32} strokeWidth={1.5} />
+            </div>
+            <div>
+              <div className="flex items-center gap-3">
+                <h1 className="text-xl font-bold text-gray-800">{PATIENT_DATA.name}</h1>
+                <div className="flex gap-2">
+                  <Badge color="green">{PATIENT_DATA.status}</Badge>
+                  {PATIENT_DATA.insuranceVerified && (
+                    <Badge color="blue">Insurance Verified</Badge>
+                  )}
+                </div>
+              </div>
+              <p className="text-sm text-gray-500 font-medium mt-1">
+                Demo ID: {PATIENT_DATA.id}
+                {routePatientId ? ` • Route: ${routePatientId}` : ''} • DOB: {PATIENT_DATA.dob}
+              </p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 w-full md:w-auto">
+            <InfoItem label="Phone" value={PATIENT_DATA.phone} icon={Phone} />
+            <InfoItem label="Email" value={PATIENT_DATA.email} icon={Mail} />
+            <InfoItem label="Treatment" value={PATIENT_DATA.treatmentType} icon={Stethoscope} />
+            <InfoItem label="Assigned Doctor" value={PATIENT_DATA.assignedDoctor} icon={User} />
+          </div>
+
+          <div className="flex gap-2 w-full md:w-auto">
+            <button
+              type="button"
+              className="flex-1 md:flex-none px-4 py-2 bg-[var(--primary)] text-white rounded-xl text-sm font-semibold hover:bg-[var(--primary-dark)] transition-colors shadow-lg shadow-[0_10px_24px_-6px_var(--primary-light)]"
+            >
+              Edit Patient
+            </button>
+            {/* <button className="p-2 bg-gray-50 text-gray-400 rounded-xl hover:bg-gray-100 transition-colors border border-gray-100">
+              <MoreVertical size={20} />
+            </button> */}
+          </div>
+        </div>
+
+        {/* --- Navigation Tabs --- */}
+        <div className="flex border-b border-gray-200 gap-8 px-2">
+          {[
+            { id: 'overview', label: 'Overview', icon: FileText },
+            { id: 'history', label: 'History Details', icon: History },
+            { id: 'insurance', label: 'Insurance Verification', icon: ShieldCheck },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 py-4 text-sm font-bold transition-all relative ${
+                activeTab === tab.id ? 'text-[color:var(--primary)]' : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              <tab.icon size={18} />
+              {tab.label}
+              {activeTab === tab.id && (
+                <motion.div 
+                  layoutId="activeTab"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-[var(--primary)] rounded-full" 
+                />
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* --- Main Content Area --- */}
+        <AnimatePresence mode="wait">
+          {activeTab === 'overview' && (
+            <motion.div 
+              key="overview"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+            >
+              {/* Upcoming Visit Panel */}
+              <div className="lg:col-span-1 lg:max-w-[25rem]">
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="bg-[var(--primary)] p-4 text-white flex justify-between items-center">
+                    <div className="flex items-center gap-2">
+                      <Calendar size={18} />
+                      <span className="font-bold text-sm uppercase tracking-wider">Upcoming Visit</span>
+                    </div>
+                    <Badge color="blue">{UPCOMING_VISIT.status}</Badge>
+                  </div>
+                  <div className="p-6 space-y-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 bg-gray-50 rounded-xl flex flex-col items-center justify-center border border-gray-100">
+                        <span className="text-[10px] font-bold text-[color:var(--primary)] uppercase">Apr</span>
+                        <span className="text-lg font-black text-gray-800 leading-none">12</span>
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-gray-800">{UPCOMING_VISIT.treatment}</h4>
+                        <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                          <Clock size={12} /> {UPCOMING_VISIT.time} • {UPCOMING_VISIT.doctor}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="w-full py-2.5 bg-[var(--primary-light)] text-[color:var(--primary)] rounded-xl text-sm font-bold hover:brightness-[0.97] transition-colors flex items-center justify-center gap-2"
+                    >
+                      Reschedule <ArrowRight size={16} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'history' && (
+            <motion.div 
+              key="history"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden"
+            >
+              <div className="p-6 flex justify-between items-center border-b border-gray-50">
+                <h3 className="font-bold text-gray-800">Visit History</h3>
+                <div className="flex gap-2">
+                  <button type="button" className="p-2 text-gray-400 hover:text-[color:var(--primary)] transition-colors"><Printer size={18} /></button>
+                  <button type="button" className="p-2 text-gray-400 hover:text-[color:var(--primary)] transition-colors"><Download size={18} /></button>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left">
+                  <thead>
+                    <tr className="bg-gray-50/50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                      <th className="px-6 py-4">S.No</th>
+                      <th className="px-6 py-4">Assigned Doctor</th>
+                      <th className="px-6 py-4">Date & Time</th>
+                      <th className="px-6 py-4">Treatment</th>
+                      <th className="px-6 py-4">Status</th>
+                      <th className="px-6 py-4 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {HISTORY.map((visit, idx) => (
+                      <tr key={visit.id} className="hover:bg-gray-50/50 transition-colors group">
+                        <td className="px-6 py-4 text-sm text-gray-500 font-medium">{idx + 1}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-[var(--primary-light)] rounded-full flex items-center justify-center text-[color:var(--primary)] text-xs font-bold">
+                              {visit.doctor.split(' ').pop()?.charAt(0)}
+                            </div>
+                            <span className="text-sm font-semibold text-gray-700">{visit.doctor}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm font-medium text-gray-700">{visit.date}</div>
+                          <div className="text-[10px] text-gray-400">{visit.time}</div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-600">{visit.treatment}</td>
+                        <td className="px-6 py-4">
+                          <Badge color={visit.status === 'Completed' ? 'green' : 'amber'}>{visit.status}</Badge>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <button type="button" className="text-[color:var(--primary)] hover:text-[color:var(--primary-dark)] text-xs font-bold flex items-center gap-1 ml-auto">
+                            View Details <ChevronRight size={14} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'insurance' && (
+            <motion.div 
+              key="insurance"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-6"
+            >
+              {/* --- Insurance Sub-Navigation --- */}
+              <div className="flex flex-wrap gap-2 mb-2">
+                {['General Info', 'Coverage Details', 'Categories', 'Procedure Codes', 'Members', 'Log'].map((label, idx) => (
+                  <button
+                    key={label}
+                    onClick={() => setInsuranceSubTab(idx)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${
+                      insuranceSubTab === idx 
+                        ? 'bg-[var(--primary)] text-white border-[var(--primary)] shadow-md shadow-[0_6px_20px_-6px_var(--primary-light)]' 
+                        : 'bg-white text-gray-500 border-gray-100 hover:border-[var(--primary-light)] hover:text-[color:var(--primary)]'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              {/* --- Section 1: Patient & Plan Information --- */}
+              {insuranceSubTab === 0 && (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                  <SectionHeader title="Patient & Plan Information" icon={User} />
+                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8">
+                    <InfoItem label="Subscriber Name" value={INSURANCE_PLAN.subscriberName} />
+                    <InfoItem label="Social Security #" value={INSURANCE_PLAN.ssnMasked} />
+                    <InfoItem label="Member ID" value={INSURANCE_PLAN.memberId} />
+                    <InfoItem label="Date of Birth" value={INSURANCE_PLAN.dob} />
+                    <InfoItem label="Insurance Company" value={INSURANCE_PLAN.company} />
+                    <InfoItem label="Insurance Phone" value={INSURANCE_PLAN.phone} icon={Phone} />
+                    <InfoItem label="Group Name" value={INSURANCE_PLAN.groupName} />
+                    <InfoItem label="Group Number" value={INSURANCE_PLAN.groupNumber} />
+                    <InfoItem label="Payer ID" value={INSURANCE_PLAN.payerId} />
+                    <InfoItem label="Effective Date" value={INSURANCE_PLAN.effectiveDate} />
+                    <InfoItem label="Email / Fax" value={INSURANCE_PLAN.emailFax} icon={Mail} />
+                    <InfoItem label="Timely Filing" value={INSURANCE_PLAN.timelyFiling} />
+                  </div>
+                </div>
+              )}
+
+              {/* --- Section 2: Coverage Details --- */}
+              {insuranceSubTab === 1 && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                    <SectionHeader title="Plan Limits & Deductibles" icon={AlertCircle} />
+                    <div className="space-y-6">
+                      <ProgressBar 
+                        label="Yearly Maximum" 
+                        value={COVERAGE_DETAILS.yearlyMaxUsed} 
+                        max={COVERAGE_DETAILS.yearlyMax} 
+                      />
+                      <div className="grid grid-cols-2 gap-6">
+                        <ProgressBar 
+                          label="Individual Deductible" 
+                          value={COVERAGE_DETAILS.deductibleIndividualMet} 
+                          max={COVERAGE_DETAILS.deductibleIndividual} 
+                          color="bg-amber-500"
+                        />
+                        <ProgressBar 
+                          label="Family Deductible" 
+                          value={COVERAGE_DETAILS.deductibleFamilyMet} 
+                          max={COVERAGE_DETAILS.deductibleFamily} 
+                          color="bg-amber-500"
+                        />
+                      </div>
+                    </div>
+                    <div className="mt-8 grid grid-cols-2 gap-6 pt-6 border-t border-gray-50">
+                      <InfoItem label="Network Status" value={COVERAGE_DETAILS.networkStatus} />
+                      <InfoItem label="Fee Schedule" value={COVERAGE_DETAILS.feeSchedule} />
+                      <InfoItem label="Plan Year" value={`${COVERAGE_DETAILS.planYearType} (${COVERAGE_DETAILS.planYearStart} to ${COVERAGE_DETAILS.planYearEnd})`} />
+                      <InfoItem label="Coverage Type" value={COVERAGE_DETAILS.coverageType} />
+                    </div>
+                  </div>
+
+                  <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                    <SectionHeader title="Rules & Clauses" icon={Info} />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <InfoItem label="Dependent Age Limit" value={COVERAGE_DETAILS.dependentAgeLimit} />
+                      <InfoItem label="COB Rule" value={COVERAGE_DETAILS.cobRule} />
+                      <div className="col-span-full space-y-4">
+                        <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                          <div className={`p-1 rounded ${COVERAGE_DETAILS.waitingPeriod.has ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'}`}>
+                            {COVERAGE_DETAILS.waitingPeriod.has ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-bold text-gray-400 uppercase">Waiting Period</span>
+                            <p className="text-sm font-medium text-gray-700">{COVERAGE_DETAILS.waitingPeriod.details}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                          <div className={`p-1 rounded ${COVERAGE_DETAILS.missingToothClause.has ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'}`}>
+                            {COVERAGE_DETAILS.missingToothClause.has ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
+                          </div>
+                          <div>
+                            <span className="text-[10px] font-bold text-gray-400 uppercase">Missing Tooth Clause</span>
+                            <p className="text-sm font-medium text-gray-700">{COVERAGE_DETAILS.missingToothClause.details}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <InfoItem label="P.O. Box Address" value={COVERAGE_DETAILS.poBox} />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* --- Section 3: Coverage Categories --- */}
+              {insuranceSubTab === 2 && (
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    {COVERAGE_CATEGORIES.map((cat) => (
+                      <div key={cat.category} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
+                        <div className="flex justify-between items-start mb-4">
+                          <h4 className="font-bold text-gray-800">{cat.category}</h4>
+                          <span className={`text-2xl font-black ${getPercentageColor(cat.percentage)}`}>
+                            {cat.percentage}%
+                          </span>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-gray-400 font-medium">Deductible Applies</span>
+                            <span className={`font-bold ${cat.deductibleApplies ? 'text-amber-600' : 'text-green-600'}`}>
+                              {cat.deductibleApplies ? 'Yes' : 'No'}
+                            </span>
+                          </div>
+                          <div className="pt-3 border-t border-gray-50 grid grid-cols-2 gap-2">
+                            {[
+                              { label: 'Restorative', val: cat.restorative },
+                              { label: 'Endo', val: cat.endo },
+                              { label: 'Perio', val: cat.perio },
+                              { label: 'Oral Surgery', val: cat.oralSurgery },
+                            ].map(sub => (
+                              <div key={sub.label} className="flex items-center gap-1.5">
+                                {sub.val ? <CheckCircle2 size={12} className="text-green-500" /> : <XCircle size={12} className="text-gray-300" />}
+                                <span className="text-[10px] font-medium text-gray-600">{sub.label}</span>
+                              </div>
+                            ))}
+                          </div>
+                          {cat.orthoDetails && (
+                            <div className="mt-4 p-3 bg-[var(--primary-light)] rounded-xl space-y-2">
+                              <div className="flex justify-between text-[10px]">
+                                <span className="text-[color:var(--primary)] opacity-80 font-bold uppercase">Lifetime Max</span>
+                                <span className="text-[color:var(--primary-dark)] font-bold">${cat.orthoDetails.lifetimeMax}</span>
+                              </div>
+                              <div className="flex justify-between text-[10px]">
+                                <span className="text-[color:var(--primary)] opacity-80 font-bold uppercase">Age Limit</span>
+                                <span className="text-[color:var(--primary-dark)] font-bold">{cat.orthoDetails.ageLimit}</span>
+                              </div>
+                              <div className="flex justify-between text-[10px]">
+                                <span className="text-[color:var(--primary)] opacity-80 font-bold uppercase">Work in Progress</span>
+                                <span className="text-[color:var(--primary-dark)] font-bold">{cat.orthoDetails.workInProgress ? 'Yes' : 'No'}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* --- Section 4: Procedure Code Coverage --- */}
+              {insuranceSubTab === 3 && (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="p-6 border-b border-gray-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 bg-[var(--primary-light)] rounded-lg text-[color:var(--primary)]">
+                        <Search size={18} />
+                      </div>
+                      <h3 className="font-bold text-gray-800">Procedure Code Coverage</h3>
+                    </div>
+                    <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
+                      <Filter size={16} className="text-gray-400" />
+                      {categories.map(cat => (
+                        <button
+                          key={cat}
+                          onClick={() => setCodeFilter(cat)}
+                          className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            codeFilter === cat 
+                              ? 'bg-[var(--primary-light)] text-[color:var(--primary-dark)]' 
+                              : 'text-gray-400 hover:bg-gray-50'
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="bg-gray-50/50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                          <th className="px-6 py-4">CDT Code</th>
+                          <th className="px-6 py-4">Description</th>
+                          <th className="px-6 py-4">Frequency / Interval</th>
+                          <th className="px-6 py-4">Coverage</th>
+                          <th className="px-6 py-4">Status</th>
+                          <th className="px-6 py-4">Same Day</th>
+                          <th className="px-6 py-4">Notes</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {filteredCodes.map((code) => (
+                          <tr key={code.code} className="hover:bg-gray-50/50 transition-colors">
+                            <td className="px-6 py-4">
+                              <span className="text-sm font-bold text-[color:var(--primary)]">{code.code}</span>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-sm font-semibold text-gray-700">{code.description}</div>
+                              <div className="text-[10px] text-gray-400 font-medium">{code.category}</div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="text-xs font-medium text-gray-600">{code.frequency}</div>
+                              <div className="text-[10px] text-gray-400 italic">{code.interval}</div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className={`text-sm font-black ${getPercentageColor(code.percentage)}`}>
+                                {code.percentage}%
+                              </div>
+                              <div className="text-[10px] text-gray-400">
+                                {code.deductibleApplies ? 'Deductible Applies' : 'No Deductible'}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <Badge color={code.covered ? 'green' : 'red'}>
+                                {code.covered ? 'Covered' : 'Not Covered'}
+                              </Badge>
+                            </td>
+                            <td className="px-6 py-4">
+                              {code.txSameDay ? (
+                                <CheckCircle2 size={16} className="text-green-500" />
+                              ) : (
+                                <XCircle size={16} className="text-gray-300" />
+                              )}
+                            </td>
+                            <td className="px-6 py-4">
+                              <p className="text-xs text-gray-500 max-w-[200px] truncate hover:whitespace-normal transition-all" title={code.notes}>
+                                {code.notes}
+                              </p>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* --- Section 5: Covered Members Table --- */}
+              {insuranceSubTab === 4 && (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                  <div className="p-6 border-b border-gray-50">
+                    <SectionHeader title="Covered Members Service History" icon={User} />
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                      <thead>
+                        <tr className="bg-gray-50/50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                          <th className="px-6 py-4 sticky left-0 bg-gray-50/50">Name / DOB</th>
+                          <th className="px-6 py-4">Prophy</th>
+                          <th className="px-6 py-4">FMD</th>
+                          <th className="px-6 py-4">SRP</th>
+                          <th className="px-6 py-4">FMX</th>
+                          <th className="px-6 py-4">Pano</th>
+                          <th className="px-6 py-4">BWX</th>
+                          <th className="px-6 py-4">Regular Exam</th>
+                          <th className="px-6 py-4">Emergency</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-50">
+                        {COVERED_MEMBERS.map((member) => (
+                          <tr key={member.name} className="hover:bg-gray-50/50 transition-colors">
+                            <td className="px-6 py-4 sticky left-0 bg-white group-hover:bg-gray-50/50">
+                              <div className="text-sm font-bold text-gray-800">{member.name}</div>
+                              <div className="text-[10px] text-gray-400">{member.dob}</div>
+                            </td>
+                            {[
+                              member.prophy, member.fmd, member.srp, member.fmx, 
+                              member.pano, member.bwx, member.regularExam, member.emergencyExam
+                            ].map((date, i) => (
+                              <td key={i} className="px-6 py-4">
+                                <span className={`text-xs font-medium ${date === 'N/A' ? 'text-gray-300' : 'text-gray-600'}`}>
+                                  {date}
+                                </span>
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* --- Section 6: Verification Log --- */}
+              {insuranceSubTab === 5 && (
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                  <SectionHeader title="Verification Log" icon={ShieldCheck} />
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                    <InfoItem label="Verified By" value={VERIFICATION_LOG.verifiedBy} />
+                    <InfoItem label="Date Verified" value={VERIFICATION_LOG.dateVerified} />
+                    <InfoItem label="Reference Number" value={VERIFICATION_LOG.referenceNumber} />
+                  </div>
+                  <div className="space-y-2">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Verification Notes</span>
+                    <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 text-sm text-gray-600 leading-relaxed">
+                      {VERIFICATION_LOG.notes}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+        
+      </div>
+    </div>
+  );
+}
