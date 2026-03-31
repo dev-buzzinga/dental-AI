@@ -182,4 +182,4 @@ async function getPracticeTimezone(user_id) {
     }
 }
 
-export { findAvailableSlots };
+export { findAvailableSlots, getPracticeTimezone };

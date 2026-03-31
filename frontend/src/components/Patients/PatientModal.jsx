@@ -141,7 +141,7 @@ const PatientModal = ({ isOpen, onClose, onSave, patient = null }) => {
                                     required
                                 />
                             </div>
-                            <div className="form-group">
+                            {/* <div className="form-group">
                                 <label>Next Appointment</label>
                                 <input
                                     name="next_appointment"
@@ -149,7 +149,7 @@ const PatientModal = ({ isOpen, onClose, onSave, patient = null }) => {
                                     value={formData.next_appointment}
                                     onChange={handleChange}
                                 />
-                            </div>
+                            </div> */}
                         </div>
                     </div>
                     <div className="modal-footer">
