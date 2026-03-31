@@ -6,22 +6,16 @@ import {
     Mail,
     Calendar,
     Clock,
-    Stethoscope,
     ShieldCheck,
     FileText,
     History,
     ChevronRight,
-    Search,
-    Filter,
-    CheckCircle2,
-    XCircle,
     AlertCircle,
-    Info,
     ArrowRight,
     Printer,
     Download,
-    MoreVertical,
     ArrowLeft,
+    Save,
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { motion, AnimatePresence } from 'motion/react';
@@ -128,6 +122,47 @@ const VERIFICATION_LOG = {
     notes: 'Spoke with agent Mark. Confirmed that Invisalign is covered under Orthodontic benefits. Waiting period waived for new group. Missing tooth clause applies. FMX and Pano are interchangeable for frequency limits.',
 };
 
+const buildDefaultInsuranceForm = () => ({
+    subscriber_name: INSURANCE_PLAN.subscriberName || '',
+    ssn_masked: INSURANCE_PLAN.ssnMasked || '',
+    member_id: INSURANCE_PLAN.memberId || '',
+    dob: INSURANCE_PLAN.dob || '',
+    company: INSURANCE_PLAN.company || '',
+    phone: INSURANCE_PLAN.phone || '',
+    group_name: INSURANCE_PLAN.groupName || '',
+    group_number: INSURANCE_PLAN.groupNumber || '',
+    payer_id: INSURANCE_PLAN.payerId || '',
+    effective_date: INSURANCE_PLAN.effectiveDate || '',
+    email_fax: INSURANCE_PLAN.emailFax || '',
+    timely_filing: INSURANCE_PLAN.timelyFiling || '',
+    network_status: COVERAGE_DETAILS.networkStatus || '',
+    fee_schedule: COVERAGE_DETAILS.feeSchedule || '',
+    plan_year_type: COVERAGE_DETAILS.planYearType || '',
+    plan_year_start: COVERAGE_DETAILS.planYearStart || '',
+    plan_year_end: COVERAGE_DETAILS.planYearEnd || '',
+    yearly_max: COVERAGE_DETAILS.yearlyMax || 0,
+    yearly_max_used: COVERAGE_DETAILS.yearlyMaxUsed || 0,
+    deductible_individual: COVERAGE_DETAILS.deductibleIndividual || 0,
+    deductible_individual_met: COVERAGE_DETAILS.deductibleIndividualMet || 0,
+    deductible_family: COVERAGE_DETAILS.deductibleFamily || 0,
+    deductible_family_met: COVERAGE_DETAILS.deductibleFamilyMet || 0,
+    coverage_type: COVERAGE_DETAILS.coverageType || '',
+    dependent_age_limit: COVERAGE_DETAILS.dependentAgeLimit || '',
+    cob_rule: COVERAGE_DETAILS.cobRule || '',
+    waiting_period_has: Boolean(COVERAGE_DETAILS.waitingPeriod?.has),
+    waiting_period_details: COVERAGE_DETAILS.waitingPeriod?.details || '',
+    missing_tooth_clause_has: Boolean(COVERAGE_DETAILS.missingToothClause?.has),
+    missing_tooth_clause_details: COVERAGE_DETAILS.missingToothClause?.details || '',
+    po_box: COVERAGE_DETAILS.poBox || '',
+    verified_by: VERIFICATION_LOG.verifiedBy || '',
+    date_verified: VERIFICATION_LOG.dateVerified || '',
+    reference_number: VERIFICATION_LOG.referenceNumber || '',
+    verification_notes: VERIFICATION_LOG.notes || '',
+    coverage_categories: COVERAGE_CATEGORIES,
+    procedure_codes: PROCEDURE_CODES,
+    covered_members: COVERED_MEMBERS,
+});
+
 // --- Components ---
 
 const Badge = ({ children, color }) => {
@@ -184,6 +219,19 @@ const InfoItem = ({ label, value, icon: Icon }) => (
     </div>
 );
 
+const InsuranceInput = ({ label, value, onChange, type = 'text', placeholder }) => (
+    <label className="flex flex-col gap-1.5">
+        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{label}</span>
+        <input
+            type={type}
+            value={value ?? ''}
+            onChange={onChange}
+            placeholder={placeholder}
+            className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[var(--primary-light)] focus:border-[var(--primary)]"
+        />
+    </label>
+);
+
 export default function PatientDetail() {
     const navigate = useNavigate();
     const { id: routePatientId } = useParams();
@@ -207,6 +255,9 @@ export default function PatientDetail() {
     const [historyVisits, setHistoryVisits] = useState([]);
     const [historyLoading, setHistoryLoading] = useState(Boolean(routePatientId));
     const [historyPdfLoading, setHistoryPdfLoading] = useState(false);
+    const [insuranceData, setInsuranceData] = useState(buildDefaultInsuranceForm());
+    const [insuranceLoading, setInsuranceLoading] = useState(Boolean(routePatientId));
+    const [insuranceSaving, setInsuranceSaving] = useState(false);
     const [editingPatient, setEditingPatient] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const showToast = useToast();
@@ -406,16 +457,90 @@ export default function PatientDetail() {
         }
     };
 
+    const fetchInsuranceData = async () => {
+        if (!routePatientId) return;
+        try {
+            const response = await patientsService.getInsurance(routePatientId);
+            const apiInsurance = response?.data?.data;
+            if (!apiInsurance) return;
+            setInsuranceData((prev) => ({
+                ...prev,
+                ...apiInsurance,
+                coverage_categories: Array.isArray(apiInsurance.coverage_categories) ? apiInsurance.coverage_categories : prev.coverage_categories,
+                procedure_codes: Array.isArray(apiInsurance.procedure_codes) ? apiInsurance.procedure_codes : prev.procedure_codes,
+                covered_members: Array.isArray(apiInsurance.covered_members) ? apiInsurance.covered_members : prev.covered_members,
+            }));
+        } catch (error) {
+            console.error('fetchInsuranceData error =>', error?.message || error);
+        } finally {
+            setInsuranceLoading(false);
+        }
+    };
+
+    const updateInsuranceField = (field, value) => {
+        setInsuranceData((prev) => ({ ...prev, [field]: value }));
+    };
+
+    const updateInsuranceArrayItem = (arrayField, index, key, value) => {
+        setInsuranceData((prev) => ({
+            ...prev,
+            [arrayField]: (prev[arrayField] || []).map((item, idx) => idx === index ? { ...item, [key]: value } : item),
+        }));
+    };
+
+    const addInsuranceArrayItem = (arrayField, item) => {
+        setInsuranceData((prev) => ({
+            ...prev,
+            [arrayField]: [...(prev[arrayField] || []), item],
+        }));
+    };
+
+    const removeInsuranceArrayItem = (arrayField, index) => {
+        setInsuranceData((prev) => ({
+            ...prev,
+            [arrayField]: (prev[arrayField] || []).filter((_, idx) => idx !== index),
+        }));
+    };
+
+    const updateInsuranceNestedArrayItem = (arrayField, index, parentKey, key, value) => {
+        setInsuranceData((prev) => ({
+            ...prev,
+            [arrayField]: (prev[arrayField] || []).map((item, idx) => idx === index ? {
+                ...item,
+                [parentKey]: {
+                    ...(item[parentKey] || {}),
+                    [key]: value,
+                },
+            } : item),
+        }));
+    };
+
+    const handleSaveInsurance = async () => {
+        if (!routePatientId) return;
+        try {
+            setInsuranceSaving(true);
+            await patientsService.updateInsurance(routePatientId, insuranceData);
+            showToast('Insurance details updated successfully!', 'success');
+        } catch (error) {
+            console.error('handleSaveInsurance error =>', error);
+            showToast(error?.response?.data?.message || error.message || 'Failed to update insurance details', 'error');
+        } finally {
+            setInsuranceSaving(false);
+        }
+    };
+
     const refreshPatientData = async () => {
         if (!routePatientId) return;
         setPatientLoading(true);
         setUpcomingLoading(true);
         setHistoryLoading(true);
+        setInsuranceLoading(true);
 
         await Promise.allSettled([
             fetchPatientHeader(),
             fetchUpcomingVisit(),
             fetchHistoryVisits(),
+            fetchInsuranceData(),
         ]);
     };
 
@@ -629,7 +754,6 @@ export default function PatientDetail() {
                                             <th className="px-6 py-4">Date & Time</th>
                                             <th className="px-6 py-4">Treatment</th>
                                             <th className="px-6 py-4">Status</th>
-                                            <th className="px-6 py-4 text-right">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-50">
@@ -670,11 +794,6 @@ export default function PatientDetail() {
                                                         {visit.status || 'N/A'}
                                                     </Badge>
                                                 </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <button type="button" className="text-[color:var(--primary)] hover:text-[color:var(--primary-dark)] text-xs font-bold flex items-center gap-1 ml-auto">
-                                                        View Details <ChevronRight size={14} />
-                                                    </button>
-                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -691,312 +810,235 @@ export default function PatientDetail() {
                             exit={{ opacity: 0, y: -10 }}
                             className="space-y-6"
                         >
-                            {/* --- Insurance Sub-Navigation --- */}
-                            <div className="flex flex-wrap gap-2 mb-2">
-                                {['General Info', 'Coverage Details', 'Categories', 'Procedure Codes', 'Members', 'Log'].map((label, idx) => (
-                                    <button
-                                        key={label}
-                                        onClick={() => setInsuranceSubTab(idx)}
-                                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${insuranceSubTab === idx
-                                            ? 'bg-[var(--primary)] text-white border-[var(--primary)] shadow-md shadow-[0_6px_20px_-6px_var(--primary-light)]'
-                                            : 'bg-white text-gray-500 border-gray-100 hover:border-[var(--primary-light)] hover:text-[color:var(--primary)]'
-                                            }`}
-                                    >
-                                        {label}
-                                    </button>
-                                ))}
+                            <div className="flex flex-wrap justify-between gap-3 mb-2">
+                                <div className="flex flex-wrap gap-2">
+                                    {['General Info', 'Coverage Details', 'Categories', 'Procedure Codes', 'Members', 'Log'].map((label, idx) => (
+                                        <button
+                                            key={label}
+                                            onClick={() => setInsuranceSubTab(idx)}
+                                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${insuranceSubTab === idx
+                                                ? 'bg-[var(--primary)] text-white border-[var(--primary)] shadow-md shadow-[0_6px_20px_-6px_var(--primary-light)]'
+                                                : 'bg-white text-gray-500 border-gray-100 hover:border-[var(--primary-light)] hover:text-[color:var(--primary)]'
+                                                }`}
+                                        >
+                                            {label}
+                                        </button>
+                                    ))}
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={handleSaveInsurance}
+                                    disabled={insuranceSaving || insuranceLoading}
+                                    className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--primary-light)] text-[color:var(--primary)] border border-gray-200 rounded-xl text-sm font-semibold transition-transform duration-200 hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                                >
+                                    {insuranceSaving ? <i className="fas fa-spinner fa-spin" /> : <Save size={16} />}
+                                    Save Insurance
+                                </button>
                             </div>
-
-                            {/* --- Section 1: Patient & Plan Information --- */}
-                            {insuranceSubTab === 0 && (
-                                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                                    <SectionHeader title="Patient & Plan Information" icon={User} />
-                                    <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8">
-                                        <InfoItem label="Subscriber Name" value={INSURANCE_PLAN.subscriberName} />
-                                        <InfoItem label="Social Security #" value={INSURANCE_PLAN.ssnMasked} />
-                                        <InfoItem label="Member ID" value={INSURANCE_PLAN.memberId} />
-                                        <InfoItem label="Date of Birth" value={INSURANCE_PLAN.dob} />
-                                        <InfoItem label="Insurance Company" value={INSURANCE_PLAN.company} />
-                                        <InfoItem label="Insurance Phone" value={INSURANCE_PLAN.phone} icon={Phone} />
-                                        <InfoItem label="Group Name" value={INSURANCE_PLAN.groupName} />
-                                        <InfoItem label="Group Number" value={INSURANCE_PLAN.groupNumber} />
-                                        <InfoItem label="Payer ID" value={INSURANCE_PLAN.payerId} />
-                                        <InfoItem label="Effective Date" value={INSURANCE_PLAN.effectiveDate} />
-                                        <InfoItem label="Email / Fax" value={INSURANCE_PLAN.emailFax} icon={Mail} />
-                                        <InfoItem label="Timely Filing" value={INSURANCE_PLAN.timelyFiling} />
+                            <div className='max-h-[calc(100vh-374px)] overflow-y-auto'>
+                                {insuranceLoading && (
+                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-sm text-gray-500">
+                                        Loading insurance details...
                                     </div>
-                                </div>
-                            )}
+                                )}
 
-                            {/* --- Section 2: Coverage Details --- */}
-                            {insuranceSubTab === 1 && (
-                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                {!insuranceLoading && insuranceSubTab === 0 && (
                                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                                        <SectionHeader title="Plan Limits & Deductibles" icon={AlertCircle} />
-                                        <div className="space-y-6">
-                                            <ProgressBar
-                                                label="Yearly Maximum"
-                                                value={COVERAGE_DETAILS.yearlyMaxUsed}
-                                                max={COVERAGE_DETAILS.yearlyMax}
-                                            />
-                                            <div className="grid grid-cols-2 gap-6">
-                                                <ProgressBar
-                                                    label="Individual Deductible"
-                                                    value={COVERAGE_DETAILS.deductibleIndividualMet}
-                                                    max={COVERAGE_DETAILS.deductibleIndividual}
-                                                    color="bg-amber-500"
-                                                />
-                                                <ProgressBar
-                                                    label="Family Deductible"
-                                                    value={COVERAGE_DETAILS.deductibleFamilyMet}
-                                                    max={COVERAGE_DETAILS.deductibleFamily}
-                                                    color="bg-amber-500"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="mt-8 grid grid-cols-2 gap-6 pt-6 border-t border-gray-50">
-                                            <InfoItem label="Network Status" value={COVERAGE_DETAILS.networkStatus} />
-                                            <InfoItem label="Fee Schedule" value={COVERAGE_DETAILS.feeSchedule} />
-                                            <InfoItem label="Plan Year" value={`${COVERAGE_DETAILS.planYearType} (${COVERAGE_DETAILS.planYearStart} to ${COVERAGE_DETAILS.planYearEnd})`} />
-                                            <InfoItem label="Coverage Type" value={COVERAGE_DETAILS.coverageType} />
+                                        <SectionHeader title="Patient & Plan Information" icon={User} />
+                                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-5">
+                                            <InsuranceInput label="Subscriber Name" value={insuranceData.subscriber_name} onChange={(e) => updateInsuranceField('subscriber_name', e.target.value)} />
+                                            <InsuranceInput label="Social Security #" value={insuranceData.ssn_masked} onChange={(e) => updateInsuranceField('ssn_masked', e.target.value)} />
+                                            <InsuranceInput label="Member ID" value={insuranceData.member_id} onChange={(e) => updateInsuranceField('member_id', e.target.value)} />
+                                            <InsuranceInput label="Date of Birth" type="date" value={insuranceData.dob} onChange={(e) => updateInsuranceField('dob', e.target.value)} />
+                                            <InsuranceInput label="Insurance Company" value={insuranceData.company} onChange={(e) => updateInsuranceField('company', e.target.value)} />
+                                            <InsuranceInput label="Insurance Phone" value={insuranceData.phone} onChange={(e) => updateInsuranceField('phone', e.target.value)} />
+                                            <InsuranceInput label="Group Name" value={insuranceData.group_name} onChange={(e) => updateInsuranceField('group_name', e.target.value)} />
+                                            <InsuranceInput label="Group Number" value={insuranceData.group_number} onChange={(e) => updateInsuranceField('group_number', e.target.value)} />
+                                            <InsuranceInput label="Payer ID" value={insuranceData.payer_id} onChange={(e) => updateInsuranceField('payer_id', e.target.value)} />
+                                            <InsuranceInput label="Effective Date" type="date" value={insuranceData.effective_date} onChange={(e) => updateInsuranceField('effective_date', e.target.value)} />
+                                            <InsuranceInput label="Email / Fax" value={insuranceData.email_fax} onChange={(e) => updateInsuranceField('email_fax', e.target.value)} />
+                                            <InsuranceInput label="Timely Filing" value={insuranceData.timely_filing} onChange={(e) => updateInsuranceField('timely_filing', e.target.value)} />
                                         </div>
                                     </div>
+                                )}
 
+                                {!insuranceLoading && insuranceSubTab === 1 && (
                                     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                                        <SectionHeader title="Rules & Clauses" icon={Info} />
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                            <InfoItem label="Dependent Age Limit" value={COVERAGE_DETAILS.dependentAgeLimit} />
-                                            <InfoItem label="COB Rule" value={COVERAGE_DETAILS.cobRule} />
-                                            <div className="col-span-full space-y-4">
-                                                <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                                                    <div className={`p-1 rounded ${COVERAGE_DETAILS.waitingPeriod.has ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'}`}>
-                                                        {COVERAGE_DETAILS.waitingPeriod.has ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-[10px] font-bold text-gray-400 uppercase">Waiting Period</span>
-                                                        <p className="text-sm font-medium text-gray-700">{COVERAGE_DETAILS.waitingPeriod.details}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                                                    <div className={`p-1 rounded ${COVERAGE_DETAILS.missingToothClause.has ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600'}`}>
-                                                        {COVERAGE_DETAILS.missingToothClause.has ? <AlertCircle size={16} /> : <CheckCircle2 size={16} />}
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-[10px] font-bold text-gray-400 uppercase">Missing Tooth Clause</span>
-                                                        <p className="text-sm font-medium text-gray-700">{COVERAGE_DETAILS.missingToothClause.details}</p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <InfoItem label="P.O. Box Address" value={COVERAGE_DETAILS.poBox} />
+                                        <SectionHeader title="Coverage Details" icon={AlertCircle} />
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                            <InsuranceInput label="Network Status" value={insuranceData.network_status} onChange={(e) => updateInsuranceField('network_status', e.target.value)} />
+                                            <InsuranceInput label="Fee Schedule" value={insuranceData.fee_schedule} onChange={(e) => updateInsuranceField('fee_schedule', e.target.value)} />
+                                            <InsuranceInput label="Plan Year Type" value={insuranceData.plan_year_type} onChange={(e) => updateInsuranceField('plan_year_type', e.target.value)} />
+                                            <InsuranceInput label="Plan Year Start" type="date" value={insuranceData.plan_year_start} onChange={(e) => updateInsuranceField('plan_year_start', e.target.value)} />
+                                            <InsuranceInput label="Plan Year End" type="date" value={insuranceData.plan_year_end} onChange={(e) => updateInsuranceField('plan_year_end', e.target.value)} />
+                                            <InsuranceInput label="Coverage Type" value={insuranceData.coverage_type} onChange={(e) => updateInsuranceField('coverage_type', e.target.value)} />
+                                            <InsuranceInput label="Yearly Maximum" type="number" value={insuranceData.yearly_max} onChange={(e) => updateInsuranceField('yearly_max', Number(e.target.value || 0))} />
+                                            <InsuranceInput label="Yearly Maximum Used" type="number" value={insuranceData.yearly_max_used} onChange={(e) => updateInsuranceField('yearly_max_used', Number(e.target.value || 0))} />
+                                            <InsuranceInput label="Deductible Individual" type="number" value={insuranceData.deductible_individual} onChange={(e) => updateInsuranceField('deductible_individual', Number(e.target.value || 0))} />
+                                            <InsuranceInput label="Deductible Individual Met" type="number" value={insuranceData.deductible_individual_met} onChange={(e) => updateInsuranceField('deductible_individual_met', Number(e.target.value || 0))} />
+                                            <InsuranceInput label="Deductible Family" type="number" value={insuranceData.deductible_family} onChange={(e) => updateInsuranceField('deductible_family', Number(e.target.value || 0))} />
+                                            <InsuranceInput label="Deductible Family Met" type="number" value={insuranceData.deductible_family_met} onChange={(e) => updateInsuranceField('deductible_family_met', Number(e.target.value || 0))} />
+                                            <InsuranceInput label="Dependent Age Limit" type="number" value={insuranceData.dependent_age_limit ?? ''} onChange={(e) => updateInsuranceField('dependent_age_limit', e.target.value === '' ? null : Number(e.target.value))} />
+                                            <InsuranceInput label="COB Rule" value={insuranceData.cob_rule} onChange={(e) => updateInsuranceField('cob_rule', e.target.value)} />
+                                            <InsuranceInput label="PO Box" value={insuranceData.po_box} onChange={(e) => updateInsuranceField('po_box', e.target.value)} />
+                                        </div>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
+                                            <label className="flex items-center gap-2 text-sm text-gray-700">
+                                                <input type="checkbox" checked={Boolean(insuranceData.waiting_period_has)} onChange={(e) => updateInsuranceField('waiting_period_has', e.target.checked)} />
+                                                Waiting Period Applies
+                                            </label>
+                                            <InsuranceInput label="Waiting Period Details" value={insuranceData.waiting_period_details} onChange={(e) => updateInsuranceField('waiting_period_details', e.target.value)} />
+                                            <label className="flex items-center gap-2 text-sm text-gray-700">
+                                                <input type="checkbox" checked={Boolean(insuranceData.missing_tooth_clause_has)} onChange={(e) => updateInsuranceField('missing_tooth_clause_has', e.target.checked)} />
+                                                Missing Tooth Clause Applies
+                                            </label>
+                                            <InsuranceInput label="Missing Tooth Clause Details" value={insuranceData.missing_tooth_clause_details} onChange={(e) => updateInsuranceField('missing_tooth_clause_details', e.target.value)} />
                                         </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
 
-                            {/* --- Section 3: Coverage Categories --- */}
-                            {insuranceSubTab === 2 && (
-                                <div className="space-y-6">
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                                        {COVERAGE_CATEGORIES.map((cat) => (
-                                            <div key={cat.category} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow">
-                                                <div className="flex justify-between items-start mb-4">
-                                                    <h4 className="font-bold text-gray-800">{cat.category}</h4>
-                                                    <span className={`text-2xl font-black ${getPercentageColor(cat.percentage)}`}>
-                                                        {cat.percentage}%
-                                                    </span>
+                                {!insuranceLoading && insuranceSubTab === 2 && (
+                                    <div className="space-y-4">
+                                        {(insuranceData.coverage_categories || []).map((cat, idx) => (
+                                            <div key={`${cat.category}-${idx}`} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                    <InsuranceInput label="Category" value={cat.category || ''} onChange={(e) => updateInsuranceArrayItem('coverage_categories', idx, 'category', e.target.value)} />
+                                                    <InsuranceInput label="Percentage" type="number" value={cat.percentage ?? 0} onChange={(e) => updateInsuranceArrayItem('coverage_categories', idx, 'percentage', Number(e.target.value || 0))} />
+                                                    <label className="flex items-center gap-2 text-sm text-gray-700 mt-6"><input type="checkbox" checked={Boolean(cat.deductibleApplies)} onChange={(e) => updateInsuranceArrayItem('coverage_categories', idx, 'deductibleApplies', e.target.checked)} />Deductible Applies</label>
+                                                    <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" checked={Boolean(cat.restorative)} onChange={(e) => updateInsuranceArrayItem('coverage_categories', idx, 'restorative', e.target.checked)} />Restorative</label>
+                                                    <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" checked={Boolean(cat.endo)} onChange={(e) => updateInsuranceArrayItem('coverage_categories', idx, 'endo', e.target.checked)} />Endo</label>
+                                                    <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" checked={Boolean(cat.perio)} onChange={(e) => updateInsuranceArrayItem('coverage_categories', idx, 'perio', e.target.checked)} />Perio</label>
+                                                    <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" checked={Boolean(cat.oralSurgery)} onChange={(e) => updateInsuranceArrayItem('coverage_categories', idx, 'oralSurgery', e.target.checked)} />Oral Surgery</label>
                                                 </div>
-                                                <div className="space-y-3">
-                                                    <div className="flex justify-between text-xs">
-                                                        <span className="text-gray-400 font-medium">Deductible Applies</span>
-                                                        <span className={`font-bold ${cat.deductibleApplies ? 'text-amber-600' : 'text-green-600'}`}>
-                                                            {cat.deductibleApplies ? 'Yes' : 'No'}
-                                                        </span>
+                                                {cat.orthoDetails && (
+                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-100">
+                                                        <InsuranceInput label="Ortho Lifetime Max" type="number" value={cat.orthoDetails.lifetimeMax ?? 0} onChange={(e) => updateInsuranceNestedArrayItem('coverage_categories', idx, 'orthoDetails', 'lifetimeMax', Number(e.target.value || 0))} />
+                                                        <InsuranceInput label="Ortho Age Limit" type="number" value={cat.orthoDetails.ageLimit ?? 0} onChange={(e) => updateInsuranceNestedArrayItem('coverage_categories', idx, 'orthoDetails', 'ageLimit', Number(e.target.value || 0))} />
+                                                        <label className="flex items-center gap-2 text-sm text-gray-700 mt-6"><input type="checkbox" checked={Boolean(cat.orthoDetails.workInProgress)} onChange={(e) => updateInsuranceNestedArrayItem('coverage_categories', idx, 'orthoDetails', 'workInProgress', e.target.checked)} />Ortho Work In Progress</label>
                                                     </div>
-                                                    <div className="pt-3 border-t border-gray-50 grid grid-cols-2 gap-2">
-                                                        {[
-                                                            { label: 'Restorative', val: cat.restorative },
-                                                            { label: 'Endo', val: cat.endo },
-                                                            { label: 'Perio', val: cat.perio },
-                                                            { label: 'Oral Surgery', val: cat.oralSurgery },
-                                                        ].map(sub => (
-                                                            <div key={sub.label} className="flex items-center gap-1.5">
-                                                                {sub.val ? <CheckCircle2 size={12} className="text-green-500" /> : <XCircle size={12} className="text-gray-300" />}
-                                                                <span className="text-[10px] font-medium text-gray-600">{sub.label}</span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                    {cat.orthoDetails && (
-                                                        <div className="mt-4 p-3 bg-[var(--primary-light)] rounded-xl space-y-2">
-                                                            <div className="flex justify-between text-[10px]">
-                                                                <span className="text-[color:var(--primary)] opacity-80 font-bold uppercase">Lifetime Max</span>
-                                                                <span className="text-[color:var(--primary-dark)] font-bold">${cat.orthoDetails.lifetimeMax}</span>
-                                                            </div>
-                                                            <div className="flex justify-between text-[10px]">
-                                                                <span className="text-[color:var(--primary)] opacity-80 font-bold uppercase">Age Limit</span>
-                                                                <span className="text-[color:var(--primary-dark)] font-bold">{cat.orthoDetails.ageLimit}</span>
-                                                            </div>
-                                                            <div className="flex justify-between text-[10px]">
-                                                                <span className="text-[color:var(--primary)] opacity-80 font-bold uppercase">Work in Progress</span>
-                                                                <span className="text-[color:var(--primary-dark)] font-bold">{cat.orthoDetails.workInProgress ? 'Yes' : 'No'}</span>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
+                                                )}
                                             </div>
                                         ))}
                                     </div>
-                                </div>
-                            )}
+                                )}
 
-                            {/* --- Section 4: Procedure Code Coverage --- */}
-                            {insuranceSubTab === 3 && (
-                                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                                    <div className="p-6 border-b border-gray-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                                        <div className="flex items-center gap-2">
-                                            <div className="p-1.5 bg-[var(--primary-light)] rounded-lg text-[color:var(--primary)]">
-                                                <Search size={18} />
-                                            </div>
-                                            <h3 className="font-bold text-gray-800">Procedure Code Coverage</h3>
-                                        </div>
-                                        <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
-                                            <Filter size={16} className="text-gray-400" />
-                                            {categories.map(cat => (
-                                                <button
-                                                    key={cat}
-                                                    onClick={() => setCodeFilter(cat)}
-                                                    className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${codeFilter === cat
-                                                        ? 'bg-[var(--primary-light)] text-[color:var(--primary-dark)]'
-                                                        : 'text-gray-400 hover:bg-gray-50'
-                                                        }`}
-                                                >
-                                                    {cat}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                    <div className="overflow-x-auto">
+                                {!insuranceLoading && insuranceSubTab === 3 && (
+                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
                                         <table className="w-full text-left">
                                             <thead>
                                                 <tr className="bg-gray-50/50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                                    <th className="px-6 py-4">CDT Code</th>
-                                                    <th className="px-6 py-4">Description</th>
-                                                    <th className="px-6 py-4">Frequency / Interval</th>
-                                                    <th className="px-6 py-4">Coverage</th>
-                                                    <th className="px-6 py-4">Status</th>
-                                                    <th className="px-6 py-4">Same Day</th>
-                                                    <th className="px-6 py-4">Notes</th>
+                                                    <th className="px-4 py-3">Code</th><th className="px-4 py-3">Description</th><th className="px-4 py-3">Category</th><th className="px-4 py-3">Frequency</th><th className="px-4 py-3">Interval</th><th className="px-4 py-3">% </th><th className="px-4 py-3">Deductible</th><th className="px-4 py-3">Covered</th><th className="px-4 py-3">Same Day</th><th className="px-4 py-3">Notes</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-gray-50">
-                                                {filteredCodes.map((code) => (
-                                                    <tr key={code.code} className="hover:bg-gray-50/50 transition-colors">
-                                                        <td className="px-6 py-4">
-                                                            <span className="text-sm font-bold text-[color:var(--primary)]">{code.code}</span>
-                                                        </td>
-                                                        <td className="px-6 py-4">
-                                                            <div className="text-sm font-semibold text-gray-700">{code.description}</div>
-                                                            <div className="text-[10px] text-gray-400 font-medium">{code.category}</div>
-                                                        </td>
-                                                        <td className="px-6 py-4">
-                                                            <div className="text-xs font-medium text-gray-600">{code.frequency}</div>
-                                                            <div className="text-[10px] text-gray-400 italic">{code.interval}</div>
-                                                        </td>
-                                                        <td className="px-6 py-4">
-                                                            <div className={`text-sm font-black ${getPercentageColor(code.percentage)}`}>
-                                                                {code.percentage}%
-                                                            </div>
-                                                            <div className="text-[10px] text-gray-400">
-                                                                {code.deductibleApplies ? 'Deductible Applies' : 'No Deductible'}
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-6 py-4">
-                                                            <Badge color={code.covered ? 'green' : 'red'}>
-                                                                {code.covered ? 'Covered' : 'Not Covered'}
-                                                            </Badge>
-                                                        </td>
-                                                        <td className="px-6 py-4">
-                                                            {code.txSameDay ? (
-                                                                <CheckCircle2 size={16} className="text-green-500" />
-                                                            ) : (
-                                                                <XCircle size={16} className="text-gray-300" />
-                                                            )}
-                                                        </td>
-                                                        <td className="px-6 py-4">
-                                                            <p className="text-xs text-gray-500 max-w-[200px] truncate hover:whitespace-normal transition-all" title={code.notes}>
-                                                                {code.notes}
-                                                            </p>
-                                                        </td>
+                                                {(insuranceData.procedure_codes || []).map((code, idx) => (
+                                                    <tr key={`${code.code}-${idx}`}>
+                                                        <td className="px-4 py-2"><input className="w-24 px-2 py-1 border rounded" value={code.code || ''} onChange={(e) => updateInsuranceArrayItem('procedure_codes', idx, 'code', e.target.value)} /></td>
+                                                        <td className="px-4 py-2"><input className="w-48 px-2 py-1 border rounded" value={code.description || ''} onChange={(e) => updateInsuranceArrayItem('procedure_codes', idx, 'description', e.target.value)} /></td>
+                                                        <td className="px-4 py-2"><input className="w-32 px-2 py-1 border rounded" value={code.category || ''} onChange={(e) => updateInsuranceArrayItem('procedure_codes', idx, 'category', e.target.value)} /></td>
+                                                        <td className="px-4 py-2"><input className="w-32 px-2 py-1 border rounded" value={code.frequency || ''} onChange={(e) => updateInsuranceArrayItem('procedure_codes', idx, 'frequency', e.target.value)} /></td>
+                                                        <td className="px-4 py-2"><input className="w-24 px-2 py-1 border rounded" value={code.interval || ''} onChange={(e) => updateInsuranceArrayItem('procedure_codes', idx, 'interval', e.target.value)} /></td>
+                                                        <td className="px-4 py-2"><input type="number" className="w-16 px-2 py-1 border rounded" value={code.percentage ?? 0} onChange={(e) => updateInsuranceArrayItem('procedure_codes', idx, 'percentage', Number(e.target.value || 0))} /></td>
+                                                        <td className="px-4 py-2 text-center"><input type="checkbox" checked={Boolean(code.deductibleApplies)} onChange={(e) => updateInsuranceArrayItem('procedure_codes', idx, 'deductibleApplies', e.target.checked)} /></td>
+                                                        <td className="px-4 py-2 text-center"><input type="checkbox" checked={Boolean(code.covered)} onChange={(e) => updateInsuranceArrayItem('procedure_codes', idx, 'covered', e.target.checked)} /></td>
+                                                        <td className="px-4 py-2 text-center"><input type="checkbox" checked={Boolean(code.txSameDay)} onChange={(e) => updateInsuranceArrayItem('procedure_codes', idx, 'txSameDay', e.target.checked)} /></td>
+                                                        <td className="px-4 py-2"><input className="w-64 px-2 py-1 border rounded" value={code.notes || ''} onChange={(e) => updateInsuranceArrayItem('procedure_codes', idx, 'notes', e.target.value)} /></td>
                                                     </tr>
                                                 ))}
                                             </tbody>
                                         </table>
                                     </div>
-                                </div>
-                            )}
+                                )}
 
-                            {/* --- Section 5: Covered Members Table --- */}
-                            {insuranceSubTab === 4 && (
-                                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                                    <div className="p-6 border-b border-gray-50">
-                                        <SectionHeader title="Covered Members Service History" icon={User} />
-                                    </div>
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-left">
-                                            <thead>
-                                                <tr className="bg-gray-50/50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                                    <th className="px-6 py-4 sticky left-0 bg-gray-50/50">Name / DOB</th>
-                                                    <th className="px-6 py-4">Prophy</th>
-                                                    <th className="px-6 py-4">FMD</th>
-                                                    <th className="px-6 py-4">SRP</th>
-                                                    <th className="px-6 py-4">FMX</th>
-                                                    <th className="px-6 py-4">Pano</th>
-                                                    <th className="px-6 py-4">BWX</th>
-                                                    <th className="px-6 py-4">Regular Exam</th>
-                                                    <th className="px-6 py-4">Emergency</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-50">
-                                                {COVERED_MEMBERS.map((member) => (
-                                                    <tr key={member.name} className="hover:bg-gray-50/50 transition-colors">
-                                                        <td className="px-6 py-4 sticky left-0 bg-white group-hover:bg-gray-50/50">
-                                                            <div className="text-sm font-bold text-gray-800">{member.name}</div>
-                                                            <div className="text-[10px] text-gray-400">{member.dob}</div>
-                                                        </td>
-                                                        {[
-                                                            member.prophy, member.fmd, member.srp, member.fmx,
-                                                            member.pano, member.bwx, member.regularExam, member.emergencyExam
-                                                        ].map((date, i) => (
-                                                            <td key={i} className="px-6 py-4">
-                                                                <span className={`text-xs font-medium ${date === 'N/A' ? 'text-gray-300' : 'text-gray-600'}`}>
-                                                                    {date}
-                                                                </span>
+                                {!insuranceLoading && insuranceSubTab === 4 && (
+                                    <div className="space-y-3">
+                                        <div className="flex justify-end">
+                                            <button
+                                                type="button"
+                                                onClick={() => addInsuranceArrayItem('covered_members', {
+                                                    name: '',
+                                                    dob: '',
+                                                    prophy: '',
+                                                    fmd: '',
+                                                    srp: '',
+                                                    fmx: '',
+                                                    pano: '',
+                                                    bwx: '',
+                                                    regularExam: '',
+                                                    emergencyExam: '',
+                                                })}
+                                                className="inline-flex items-center gap-2 px-3 py-2 
+                                                bg-[var(--primary-light)] text-[var(--primary)] 
+                                                rounded-lg text-xs font-semibold
+                                                transition-transform duration-200 hover:-translate-y-0.5"
+                                            >
+                                                + Add Member
+                                            </button>
+                                        </div>
+                                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
+                                            <table className="w-full text-left">
+                                                <thead>
+                                                    <tr className="bg-gray-50/50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                                        <th className="px-4 py-3">Name</th><th className="px-4 py-3">DOB</th><th className="px-4 py-3">Prophy</th><th className="px-4 py-3">FMD</th><th className="px-4 py-3">SRP</th><th className="px-4 py-3">FMX</th><th className="px-4 py-3">Pano</th><th className="px-4 py-3">BWX</th><th className="px-4 py-3">Regular Exam</th><th className="px-4 py-3">Emergency</th><th className="px-4 py-3 text-right">Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-50">
+                                                    {(insuranceData.covered_members || []).length === 0 && (
+                                                        <tr>
+                                                            <td colSpan={11} className="px-4 py-6 text-center text-sm text-gray-500">
+                                                                No covered members found. Click "Add Member" to create one.
                                                             </td>
-                                                        ))}
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* --- Section 6: Verification Log --- */}
-                            {insuranceSubTab === 5 && (
-                                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                                    <SectionHeader title="Verification Log" icon={ShieldCheck} />
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-                                        <InfoItem label="Verified By" value={VERIFICATION_LOG.verifiedBy} />
-                                        <InfoItem label="Date Verified" value={VERIFICATION_LOG.dateVerified} />
-                                        <InfoItem label="Reference Number" value={VERIFICATION_LOG.referenceNumber} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Verification Notes</span>
-                                        <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100 text-sm text-gray-600 leading-relaxed">
-                                            {VERIFICATION_LOG.notes}
+                                                        </tr>
+                                                    )}
+                                                    {(insuranceData.covered_members || []).map((member, idx) => (
+                                                        <tr key={`covered-member-${idx}`}>
+                                                            <td className="px-4 py-2"><input className="w-40 px-2 py-1 border rounded" value={member.name || ''} onChange={(e) => updateInsuranceArrayItem('covered_members', idx, 'name', e.target.value)} /></td>
+                                                            <td className="px-4 py-2"><input type="date" className="w-36 px-2 py-1 border rounded" value={member.dob || ''} onChange={(e) => updateInsuranceArrayItem('covered_members', idx, 'dob', e.target.value)} /></td>
+                                                            <td className="px-4 py-2"><input className="w-28 px-2 py-1 border rounded" value={member.prophy || ''} onChange={(e) => updateInsuranceArrayItem('covered_members', idx, 'prophy', e.target.value)} /></td>
+                                                            <td className="px-4 py-2"><input className="w-28 px-2 py-1 border rounded" value={member.fmd || ''} onChange={(e) => updateInsuranceArrayItem('covered_members', idx, 'fmd', e.target.value)} /></td>
+                                                            <td className="px-4 py-2"><input className="w-28 px-2 py-1 border rounded" value={member.srp || ''} onChange={(e) => updateInsuranceArrayItem('covered_members', idx, 'srp', e.target.value)} /></td>
+                                                            <td className="px-4 py-2"><input className="w-28 px-2 py-1 border rounded" value={member.fmx || ''} onChange={(e) => updateInsuranceArrayItem('covered_members', idx, 'fmx', e.target.value)} /></td>
+                                                            <td className="px-4 py-2"><input className="w-28 px-2 py-1 border rounded" value={member.pano || ''} onChange={(e) => updateInsuranceArrayItem('covered_members', idx, 'pano', e.target.value)} /></td>
+                                                            <td className="px-4 py-2"><input className="w-28 px-2 py-1 border rounded" value={member.bwx || ''} onChange={(e) => updateInsuranceArrayItem('covered_members', idx, 'bwx', e.target.value)} /></td>
+                                                            <td className="px-4 py-2"><input className="w-32 px-2 py-1 border rounded" value={member.regularExam || ''} onChange={(e) => updateInsuranceArrayItem('covered_members', idx, 'regularExam', e.target.value)} /></td>
+                                                            <td className="px-4 py-2"><input className="w-32 px-2 py-1 border rounded" value={member.emergencyExam || ''} onChange={(e) => updateInsuranceArrayItem('covered_members', idx, 'emergencyExam', e.target.value)} /></td>
+                                                            <td className="px-4 py-2 text-right">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => removeInsuranceArrayItem('covered_members', idx)}
+                                                                    className="text-xs font-semibold text-red-600 hover:text-red-700"
+                                                                >
+                                                                    Remove
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
                                         </div>
                                     </div>
-                                </div>
-                            )}
+                                )}
+
+                                {!insuranceLoading && insuranceSubTab === 5 && (
+                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                                        <SectionHeader title="Verification Log" icon={ShieldCheck} />
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
+                                            <InsuranceInput label="Verified By" value={insuranceData.verified_by} onChange={(e) => updateInsuranceField('verified_by', e.target.value)} />
+                                            <InsuranceInput label="Date Verified" type="date" value={insuranceData.date_verified} onChange={(e) => updateInsuranceField('date_verified', e.target.value)} />
+                                            <InsuranceInput label="Reference Number" value={insuranceData.reference_number} onChange={(e) => updateInsuranceField('reference_number', e.target.value)} />
+                                        </div>
+                                        <label className="flex flex-col gap-1.5">
+                                            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Verification Notes</span>
+                                            <textarea
+                                                rows={6}
+                                                value={insuranceData.verification_notes || ''}
+                                                onChange={(e) => updateInsuranceField('verification_notes', e.target.value)}
+                                                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[var(--primary-light)] focus:border-[var(--primary)]"
+                                            />
+                                        </label>
+                                    </div>
+                                )}
+                            </div>
                         </motion.div>
                     )}
                 </AnimatePresence>

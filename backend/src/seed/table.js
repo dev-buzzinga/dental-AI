@@ -36,7 +36,9 @@ CREATE TABLE IF NOT EXISTS public.doctors_appointments (
   appointment_type_id bigint,
   doctor_id bigint,
   patient_details json,
-  notes text
+  notes text,
+  CONSTRAINT fk_doctor FOREIGN KEY (doctor_id) REFERENCES doctors(id),
+  CONSTRAINT fk_appointment_type FOREIGN KEY (appointment_type_id) REFERENCES appointment_types(id)
 );
 
 CREATE TABLE IF NOT EXISTS public.gmail_appointment_messages (
@@ -248,6 +250,65 @@ AS $$
   LIMIT match_count;
 $$;
 
+
+CREATE TABLE IF NOT EXISTS public.patients_insurance (
+  id bigserial primary key,
+  user_id uuid not null,
+  patient_id integer not null,
+
+  subscriber_name text,
+  ssn_masked text,
+  member_id text,
+  dob date,
+  company text,
+  phone text,
+  group_name text,
+  group_number text,
+  payer_id text,
+  effective_date date,
+  email_fax text,
+  timely_filing text,
+
+  network_status text,
+  fee_schedule text,
+  plan_year_type text,
+  plan_year_start date,
+  plan_year_end date,
+  yearly_max numeric(12,2) default 0,
+  yearly_max_used numeric(12,2) default 0,
+  deductible_individual numeric(12,2) default 0,
+  deductible_individual_met numeric(12,2) default 0,
+  deductible_family numeric(12,2) default 0,
+  deductible_family_met numeric(12,2) default 0,
+  coverage_type text,
+  dependent_age_limit integer,
+  cob_rule text,
+  waiting_period_has boolean default false,
+  waiting_period_details text,
+  missing_tooth_clause_has boolean default false,
+  missing_tooth_clause_details text,
+  po_box text,
+
+  verified_by text,
+  date_verified date,
+  reference_number text,
+  verification_notes text,
+
+  coverage_categories jsonb not null default '[]'::jsonb,
+  procedure_codes jsonb not null default '[]'::jsonb,
+  covered_members jsonb not null default '[]'::jsonb,
+
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+
+  constraint patients_insurance_user_patient_unique unique (user_id, patient_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_patients_insurance_user_id
+  ON public.patients_insurance(user_id);
+
+CREATE INDEX IF NOT EXISTS idx_patients_insurance_patient_id
+  ON public.patients_insurance(patient_id);
 
 -- Foreign keys and constraints (using DO blocks or ALTER to avoid errors if exists)
 DO $$

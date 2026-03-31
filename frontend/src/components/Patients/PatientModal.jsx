@@ -103,7 +103,7 @@ const PatientModal = ({ isOpen, onClose, onSave, patient = null }) => {
                                     autoComplete="off"
                                 />
                             </div>
-                            <div className="form-group">
+                            {/* <div className="form-group">
                                 <label>Insurance</label>
                                 <input
                                     name="insurance"
@@ -112,7 +112,7 @@ const PatientModal = ({ isOpen, onClose, onSave, patient = null }) => {
                                     placeholder="Private health insurance"
                                     autoComplete="off"
                                 />
-                            </div>
+                            </div> */}
                             <div className="form-group">
                                 <label>Member ID</label>
                                 <input

@@ -18,8 +18,23 @@ const historyAppointment = async (patient_id) => {
     });
 };
 
+const getInsurance = async (patient_id) => {
+    return await authAxiosInstance.get("/patient/insurance", {
+        params: { patient_id },
+    });
+};
+
+const updateInsurance = async (patient_id, insurance) => {
+    return await authAxiosInstance.put("/patient/insurance", {
+        patient_id,
+        insurance,
+    });
+};
+
 export default {
     getOnePatient,
     upcomingAppointment,
-    historyAppointment
+    historyAppointment,
+    getInsurance,
+    updateInsurance
 };

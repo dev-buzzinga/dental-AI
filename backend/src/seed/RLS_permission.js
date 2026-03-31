@@ -13,6 +13,7 @@ ALTER TABLE twilio_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_scribes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE faqs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE scheduler_configs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE patients_insurance ENABLE ROW LEVEL SECURITY;
 
 -- Drop existing policies first to make script rerunnable safely
 DROP POLICY IF EXISTS "appointment_types_crud" ON appointment_types;
@@ -173,5 +174,34 @@ ON scheduler_configs
 FOR ALL
 USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id);
+
+-- patients_insurance SELECT (GET)
+CREATE POLICY "patients_insurance_select_own"
+ON public.patients_insurance
+FOR SELECT
+TO authenticated
+USING (user_id = auth.uid());
+
+-- patients_insurance INSERT
+CREATE POLICY "patients_insurance_insert_own"
+ON public.patients_insurance
+FOR INSERT
+TO authenticated
+WITH CHECK (user_id = auth.uid());
+
+-- patients_insurance UPDATE
+CREATE POLICY "patients_insurance_update_own"
+ON public.patients_insurance
+FOR UPDATE
+TO authenticated
+USING (user_id = auth.uid())
+WITH CHECK (user_id = auth.uid());
+
+-- patients_insurance DELETE
+CREATE POLICY "patients_insurance_delete_own"
+ON public.patients_insurance
+FOR DELETE
+TO authenticated
+USING (user_id = auth.uid());
 
 `;

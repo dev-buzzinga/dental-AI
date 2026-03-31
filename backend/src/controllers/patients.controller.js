@@ -35,3 +35,27 @@ export const historyAppointment = async (req, res) => {
         });
     }
 };
+
+export const getPatientInsurance = async (req, res) => {
+    try {
+        return await patientsService.getPatientInsuranceService(req, res);
+    } catch (error) {
+        console.error("getPatientInsurance controller error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error?.message || "Failed to get patient insurance",
+        });
+    }
+};
+
+export const upsertPatientInsurance = async (req, res) => {
+    try {
+        return await patientsService.upsertPatientInsuranceService(req, res);
+    } catch (error) {
+        console.error("upsertPatientInsurance controller error:", error);
+        return res.status(500).json({
+            success: false,
+            message: error?.message || "Failed to save patient insurance",
+        });
+    }
+};
