@@ -181,5 +181,21 @@ async function getPracticeTimezone(user_id) {
         return null;
     }
 }
+async function getAppointmentTypes(userId) {
+    try {
+        const { data: types, error } = await supabase
+            .from('appointment_types')
+            .select('*')
+            .eq('user_id', userId)
 
-export { findAvailableSlots, getPracticeTimezone };
+        if (error) {
+            console.log("Error in fetching appointment types", error);
+            throw new Error(error.message);
+        }
+
+        return types;
+    } catch (error) {
+        throw new Error(error.message);
+    }
+};
+export { findAvailableSlots, getPracticeTimezone, getAppointmentTypes };

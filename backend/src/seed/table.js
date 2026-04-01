@@ -347,4 +347,27 @@ BEGIN
     ALTER TABLE periodontal_charts ADD CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
   END IF;
 END $$;
+
+
+CREATE TABLE public.campaign_calls (
+  id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+  campaign_patient_id uuid NOT NULL 
+      REFERENCES public.campaign_patients(id) ON DELETE CASCADE,
+  call_sid text,
+  call_start_time timestamp with time zone,
+  call_end_time timestamp with time zone,
+  call_duration integer,
+  call_status text,
+  recording_url text,
+  ai_response jsonb,
+  transcript_url text,
+  sentiment text,
+  remark text,
+  created_at timestamp with time zone DEFAULT now()
+);
+
+create index idx_campaign_status on public.campaigns (status);
+create index idx_campaign_patients_status on public.campaign_patients (campaign_id, status, attempt_count);
+create index idx_campaign_calls_campaign_patient_id on public.campaign_calls (campaign_patient_id);
+
 `;

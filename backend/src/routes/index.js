@@ -10,6 +10,7 @@ import aiAgentRoutes from "./ai-agent.routes.js";
 import faqRoutes from "./faq.routes.js";
 import schedulerRoutes from "./scheduler.routes.js";
 import patientRoutes from "./patient.routes.js";
+import vapiRoutes from "./vapi.routes.js";
 
 const router = express.Router();
 
@@ -24,4 +25,5 @@ router.use("/ai-agent", aiAgentRoutes);
 router.use("/faqs", faqRoutes);
 router.use("/scheduler", schedulerRoutes);
 router.use("/patient", patientRoutes);
+router.use("/vapi", vapiRoutes);
 export default router;
