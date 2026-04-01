@@ -9,13 +9,19 @@ import {
     ShieldCheck,
     FileText,
     History,
-    ChevronRight,
     AlertCircle,
     ArrowRight,
     Printer,
     Download,
     ArrowLeft,
     Save,
+    Plus,
+    Filter,
+    Search,
+    Trash2,
+    Info,
+    RotateCcw,
+    Check,
 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { motion, AnimatePresence } from 'motion/react';
@@ -180,19 +186,37 @@ const Badge = ({ children, color }) => {
     );
 };
 
-const ProgressBar = ({ value, max, label, color = 'bg-[var(--primary)]' }) => {
-    const percentage = Math.min(Math.round((value / max) * 100), 100);
+/** refrence-InsuranceVerification — insurance tab */
+const InsuranceRefBadge = ({ children, color }) => {
+    const colors = {
+        green: 'bg-green-100 text-green-700 border-green-200',
+        red: 'bg-red-100 text-red-700 border-red-200',
+        blue: 'bg-blue-100 text-blue-700 border-blue-200',
+        amber: 'bg-amber-100 text-amber-700 border-amber-200',
+        gray: 'bg-gray-100 text-gray-700 border-gray-200',
+    };
+    return (
+        <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${colors[color]}`}>
+            {children}
+        </span>
+    );
+};
+
+const InsuranceRefProgressBar = ({ value, max, label, color = 'bg-[var(--primary)]' }) => {
+    const v = Number(value) || 0;
+    const rawMax = Number(max) || 0;
+    const percentage = rawMax > 0 ? Math.min(Math.round((v / rawMax) * 100), 100) : 0;
     return (
         <div className="space-y-1.5">
             <div className="flex justify-between text-xs font-medium text-gray-600">
                 <span>{label}</span>
-                <span>${value.toLocaleString()} / ${max.toLocaleString()} ({percentage}%)</span>
+                <span>${v.toLocaleString()} / ${rawMax.toLocaleString()} ({rawMax > 0 ? `${percentage}%` : '—'})</span>
             </div>
             <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden border border-gray-200">
                 <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${percentage}%` }}
-                    transition={{ duration: 1, ease: "easeOut" }}
+                    transition={{ duration: 1, ease: 'easeOut' }}
                     className={`h-full ${color}`}
                 />
             </div>
@@ -200,12 +224,40 @@ const ProgressBar = ({ value, max, label, color = 'bg-[var(--primary)]' }) => {
     );
 };
 
-const SectionHeader = ({ title, icon: Icon }) => (
+const InsuranceRefSectionHeader = ({ title, icon: Icon }) => (
     <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">
         <div className="p-1.5 bg-[var(--primary-light)] rounded-lg text-[color:var(--primary)]">
             <Icon size={18} />
         </div>
         <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wider">{title}</h3>
+    </div>
+);
+
+const InsuranceRefInfoItem = ({
+    label,
+    value,
+    icon: Icon,
+    onChange,
+    type = 'text',
+}) => (
+    <div className="flex flex-col gap-1">
+        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{label}</span>
+        {onChange ? (
+            <div className="flex items-center gap-1.5 bg-gray-50 rounded-lg px-2 py-1.5 border border-transparent focus-within:border-[color:var(--primary)] focus-within:bg-white transition-all">
+                {Icon && <Icon size={14} className="text-[color:var(--primary)] opacity-70 shrink-0" />}
+                <input
+                    type={type}
+                    value={value}
+                    onChange={(e) => onChange(e.target.value)}
+                    className="w-full text-sm font-medium text-gray-700 bg-transparent outline-none"
+                />
+            </div>
+        ) : (
+            <div className="flex items-center gap-1.5">
+                {Icon && <Icon size={14} className="text-[color:var(--primary)] opacity-70" />}
+                <span className="text-sm font-medium text-gray-700">{value || 'N/A'}</span>
+            </div>
+        )}
     </div>
 );
 
@@ -217,19 +269,6 @@ const InfoItem = ({ label, value, icon: Icon }) => (
             <span className="text-sm font-medium text-gray-700">{value || 'N/A'}</span>
         </div>
     </div>
-);
-
-const InsuranceInput = ({ label, value, onChange, type = 'text', placeholder }) => (
-    <label className="flex flex-col gap-1.5">
-        <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{label}</span>
-        <input
-            type={type}
-            value={value ?? ''}
-            onChange={onChange}
-            placeholder={placeholder}
-            className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[var(--primary-light)] focus:border-[var(--primary)]"
-        />
-    </label>
 );
 
 export default function PatientDetail() {
@@ -258,6 +297,7 @@ export default function PatientDetail() {
     const [insuranceData, setInsuranceData] = useState(buildDefaultInsuranceForm());
     const [insuranceLoading, setInsuranceLoading] = useState(Boolean(routePatientId));
     const [insuranceSaving, setInsuranceSaving] = useState(false);
+    const [insuranceSaveSuccess, setInsuranceSaveSuccess] = useState(false);
     const [editingPatient, setEditingPatient] = useState(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const showToast = useToast();
@@ -502,31 +542,87 @@ export default function PatientDetail() {
         }));
     };
 
-    const updateInsuranceNestedArrayItem = (arrayField, index, parentKey, key, value) => {
-        setInsuranceData((prev) => ({
-            ...prev,
-            [arrayField]: (prev[arrayField] || []).map((item, idx) => idx === index ? {
-                ...item,
-                [parentKey]: {
-                    ...(item[parentKey] || {}),
-                    [key]: value,
-                },
-            } : item),
-        }));
-    };
-
     const handleSaveInsurance = async () => {
         if (!routePatientId) return;
         try {
             setInsuranceSaving(true);
+            setInsuranceSaveSuccess(false);
             await patientsService.updateInsurance(routePatientId, insuranceData);
             showToast('Insurance details updated successfully!', 'success');
+            setInsuranceSaveSuccess(true);
+            window.setTimeout(() => setInsuranceSaveSuccess(false), 3000);
         } catch (error) {
             console.error('handleSaveInsurance error =>', error);
             showToast(error?.response?.data?.message || error.message || 'Failed to update insurance details', 'error');
         } finally {
             setInsuranceSaving(false);
         }
+    };
+
+    const handleInsuranceReset = () => {
+        if (!window.confirm('Are you sure you want to reset all insurance data to original values?')) return;
+        setInsuranceData(buildDefaultInsuranceForm());
+    };
+
+    const addProcedureCode = () => {
+        const newCode = {
+            code: 'DXXXX',
+            description: 'New Procedure',
+            category: 'Other',
+            frequency: 'N/A',
+            interval: 'N/A',
+            percentage: 0,
+            deductibleApplies: true,
+            covered: true,
+            txSameDay: false,
+            notes: '',
+        };
+        setInsuranceData((prev) => ({
+            ...prev,
+            procedure_codes: [...(prev.procedure_codes || []), newCode],
+        }));
+    };
+
+    const deleteProcedureCode = (codeStr) => {
+        setInsuranceData((prev) => ({
+            ...prev,
+            procedure_codes: (prev.procedure_codes || []).filter((c) => c.code !== codeStr),
+        }));
+    };
+
+    const addCoveredMember = () => {
+        addInsuranceArrayItem('covered_members', {
+            name: 'New Member',
+            dob: '',
+            prophy: 'N/A',
+            fmd: 'N/A',
+            srp: 'N/A',
+            fmx: 'N/A',
+            pano: 'N/A',
+            bwx: 'N/A',
+            regularExam: 'N/A',
+            emergencyExam: 'N/A',
+        });
+    };
+
+    const deleteCoveredMember = (idx) => {
+        removeInsuranceArrayItem('covered_members', idx);
+    };
+
+    const addCategory = () => {
+        addInsuranceArrayItem('coverage_categories', {
+            category: 'New Category',
+            percentage: 0,
+            deductibleApplies: true,
+            restorative: false,
+            endo: false,
+            perio: false,
+            oralSurgery: false,
+        });
+    };
+
+    const deleteCategory = (idx) => {
+        removeInsuranceArrayItem('coverage_categories', idx);
     };
 
     const refreshPatientData = async () => {
@@ -549,12 +645,21 @@ export default function PatientDetail() {
         refreshPatientData();
     }, [routePatientId]);
 
-    const filteredCodes = useMemo(() => {
-        if (codeFilter === 'All') return PROCEDURE_CODES;
-        return PROCEDURE_CODES.filter(code => code.category === codeFilter);
-    }, [codeFilter]);
+    const procedureCodeCategories = useMemo(() => {
+        const codes = insuranceData.procedure_codes || [];
+        return ['All', ...new Set(codes.map((c) => c.category).filter(Boolean))];
+    }, [insuranceData.procedure_codes]);
 
-    const categories = ['All', ...new Set(PROCEDURE_CODES.map(c => c.category))];
+    const filteredProcedureCodes = useMemo(() => {
+        const codes = insuranceData.procedure_codes || [];
+        if (codeFilter === 'All') return codes;
+        return codes.filter((code) => code.category === codeFilter);
+    }, [codeFilter, insuranceData.procedure_codes]);
+
+    useEffect(() => {
+        if (procedureCodeCategories.includes(codeFilter)) return;
+        setCodeFilter('All');
+    }, [procedureCodeCategories, codeFilter]);
     const hasUpcomingVisits = upcomingVisits.length > 0;
 
     const getPercentageColor = (pct) => {
@@ -565,7 +670,7 @@ export default function PatientDetail() {
     };
 
     return (
-        <div className="min-h-screen bg-[#F8F9FC] text-gray-900 font-sans px-3 py-4 md:px-6 md:py-6 lg:px-8">
+        <div className="h-full min-h-0 overflow-y-auto bg-[#F8F9FC] text-gray-900 font-sans px-3 py-4 md:px-6 md:py-6 lg:px-8">
             <div className="w-full max-w-none mx-auto space-y-6">
                 <button
                     type="button"
@@ -810,205 +915,586 @@ export default function PatientDetail() {
                             exit={{ opacity: 0, y: -10 }}
                             className="space-y-6"
                         >
-                            <div className="flex flex-wrap justify-between gap-3 mb-2">
-                                <div className="flex flex-wrap gap-2">
-                                    {['General Info', 'Coverage Details', 'Categories', 'Procedure Codes', 'Members', 'Log'].map((label, idx) => (
-                                        <button
-                                            key={label}
-                                            onClick={() => setInsuranceSubTab(idx)}
-                                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${insuranceSubTab === idx
-                                                ? 'bg-[var(--primary)] text-white border-[var(--primary)] shadow-md shadow-[0_6px_20px_-6px_var(--primary-light)]'
-                                                : 'bg-white text-gray-500 border-gray-100 hover:border-[var(--primary-light)] hover:text-[color:var(--primary)]'
-                                                }`}
-                                        >
-                                            {label}
-                                        </button>
-                                    ))}
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-[var(--primary-light)] rounded-xl text-[color:var(--primary)]">
+                                        <ShieldCheck size={24} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-lg font-bold text-gray-800">Insurance Verification</h2>
+                                        <p className="text-xs text-gray-500">Manage and update patient insurance details</p>
+                                    </div>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={handleSaveInsurance}
-                                    disabled={insuranceSaving || insuranceLoading}
-                                    className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--primary-light)] text-[color:var(--primary)] border border-gray-200 rounded-xl text-sm font-semibold transition-transform duration-200 hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
-                                >
-                                    {insuranceSaving ? <i className="fas fa-spinner fa-spin" /> : <Save size={16} />}
-                                    Save Insurance
-                                </button>
+                                <div className="flex items-center gap-2 w-full md:w-auto">
+                                    <button
+                                        type="button"
+                                        onClick={handleInsuranceReset}
+                                        disabled={insuranceLoading}
+                                        className="flex-1 md:flex-none px-4 py-2 bg-gray-50 text-gray-600 rounded-xl text-sm font-bold hover:bg-gray-100 transition-all flex items-center justify-center gap-2 border border-gray-200 disabled:opacity-50"
+                                    >
+                                        <RotateCcw size={16} />
+                                        Reset
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleSaveInsurance}
+                                        disabled={insuranceSaving || insuranceLoading}
+                                        className={`flex-1 md:flex-none px-6 py-2 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-lg ${insuranceSaveSuccess
+                                            ? 'bg-green-600 text-white shadow-green-100'
+                                            : 'bg-[var(--primary)] text-white shadow-[0_6px_20px_-6px_var(--primary-light)] hover:bg-[var(--primary-dark)]'
+                                            } disabled:opacity-60 disabled:cursor-not-allowed`}
+                                    >
+                                        {insuranceSaving ? (
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                        ) : insuranceSaveSuccess ? (
+                                            <Check size={16} />
+                                        ) : (
+                                            <Save size={16} />
+                                        )}
+                                        {insuranceSaveSuccess ? 'Saved!' : insuranceSaving ? 'Saving...' : 'Save Changes'}
+                                    </button>
+                                </div>
                             </div>
-                            <div className='max-h-[calc(100vh-374px)] overflow-y-auto'>
-                                {insuranceLoading && (
-                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 text-sm text-gray-500">
-                                        Loading insurance details...
-                                    </div>
-                                )}
 
-                                {!insuranceLoading && insuranceSubTab === 0 && (
-                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                                        <SectionHeader title="Patient & Plan Information" icon={User} />
-                                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-5">
-                                            <InsuranceInput label="Subscriber Name" value={insuranceData.subscriber_name} onChange={(e) => updateInsuranceField('subscriber_name', e.target.value)} />
-                                            <InsuranceInput label="Social Security #" value={insuranceData.ssn_masked} onChange={(e) => updateInsuranceField('ssn_masked', e.target.value)} />
-                                            <InsuranceInput label="Member ID" value={insuranceData.member_id} onChange={(e) => updateInsuranceField('member_id', e.target.value)} />
-                                            <InsuranceInput label="Date of Birth" type="date" value={insuranceData.dob} onChange={(e) => updateInsuranceField('dob', e.target.value)} />
-                                            <InsuranceInput label="Insurance Company" value={insuranceData.company} onChange={(e) => updateInsuranceField('company', e.target.value)} />
-                                            <InsuranceInput label="Insurance Phone" value={insuranceData.phone} onChange={(e) => updateInsuranceField('phone', e.target.value)} />
-                                            <InsuranceInput label="Group Name" value={insuranceData.group_name} onChange={(e) => updateInsuranceField('group_name', e.target.value)} />
-                                            <InsuranceInput label="Group Number" value={insuranceData.group_number} onChange={(e) => updateInsuranceField('group_number', e.target.value)} />
-                                            <InsuranceInput label="Payer ID" value={insuranceData.payer_id} onChange={(e) => updateInsuranceField('payer_id', e.target.value)} />
-                                            <InsuranceInput label="Effective Date" type="date" value={insuranceData.effective_date} onChange={(e) => updateInsuranceField('effective_date', e.target.value)} />
-                                            <InsuranceInput label="Email / Fax" value={insuranceData.email_fax} onChange={(e) => updateInsuranceField('email_fax', e.target.value)} />
-                                            <InsuranceInput label="Timely Filing" value={insuranceData.timely_filing} onChange={(e) => updateInsuranceField('timely_filing', e.target.value)} />
-                                        </div>
-                                    </div>
-                                )}
+                            {insuranceLoading && (
+                                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-sm text-gray-500 flex items-center gap-3">
+                                    <i className="fas fa-spinner fa-spin text-[color:var(--primary)]" />
+                                    Loading insurance details...
+                                </div>
+                            )}
 
-                                {!insuranceLoading && insuranceSubTab === 1 && (
-                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                                        <SectionHeader title="Coverage Details" icon={AlertCircle} />
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                                            <InsuranceInput label="Network Status" value={insuranceData.network_status} onChange={(e) => updateInsuranceField('network_status', e.target.value)} />
-                                            <InsuranceInput label="Fee Schedule" value={insuranceData.fee_schedule} onChange={(e) => updateInsuranceField('fee_schedule', e.target.value)} />
-                                            <InsuranceInput label="Plan Year Type" value={insuranceData.plan_year_type} onChange={(e) => updateInsuranceField('plan_year_type', e.target.value)} />
-                                            <InsuranceInput label="Plan Year Start" type="date" value={insuranceData.plan_year_start} onChange={(e) => updateInsuranceField('plan_year_start', e.target.value)} />
-                                            <InsuranceInput label="Plan Year End" type="date" value={insuranceData.plan_year_end} onChange={(e) => updateInsuranceField('plan_year_end', e.target.value)} />
-                                            <InsuranceInput label="Coverage Type" value={insuranceData.coverage_type} onChange={(e) => updateInsuranceField('coverage_type', e.target.value)} />
-                                            <InsuranceInput label="Yearly Maximum" type="number" value={insuranceData.yearly_max} onChange={(e) => updateInsuranceField('yearly_max', Number(e.target.value || 0))} />
-                                            <InsuranceInput label="Yearly Maximum Used" type="number" value={insuranceData.yearly_max_used} onChange={(e) => updateInsuranceField('yearly_max_used', Number(e.target.value || 0))} />
-                                            <InsuranceInput label="Deductible Individual" type="number" value={insuranceData.deductible_individual} onChange={(e) => updateInsuranceField('deductible_individual', Number(e.target.value || 0))} />
-                                            <InsuranceInput label="Deductible Individual Met" type="number" value={insuranceData.deductible_individual_met} onChange={(e) => updateInsuranceField('deductible_individual_met', Number(e.target.value || 0))} />
-                                            <InsuranceInput label="Deductible Family" type="number" value={insuranceData.deductible_family} onChange={(e) => updateInsuranceField('deductible_family', Number(e.target.value || 0))} />
-                                            <InsuranceInput label="Deductible Family Met" type="number" value={insuranceData.deductible_family_met} onChange={(e) => updateInsuranceField('deductible_family_met', Number(e.target.value || 0))} />
-                                            <InsuranceInput label="Dependent Age Limit" type="number" value={insuranceData.dependent_age_limit ?? ''} onChange={(e) => updateInsuranceField('dependent_age_limit', e.target.value === '' ? null : Number(e.target.value))} />
-                                            <InsuranceInput label="COB Rule" value={insuranceData.cob_rule} onChange={(e) => updateInsuranceField('cob_rule', e.target.value)} />
-                                            <InsuranceInput label="PO Box" value={insuranceData.po_box} onChange={(e) => updateInsuranceField('po_box', e.target.value)} />
-                                        </div>
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
-                                            <label className="flex items-center gap-2 text-sm text-gray-700">
-                                                <input type="checkbox" checked={Boolean(insuranceData.waiting_period_has)} onChange={(e) => updateInsuranceField('waiting_period_has', e.target.checked)} />
-                                                Waiting Period Applies
-                                            </label>
-                                            <InsuranceInput label="Waiting Period Details" value={insuranceData.waiting_period_details} onChange={(e) => updateInsuranceField('waiting_period_details', e.target.value)} />
-                                            <label className="flex items-center gap-2 text-sm text-gray-700">
-                                                <input type="checkbox" checked={Boolean(insuranceData.missing_tooth_clause_has)} onChange={(e) => updateInsuranceField('missing_tooth_clause_has', e.target.checked)} />
-                                                Missing Tooth Clause Applies
-                                            </label>
-                                            <InsuranceInput label="Missing Tooth Clause Details" value={insuranceData.missing_tooth_clause_details} onChange={(e) => updateInsuranceField('missing_tooth_clause_details', e.target.value)} />
-                                        </div>
-                                    </div>
-                                )}
-
-                                {!insuranceLoading && insuranceSubTab === 2 && (
-                                    <div className="space-y-4">
-                                        {(insuranceData.coverage_categories || []).map((cat, idx) => (
-                                            <div key={`${cat.category}-${idx}`} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
-                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                    <InsuranceInput label="Category" value={cat.category || ''} onChange={(e) => updateInsuranceArrayItem('coverage_categories', idx, 'category', e.target.value)} />
-                                                    <InsuranceInput label="Percentage" type="number" value={cat.percentage ?? 0} onChange={(e) => updateInsuranceArrayItem('coverage_categories', idx, 'percentage', Number(e.target.value || 0))} />
-                                                    <label className="flex items-center gap-2 text-sm text-gray-700 mt-6"><input type="checkbox" checked={Boolean(cat.deductibleApplies)} onChange={(e) => updateInsuranceArrayItem('coverage_categories', idx, 'deductibleApplies', e.target.checked)} />Deductible Applies</label>
-                                                    <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" checked={Boolean(cat.restorative)} onChange={(e) => updateInsuranceArrayItem('coverage_categories', idx, 'restorative', e.target.checked)} />Restorative</label>
-                                                    <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" checked={Boolean(cat.endo)} onChange={(e) => updateInsuranceArrayItem('coverage_categories', idx, 'endo', e.target.checked)} />Endo</label>
-                                                    <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" checked={Boolean(cat.perio)} onChange={(e) => updateInsuranceArrayItem('coverage_categories', idx, 'perio', e.target.checked)} />Perio</label>
-                                                    <label className="flex items-center gap-2 text-sm text-gray-700"><input type="checkbox" checked={Boolean(cat.oralSurgery)} onChange={(e) => updateInsuranceArrayItem('coverage_categories', idx, 'oralSurgery', e.target.checked)} />Oral Surgery</label>
-                                                </div>
-                                                {cat.orthoDetails && (
-                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t border-gray-100">
-                                                        <InsuranceInput label="Ortho Lifetime Max" type="number" value={cat.orthoDetails.lifetimeMax ?? 0} onChange={(e) => updateInsuranceNestedArrayItem('coverage_categories', idx, 'orthoDetails', 'lifetimeMax', Number(e.target.value || 0))} />
-                                                        <InsuranceInput label="Ortho Age Limit" type="number" value={cat.orthoDetails.ageLimit ?? 0} onChange={(e) => updateInsuranceNestedArrayItem('coverage_categories', idx, 'orthoDetails', 'ageLimit', Number(e.target.value || 0))} />
-                                                        <label className="flex items-center gap-2 text-sm text-gray-700 mt-6"><input type="checkbox" checked={Boolean(cat.orthoDetails.workInProgress)} onChange={(e) => updateInsuranceNestedArrayItem('coverage_categories', idx, 'orthoDetails', 'workInProgress', e.target.checked)} />Ortho Work In Progress</label>
-                                                    </div>
-                                                )}
-                                            </div>
+                            {!insuranceLoading && (
+                                <>
+                                    <div className="flex flex-wrap gap-2 mb-2">
+                                        {['General Info', 'Coverage Details', 'Categories', 'Procedure Codes', 'Members', 'Log'].map((label, idx) => (
+                                            <button
+                                                key={label}
+                                                type="button"
+                                                onClick={() => setInsuranceSubTab(idx)}
+                                                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${insuranceSubTab === idx
+                                                    ? 'bg-[var(--primary)] text-white border-[color:var(--primary)] shadow-md shadow-[0_6px_20px_-6px_var(--primary-light)]'
+                                                    : 'bg-white text-gray-500 border-gray-100 hover:border-[color:var(--primary-light)] hover:text-[color:var(--primary)]'
+                                                    }`}
+                                            >
+                                                {label}
+                                            </button>
                                         ))}
                                     </div>
-                                )}
 
-                                {!insuranceLoading && insuranceSubTab === 3 && (
-                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
-                                        <table className="w-full text-left">
-                                            <thead>
-                                                <tr className="bg-gray-50/50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                                    <th className="px-4 py-3">Code</th><th className="px-4 py-3">Description</th><th className="px-4 py-3">Category</th><th className="px-4 py-3">Frequency</th><th className="px-4 py-3">Interval</th><th className="px-4 py-3">% </th><th className="px-4 py-3">Deductible</th><th className="px-4 py-3">Covered</th><th className="px-4 py-3">Same Day</th><th className="px-4 py-3">Notes</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-gray-50">
-                                                {(insuranceData.procedure_codes || []).map((code, idx) => (
-                                                    <tr key={`${code.code}-${idx}`}>
-                                                        <td className="px-4 py-2"><input className="w-24 px-2 py-1 border rounded" value={code.code || ''} onChange={(e) => updateInsuranceArrayItem('procedure_codes', idx, 'code', e.target.value)} /></td>
-                                                        <td className="px-4 py-2"><input className="w-48 px-2 py-1 border rounded" value={code.description || ''} onChange={(e) => updateInsuranceArrayItem('procedure_codes', idx, 'description', e.target.value)} /></td>
-                                                        <td className="px-4 py-2"><input className="w-32 px-2 py-1 border rounded" value={code.category || ''} onChange={(e) => updateInsuranceArrayItem('procedure_codes', idx, 'category', e.target.value)} /></td>
-                                                        <td className="px-4 py-2"><input className="w-32 px-2 py-1 border rounded" value={code.frequency || ''} onChange={(e) => updateInsuranceArrayItem('procedure_codes', idx, 'frequency', e.target.value)} /></td>
-                                                        <td className="px-4 py-2"><input className="w-24 px-2 py-1 border rounded" value={code.interval || ''} onChange={(e) => updateInsuranceArrayItem('procedure_codes', idx, 'interval', e.target.value)} /></td>
-                                                        <td className="px-4 py-2"><input type="number" className="w-16 px-2 py-1 border rounded" value={code.percentage ?? 0} onChange={(e) => updateInsuranceArrayItem('procedure_codes', idx, 'percentage', Number(e.target.value || 0))} /></td>
-                                                        <td className="px-4 py-2 text-center"><input type="checkbox" checked={Boolean(code.deductibleApplies)} onChange={(e) => updateInsuranceArrayItem('procedure_codes', idx, 'deductibleApplies', e.target.checked)} /></td>
-                                                        <td className="px-4 py-2 text-center"><input type="checkbox" checked={Boolean(code.covered)} onChange={(e) => updateInsuranceArrayItem('procedure_codes', idx, 'covered', e.target.checked)} /></td>
-                                                        <td className="px-4 py-2 text-center"><input type="checkbox" checked={Boolean(code.txSameDay)} onChange={(e) => updateInsuranceArrayItem('procedure_codes', idx, 'txSameDay', e.target.checked)} /></td>
-                                                        <td className="px-4 py-2"><input className="w-64 px-2 py-1 border rounded" value={code.notes || ''} onChange={(e) => updateInsuranceArrayItem('procedure_codes', idx, 'notes', e.target.value)} /></td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
+                                {insuranceSubTab === 0 && (
+                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                                        <InsuranceRefSectionHeader title="Patient & Plan Information" icon={User} />
+                                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-8">
+                                            <InsuranceRefInfoItem label="Subscriber Name" value={insuranceData.subscriber_name} onChange={(val) => updateInsuranceField('subscriber_name', val)} />
+                                            <InsuranceRefInfoItem label="Social Security #" value={insuranceData.ssn_masked} onChange={(val) => updateInsuranceField('ssn_masked', val)} />
+                                            <InsuranceRefInfoItem label="Member ID" value={insuranceData.member_id} onChange={(val) => updateInsuranceField('member_id', val)} />
+                                            <InsuranceRefInfoItem label="Date of Birth" value={insuranceData.dob} type="date" onChange={(val) => updateInsuranceField('dob', val)} />
+                                            <InsuranceRefInfoItem label="Insurance Company" value={insuranceData.company} onChange={(val) => updateInsuranceField('company', val)} />
+                                            <InsuranceRefInfoItem label="Insurance Phone" value={insuranceData.phone} icon={Phone} onChange={(val) => updateInsuranceField('phone', val)} />
+                                            <InsuranceRefInfoItem label="Group Name" value={insuranceData.group_name} onChange={(val) => updateInsuranceField('group_name', val)} />
+                                            <InsuranceRefInfoItem label="Group Number" value={insuranceData.group_number} onChange={(val) => updateInsuranceField('group_number', val)} />
+                                            <InsuranceRefInfoItem label="Payer ID" value={insuranceData.payer_id} onChange={(val) => updateInsuranceField('payer_id', val)} />
+                                            <InsuranceRefInfoItem label="Effective Date" value={insuranceData.effective_date} type="date" onChange={(val) => updateInsuranceField('effective_date', val)} />
+                                            <InsuranceRefInfoItem label="Email / Fax" value={insuranceData.email_fax} icon={Mail} onChange={(val) => updateInsuranceField('email_fax', val)} />
+                                            <InsuranceRefInfoItem label="Timely Filing" value={insuranceData.timely_filing} onChange={(val) => updateInsuranceField('timely_filing', val)} />
+                                        </div>
                                     </div>
                                 )}
 
-                                {!insuranceLoading && insuranceSubTab === 4 && (
-                                    <div className="space-y-3">
-                                        <div className="flex justify-end">
+                                {insuranceSubTab === 1 && (
+                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                                            <InsuranceRefSectionHeader title="Plan Limits & Deductibles" icon={AlertCircle} />
+                                            <div className="space-y-6">
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <InsuranceRefInfoItem label="Yearly Max ($)" value={insuranceData.yearly_max} type="number" onChange={(val) => updateInsuranceField('yearly_max', Number(val))} />
+                                                    <InsuranceRefInfoItem label="Yearly Max Used ($)" value={insuranceData.yearly_max_used} type="number" onChange={(val) => updateInsuranceField('yearly_max_used', Number(val))} />
+                                                </div>
+                                                <InsuranceRefProgressBar
+                                                    label="Yearly Maximum Progress"
+                                                    value={Number(insuranceData.yearly_max_used) || 0}
+                                                    max={Number(insuranceData.yearly_max) || 0}
+                                                />
+                                                <div className="grid grid-cols-2 gap-6">
+                                                    <div className="space-y-4">
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <InsuranceRefInfoItem label="Indiv. Ded. ($)" value={insuranceData.deductible_individual} type="number" onChange={(val) => updateInsuranceField('deductible_individual', Number(val))} />
+                                                            <InsuranceRefInfoItem label="Met ($)" value={insuranceData.deductible_individual_met} type="number" onChange={(val) => updateInsuranceField('deductible_individual_met', Number(val))} />
+                                                        </div>
+                                                        <InsuranceRefProgressBar
+                                                            label="Individual Deductible"
+                                                            value={Number(insuranceData.deductible_individual_met) || 0}
+                                                            max={Number(insuranceData.deductible_individual) || 0}
+                                                            color="bg-amber-500"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-4">
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <InsuranceRefInfoItem label="Family Ded. ($)" value={insuranceData.deductible_family} type="number" onChange={(val) => updateInsuranceField('deductible_family', Number(val))} />
+                                                            <InsuranceRefInfoItem label="Met ($)" value={insuranceData.deductible_family_met} type="number" onChange={(val) => updateInsuranceField('deductible_family_met', Number(val))} />
+                                                        </div>
+                                                        <InsuranceRefProgressBar
+                                                            label="Family Deductible"
+                                                            value={Number(insuranceData.deductible_family_met) || 0}
+                                                            max={Number(insuranceData.deductible_family) || 0}
+                                                            color="bg-amber-500"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="mt-8 grid grid-cols-2 gap-6 pt-6 border-t border-gray-50">
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Network Status</span>
+                                                    <select
+                                                        value={insuranceData.network_status || 'In-Network'}
+                                                        onChange={(e) => updateInsuranceField('network_status', e.target.value)}
+                                                        className="bg-gray-50 rounded-lg px-2 py-1.5 border border-transparent focus:border-[color:var(--primary-light)] focus:bg-white text-sm font-medium text-gray-700 outline-none"
+                                                    >
+                                                        <option value="In-Network">In-Network</option>
+                                                        <option value="Out-of-Network">Out-of-Network</option>
+                                                    </select>
+                                                </div>
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Fee Schedule</span>
+                                                    <select
+                                                        value={insuranceData.fee_schedule || 'PPO'}
+                                                        onChange={(e) => updateInsuranceField('fee_schedule', e.target.value)}
+                                                        className="bg-gray-50 rounded-lg px-2 py-1.5 border border-transparent focus:border-[color:var(--primary-light)] focus:bg-white text-sm font-medium text-gray-700 outline-none"
+                                                    >
+                                                        <option value="PPO">PPO</option>
+                                                        <option value="UCR">UCR</option>
+                                                        <option value="Indemnity">Indemnity</option>
+                                                    </select>
+                                                </div>
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Plan Year Type</span>
+                                                    <select
+                                                        value={insuranceData.plan_year_type || 'Calendar Year'}
+                                                        onChange={(e) => updateInsuranceField('plan_year_type', e.target.value)}
+                                                        className="bg-gray-50 rounded-lg px-2 py-1.5 border border-transparent focus:border-[color:var(--primary-light)] focus:bg-white text-sm font-medium text-gray-700 outline-none"
+                                                    >
+                                                        <option value="Calendar Year">Calendar Year</option>
+                                                        <option value="Plan Year">Plan Year</option>
+                                                    </select>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-2">
+                                                    <InsuranceRefInfoItem label="Start" value={insuranceData.plan_year_start} type="date" onChange={(val) => updateInsuranceField('plan_year_start', val)} />
+                                                    <InsuranceRefInfoItem label="End" value={insuranceData.plan_year_end} type="date" onChange={(val) => updateInsuranceField('plan_year_end', val)} />
+                                                </div>
+                                                <InsuranceRefInfoItem label="Coverage Type" value={insuranceData.coverage_type} onChange={(val) => updateInsuranceField('coverage_type', val)} />
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                                            <InsuranceRefSectionHeader title="Rules & Clauses" icon={Info} />
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                                <InsuranceRefInfoItem label="Dependent Age Limit" value={insuranceData.dependent_age_limit ?? ''} type="number" onChange={(val) => updateInsuranceField('dependent_age_limit', val === '' ? null : Number(val))} />
+                                                <div className="flex flex-col gap-1">
+                                                    <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">COB Rule</span>
+                                                    <select
+                                                        value={insuranceData.cob_rule || 'Standard'}
+                                                        onChange={(e) => updateInsuranceField('cob_rule', e.target.value)}
+                                                        className="bg-gray-50 rounded-lg px-2 py-1.5 border border-transparent focus:border-[color:var(--primary-light)] focus:bg-white text-sm font-medium text-gray-700 outline-none"
+                                                    >
+                                                        <option value="Standard">Standard</option>
+                                                        <option value="Birthday Rule">Birthday Rule</option>
+                                                        <option value="Non-Duplication">Non-Duplication</option>
+                                                        <option value="N/A">N/A</option>
+                                                    </select>
+                                                </div>
+                                                <div className="col-span-full space-y-4">
+                                                    <div className="flex flex-col gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-[10px] font-bold text-gray-400 uppercase">Waiting Period</span>
+                                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                                <span className="text-xs font-medium text-gray-600">Has Waiting Period</span>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={Boolean(insuranceData.waiting_period_has)}
+                                                                    onChange={(e) => updateInsuranceField('waiting_period_has', e.target.checked)}
+                                                                    className="w-4 h-4 text-[color:var(--primary)] rounded focus:ring-[color:var(--primary)]"
+                                                                />
+                                                            </label>
+                                                        </div>
+                                                        <input
+                                                            value={insuranceData.waiting_period_details || ''}
+                                                            onChange={(e) => updateInsuranceField('waiting_period_details', e.target.value)}
+                                                            className="w-full text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-[color:var(--primary-light)]"
+                                                            placeholder="Details..."
+                                                        />
+                                                    </div>
+                                                    <div className="flex flex-col gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-[10px] font-bold text-gray-400 uppercase">Missing Tooth Clause</span>
+                                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                                <span className="text-xs font-medium text-gray-600">Has Clause</span>
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={Boolean(insuranceData.missing_tooth_clause_has)}
+                                                                    onChange={(e) => updateInsuranceField('missing_tooth_clause_has', e.target.checked)}
+                                                                    className="w-4 h-4 text-[color:var(--primary)] rounded focus:ring-[color:var(--primary)]"
+                                                                />
+                                                            </label>
+                                                        </div>
+                                                        <input
+                                                            value={insuranceData.missing_tooth_clause_details || ''}
+                                                            onChange={(e) => updateInsuranceField('missing_tooth_clause_details', e.target.value)}
+                                                            className="w-full text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-2 outline-none focus:border-[color:var(--primary-light)]"
+                                                            placeholder="Details..."
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div className="col-span-full">
+                                                    <InsuranceRefInfoItem label="P.O. Box Address" value={insuranceData.po_box} onChange={(val) => updateInsuranceField('po_box', val)} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {insuranceSubTab === 2 && (
+                                    <div className="space-y-6">
+                                        <div className="flex justify-between items-center bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+                                            <div className="flex items-center gap-2">
+                                                <div className="p-1.5 bg-[var(--primary-light)] rounded-lg text-[color:var(--primary)]">
+                                                    <Filter size={18} />
+                                                </div>
+                                                <h3 className="font-bold text-gray-800">Coverage Categories</h3>
+                                            </div>
                                             <button
                                                 type="button"
-                                                onClick={() => addInsuranceArrayItem('covered_members', {
-                                                    name: '',
-                                                    dob: '',
-                                                    prophy: '',
-                                                    fmd: '',
-                                                    srp: '',
-                                                    fmx: '',
-                                                    pano: '',
-                                                    bwx: '',
-                                                    regularExam: '',
-                                                    emergencyExam: '',
-                                                })}
-                                                className="inline-flex items-center gap-2 px-3 py-2 
-                                                bg-[var(--primary-light)] text-[var(--primary)] 
-                                                rounded-lg text-xs font-semibold
-                                                transition-transform duration-200 hover:-translate-y-0.5"
+                                                onClick={addCategory}
+                                                className="px-4 py-2 bg-[var(--primary)] text-white rounded-xl text-sm font-bold hover:bg-[var(--primary-dark)] transition-all flex items-center gap-2 shadow-md shadow-[0_6px_20px_-6px_var(--primary-light)]"
                                             >
-                                                + Add Member
+                                                <Plus size={18} />
+                                                Add Category
                                             </button>
                                         </div>
-                                        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                            {(insuranceData.coverage_categories || []).map((cat, idx) => (
+                                                <div key={`${cat.category}-${idx}`} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition-shadow relative group">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => deleteCategory(idx)}
+                                                        className="absolute top-2 right-2 p-1.5 text-gray-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                    <div className="flex items-start gap-3 mb-4">
+                                                        <input
+                                                            value={cat.category}
+                                                            onChange={(e) => {
+                                                                const newCats = [...(insuranceData.coverage_categories || [])];
+                                                                newCats[idx] = { ...newCats[idx], category: e.target.value };
+                                                                setInsuranceData((prev) => ({ ...prev, coverage_categories: newCats }));
+                                                            }}
+                                                            className="min-w-0 flex-1 font-bold text-gray-800 bg-transparent outline-none border-b border-transparent focus:border-[color:var(--primary-light)]"
+                                                        />
+                                                        <div className="inline-flex shrink-0 items-baseline gap-0">
+                                                            <input
+                                                                type="number"
+                                                                value={cat.percentage}
+                                                                onChange={(e) => {
+                                                                    const newCats = [...(insuranceData.coverage_categories || [])];
+                                                                    newCats[idx] = { ...newCats[idx], percentage: Number(e.target.value) };
+                                                                    setInsuranceData((prev) => ({ ...prev, coverage_categories: newCats }));
+                                                                }}
+                                                                className={`w-[2.75rem] max-w-[3.5rem] border-0 bg-transparent p-0 text-right text-2xl font-black leading-none outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ${getPercentageColor(cat.percentage)}`}
+                                                            />
+                                                            <span className={`pl-0.5 text-2xl font-black leading-none ${getPercentageColor(cat.percentage)}`}>%</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="space-y-3">
+                                                        <div className="flex justify-between items-center text-xs">
+                                                            <span className="text-gray-400 font-medium">Deductible Applies</span>
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={cat.deductibleApplies}
+                                                                onChange={(e) => {
+                                                                    const newCats = [...(insuranceData.coverage_categories || [])];
+                                                                    newCats[idx] = { ...newCats[idx], deductibleApplies: e.target.checked };
+                                                                    setInsuranceData((prev) => ({ ...prev, coverage_categories: newCats }));
+                                                                }}
+                                                                className="w-4 h-4 text-[color:var(--primary)] rounded focus:ring-[color:var(--primary)]"
+                                                            />
+                                                        </div>
+                                                        <div className="pt-3 border-t border-gray-50 grid grid-cols-2 gap-2">
+                                                            {[
+                                                                { label: 'Restorative', key: 'restorative' },
+                                                                { label: 'Endo', key: 'endo' },
+                                                                { label: 'Perio', key: 'perio' },
+                                                                { label: 'Oral Surgery', key: 'oralSurgery' },
+                                                            ].map((sub) => (
+                                                                <label key={sub.key} className="flex items-center gap-1.5 cursor-pointer">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={Boolean(cat[sub.key])}
+                                                                        onChange={(e) => {
+                                                                            const newCats = [...(insuranceData.coverage_categories || [])];
+                                                                            newCats[idx] = { ...newCats[idx], [sub.key]: e.target.checked };
+                                                                            setInsuranceData((prev) => ({ ...prev, coverage_categories: newCats }));
+                                                                        }}
+                                                                        className="w-3 h-3 text-[color:var(--primary)] rounded focus:ring-[color:var(--primary)]"
+                                                                    />
+                                                                    <span className="text-[10px] font-medium text-gray-600">{sub.label}</span>
+                                                                </label>
+                                                            ))}
+                                                        </div>
+                                                        {cat.orthoDetails && (
+                                                            <div className="mt-4 p-3 bg-[var(--primary-light)] rounded-xl space-y-2">
+                                                                <div className="flex justify-between items-center text-[10px]">
+                                                                    <span className="text-[color:var(--primary)] opacity-70 font-bold uppercase">Lifetime Max</span>
+                                                                    <input
+                                                                        type="number"
+                                                                        value={cat.orthoDetails.lifetimeMax}
+                                                                        onChange={(e) => {
+                                                                            const newCats = [...(insuranceData.coverage_categories || [])];
+                                                                            newCats[idx] = {
+                                                                                ...newCats[idx],
+                                                                                orthoDetails: {
+                                                                                    ...newCats[idx].orthoDetails,
+                                                                                    lifetimeMax: Number(e.target.value),
+                                                                                },
+                                                                            };
+                                                                            setInsuranceData((prev) => ({ ...prev, coverage_categories: newCats }));
+                                                                        }}
+                                                                        className="w-16 bg-transparent border-b border-[color:var(--primary-light)] text-[color:var(--primary-dark)] font-bold text-right outline-none"
+                                                                    />
+                                                                </div>
+                                                                <div className="flex justify-between items-center text-[10px]">
+                                                                    <span className="text-[color:var(--primary)] opacity-70 font-bold uppercase">Age Limit</span>
+                                                                    <input
+                                                                        type="number"
+                                                                        value={cat.orthoDetails.ageLimit}
+                                                                        onChange={(e) => {
+                                                                            const newCats = [...(insuranceData.coverage_categories || [])];
+                                                                            newCats[idx] = {
+                                                                                ...newCats[idx],
+                                                                                orthoDetails: {
+                                                                                    ...newCats[idx].orthoDetails,
+                                                                                    ageLimit: Number(e.target.value),
+                                                                                },
+                                                                            };
+                                                                            setInsuranceData((prev) => ({ ...prev, coverage_categories: newCats }));
+                                                                        }}
+                                                                        className="w-16 bg-transparent border-b border-[color:var(--primary-light)] text-[color:var(--primary-dark)] font-bold text-right outline-none"
+                                                                    />
+                                                                </div>
+                                                                <div className="flex justify-between items-center text-[10px]">
+                                                                    <span className="text-[color:var(--primary)] opacity-70 font-bold uppercase">Work in Progress</span>
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={cat.orthoDetails.workInProgress}
+                                                                        onChange={(e) => {
+                                                                            const newCats = [...(insuranceData.coverage_categories || [])];
+                                                                            newCats[idx] = {
+                                                                                ...newCats[idx],
+                                                                                orthoDetails: {
+                                                                                    ...newCats[idx].orthoDetails,
+                                                                                    workInProgress: e.target.checked,
+                                                                                },
+                                                                            };
+                                                                            setInsuranceData((prev) => ({ ...prev, coverage_categories: newCats }));
+                                                                        }}
+                                                                        className="w-3 h-3 text-[color:var(--primary)] rounded focus:ring-[color:var(--primary)]"
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {insuranceSubTab === 3 && (
+                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                                        <div className="p-6 border-b border-gray-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                            <div className="flex items-center gap-4">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="p-1.5 bg-[var(--primary-light)] rounded-lg text-[color:var(--primary)]">
+                                                        <Search size={18} />
+                                                    </div>
+                                                    <h3 className="font-bold text-gray-800">Procedure Code Coverage</h3>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={addProcedureCode}
+                                                    className="px-3 py-1.5 bg-[var(--primary)] text-white rounded-lg text-xs font-bold hover:bg-[var(--primary-dark)] transition-all flex items-center gap-1.5 shadow-sm"
+                                                >
+                                                    <Plus size={14} />
+                                                    Add Code
+                                                </button>
+                                            </div>
+                                            <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
+                                                <Filter size={16} className="text-gray-400 shrink-0" />
+                                                {procedureCodeCategories.map((cat) => (
+                                                    <button
+                                                        key={cat}
+                                                        type="button"
+                                                        onClick={() => setCodeFilter(cat)}
+                                                        className={`whitespace-nowrap px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${codeFilter === cat
+                                                            ? 'bg-[var(--primary-light)] text-[color:var(--primary-dark)]'
+                                                            : 'text-gray-400 hover:bg-gray-50'
+                                                            }`}
+                                                    >
+                                                        {cat}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div className="overflow-x-auto">
                                             <table className="w-full text-left">
                                                 <thead>
                                                     <tr className="bg-gray-50/50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
-                                                        <th className="px-4 py-3">Name</th><th className="px-4 py-3">DOB</th><th className="px-4 py-3">Prophy</th><th className="px-4 py-3">FMD</th><th className="px-4 py-3">SRP</th><th className="px-4 py-3">FMX</th><th className="px-4 py-3">Pano</th><th className="px-4 py-3">BWX</th><th className="px-4 py-3">Regular Exam</th><th className="px-4 py-3">Emergency</th><th className="px-4 py-3 text-right">Actions</th>
+                                                        <th className="px-6 py-4">CDT Code</th>
+                                                        <th className="px-6 py-4">Description</th>
+                                                        <th className="px-6 py-4">Frequency / Interval</th>
+                                                        <th className="px-6 py-4">Coverage</th>
+                                                        <th className="px-6 py-4">Status</th>
+                                                        <th className="px-6 py-4">Same Day</th>
+                                                        <th className="px-6 py-4">Notes</th>
+                                                        <th className="px-6 py-4 text-right">Action</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-50">
-                                                    {(insuranceData.covered_members || []).length === 0 && (
-                                                        <tr>
-                                                            <td colSpan={11} className="px-4 py-6 text-center text-sm text-gray-500">
-                                                                No covered members found. Click "Add Member" to create one.
+                                                    {filteredProcedureCodes.map((code, rowIdx) => (
+                                                        <tr key={`proc-${rowIdx}-${code.code}`} className="hover:bg-gray-50/50 transition-colors">
+                                                            <td className="px-6 py-4">
+                                                                <input
+                                                                    value={code.code}
+                                                                    onChange={(e) => {
+                                                                        const newCodes = [...(insuranceData.procedure_codes || [])];
+                                                                        const targetIdx = newCodes.findIndex((c) => c.code === code.code);
+                                                                        if (targetIdx === -1) return;
+                                                                        newCodes[targetIdx] = { ...newCodes[targetIdx], code: e.target.value };
+                                                                        setInsuranceData((prev) => ({ ...prev, procedure_codes: newCodes }));
+                                                                    }}
+                                                                    className="w-16 text-sm font-bold text-[color:var(--primary)] bg-transparent outline-none focus:border-b border-[color:var(--primary-light)]"
+                                                                />
                                                             </td>
-                                                        </tr>
-                                                    )}
-                                                    {(insuranceData.covered_members || []).map((member, idx) => (
-                                                        <tr key={`covered-member-${idx}`}>
-                                                            <td className="px-4 py-2"><input className="w-40 px-2 py-1 border rounded" value={member.name || ''} onChange={(e) => updateInsuranceArrayItem('covered_members', idx, 'name', e.target.value)} /></td>
-                                                            <td className="px-4 py-2"><input type="date" className="w-36 px-2 py-1 border rounded" value={member.dob || ''} onChange={(e) => updateInsuranceArrayItem('covered_members', idx, 'dob', e.target.value)} /></td>
-                                                            <td className="px-4 py-2"><input className="w-28 px-2 py-1 border rounded" value={member.prophy || ''} onChange={(e) => updateInsuranceArrayItem('covered_members', idx, 'prophy', e.target.value)} /></td>
-                                                            <td className="px-4 py-2"><input className="w-28 px-2 py-1 border rounded" value={member.fmd || ''} onChange={(e) => updateInsuranceArrayItem('covered_members', idx, 'fmd', e.target.value)} /></td>
-                                                            <td className="px-4 py-2"><input className="w-28 px-2 py-1 border rounded" value={member.srp || ''} onChange={(e) => updateInsuranceArrayItem('covered_members', idx, 'srp', e.target.value)} /></td>
-                                                            <td className="px-4 py-2"><input className="w-28 px-2 py-1 border rounded" value={member.fmx || ''} onChange={(e) => updateInsuranceArrayItem('covered_members', idx, 'fmx', e.target.value)} /></td>
-                                                            <td className="px-4 py-2"><input className="w-28 px-2 py-1 border rounded" value={member.pano || ''} onChange={(e) => updateInsuranceArrayItem('covered_members', idx, 'pano', e.target.value)} /></td>
-                                                            <td className="px-4 py-2"><input className="w-28 px-2 py-1 border rounded" value={member.bwx || ''} onChange={(e) => updateInsuranceArrayItem('covered_members', idx, 'bwx', e.target.value)} /></td>
-                                                            <td className="px-4 py-2"><input className="w-32 px-2 py-1 border rounded" value={member.regularExam || ''} onChange={(e) => updateInsuranceArrayItem('covered_members', idx, 'regularExam', e.target.value)} /></td>
-                                                            <td className="px-4 py-2"><input className="w-32 px-2 py-1 border rounded" value={member.emergencyExam || ''} onChange={(e) => updateInsuranceArrayItem('covered_members', idx, 'emergencyExam', e.target.value)} /></td>
-                                                            <td className="px-4 py-2 text-right">
+                                                            <td className="px-6 py-4">
+                                                                <input
+                                                                    value={code.description}
+                                                                    onChange={(e) => {
+                                                                        const newCodes = [...(insuranceData.procedure_codes || [])];
+                                                                        const targetIdx = newCodes.findIndex((c) => c.code === code.code);
+                                                                        if (targetIdx === -1) return;
+                                                                        newCodes[targetIdx] = { ...newCodes[targetIdx], description: e.target.value };
+                                                                        setInsuranceData((prev) => ({ ...prev, procedure_codes: newCodes }));
+                                                                    }}
+                                                                    className="w-full text-sm font-semibold text-gray-700 bg-transparent outline-none focus:border-b border-gray-200"
+                                                                />
+                                                                <div className="text-[10px] text-gray-400 font-medium">{code.category}</div>
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <input
+                                                                    value={code.frequency}
+                                                                    onChange={(e) => {
+                                                                        const newCodes = [...(insuranceData.procedure_codes || [])];
+                                                                        const targetIdx = newCodes.findIndex((c) => c.code === code.code);
+                                                                        if (targetIdx === -1) return;
+                                                                        newCodes[targetIdx] = { ...newCodes[targetIdx], frequency: e.target.value };
+                                                                        setInsuranceData((prev) => ({ ...prev, procedure_codes: newCodes }));
+                                                                    }}
+                                                                    className="w-full text-xs font-medium text-gray-600 bg-transparent outline-none focus:border-b border-gray-200"
+                                                                />
+                                                                <input
+                                                                    value={code.interval}
+                                                                    onChange={(e) => {
+                                                                        const newCodes = [...(insuranceData.procedure_codes || [])];
+                                                                        const targetIdx = newCodes.findIndex((c) => c.code === code.code);
+                                                                        if (targetIdx === -1) return;
+                                                                        newCodes[targetIdx] = { ...newCodes[targetIdx], interval: e.target.value };
+                                                                        setInsuranceData((prev) => ({ ...prev, procedure_codes: newCodes }));
+                                                                    }}
+                                                                    className="w-full text-[10px] text-gray-400 italic bg-transparent outline-none focus:border-b border-gray-200"
+                                                                />
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <div className="flex items-center gap-1">
+                                                                    <input
+                                                                        type="number"
+                                                                        value={code.percentage}
+                                                                        onChange={(e) => {
+                                                                            const newCodes = [...(insuranceData.procedure_codes || [])];
+                                                                            const targetIdx = newCodes.findIndex((c) => c.code === code.code);
+                                                                            if (targetIdx === -1) return;
+                                                                            newCodes[targetIdx] = { ...newCodes[targetIdx], percentage: Number(e.target.value) };
+                                                                            setInsuranceData((prev) => ({ ...prev, procedure_codes: newCodes }));
+                                                                        }}
+                                                                        className={`w-8 text-sm font-black bg-transparent outline-none text-right ${getPercentageColor(code.percentage)}`}
+                                                                    />
+                                                                    <span className={`text-sm font-black ${getPercentageColor(code.percentage)}`}>%</span>
+                                                                </div>
+                                                                <label className="flex items-center gap-1 mt-1 cursor-pointer">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={code.deductibleApplies}
+                                                                        onChange={(e) => {
+                                                                            const newCodes = [...(insuranceData.procedure_codes || [])];
+                                                                            const targetIdx = newCodes.findIndex((c) => c.code === code.code);
+                                                                            if (targetIdx === -1) return;
+                                                                            newCodes[targetIdx] = { ...newCodes[targetIdx], deductibleApplies: e.target.checked };
+                                                                            setInsuranceData((prev) => ({ ...prev, procedure_codes: newCodes }));
+                                                                        }}
+                                                                        className="w-3 h-3 text-[color:var(--primary)] rounded focus:ring-[color:var(--primary)]"
+                                                                    />
+                                                                    <span className="text-[10px] text-gray-400">Ded.</span>
+                                                                </label>
+                                                            </td>
+                                                            <td className="px-6 py-4">
                                                                 <button
                                                                     type="button"
-                                                                    onClick={() => removeInsuranceArrayItem('covered_members', idx)}
-                                                                    className="text-xs font-semibold text-red-600 hover:text-red-700"
+                                                                    onClick={() => {
+                                                                        const newCodes = [...(insuranceData.procedure_codes || [])];
+                                                                        const targetIdx = newCodes.findIndex((c) => c.code === code.code);
+                                                                        if (targetIdx === -1) return;
+                                                                        newCodes[targetIdx] = { ...newCodes[targetIdx], covered: !newCodes[targetIdx].covered };
+                                                                        setInsuranceData((prev) => ({ ...prev, procedure_codes: newCodes }));
+                                                                    }}
+                                                                    className="outline-none"
                                                                 >
-                                                                    Remove
+                                                                    <InsuranceRefBadge color={code.covered ? 'green' : 'red'}>
+                                                                        {code.covered ? 'Covered' : 'Not Covered'}
+                                                                    </InsuranceRefBadge>
+                                                                </button>
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={code.txSameDay}
+                                                                    onChange={(e) => {
+                                                                        const newCodes = [...(insuranceData.procedure_codes || [])];
+                                                                        const targetIdx = newCodes.findIndex((c) => c.code === code.code);
+                                                                        if (targetIdx === -1) return;
+                                                                        newCodes[targetIdx] = { ...newCodes[targetIdx], txSameDay: e.target.checked };
+                                                                        setInsuranceData((prev) => ({ ...prev, procedure_codes: newCodes }));
+                                                                    }}
+                                                                    className="w-4 h-4 text-[color:var(--primary)] rounded focus:ring-[color:var(--primary)]"
+                                                                />
+                                                            </td>
+                                                            <td className="px-6 py-4">
+                                                                <input
+                                                                    value={code.notes}
+                                                                    onChange={(e) => {
+                                                                        const newCodes = [...(insuranceData.procedure_codes || [])];
+                                                                        const targetIdx = newCodes.findIndex((c) => c.code === code.code);
+                                                                        if (targetIdx === -1) return;
+                                                                        newCodes[targetIdx] = { ...newCodes[targetIdx], notes: e.target.value };
+                                                                        setInsuranceData((prev) => ({ ...prev, procedure_codes: newCodes }));
+                                                                    }}
+                                                                    className="w-full text-xs text-gray-500 bg-transparent outline-none focus:border-b border-gray-200"
+                                                                />
+                                                            </td>
+                                                            <td className="px-6 py-4 text-right">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => deleteProcedureCode(code.code)}
+                                                                    className="p-2 text-gray-300 hover:text-red-500 transition-colors"
+                                                                >
+                                                                    <Trash2 size={16} />
                                                                 </button>
                                                             </td>
                                                         </tr>
@@ -1019,26 +1505,124 @@ export default function PatientDetail() {
                                     </div>
                                 )}
 
-                                {!insuranceLoading && insuranceSubTab === 5 && (
-                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
-                                        <SectionHeader title="Verification Log" icon={ShieldCheck} />
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
-                                            <InsuranceInput label="Verified By" value={insuranceData.verified_by} onChange={(e) => updateInsuranceField('verified_by', e.target.value)} />
-                                            <InsuranceInput label="Date Verified" type="date" value={insuranceData.date_verified} onChange={(e) => updateInsuranceField('date_verified', e.target.value)} />
-                                            <InsuranceInput label="Reference Number" value={insuranceData.reference_number} onChange={(e) => updateInsuranceField('reference_number', e.target.value)} />
+                                {insuranceSubTab === 4 && (
+                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                                        <div className="p-6 border-b border-gray-50 flex justify-between items-center">
+                                            <InsuranceRefSectionHeader title="Covered Members Service History" icon={User} />
+                                            <button
+                                                type="button"
+                                                onClick={addCoveredMember}
+                                                className="px-3 py-1.5 bg-[var(--primary)] text-white rounded-lg text-xs font-bold hover:bg-[var(--primary-dark)] transition-all flex items-center gap-1.5 shadow-sm"
+                                            >
+                                                <Plus size={14} />
+                                                Add Member
+                                            </button>
                                         </div>
-                                        <label className="flex flex-col gap-1.5">
-                                            <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">Verification Notes</span>
-                                            <textarea
-                                                rows={6}
-                                                value={insuranceData.verification_notes || ''}
-                                                onChange={(e) => updateInsuranceField('verification_notes', e.target.value)}
-                                                className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[var(--primary-light)] focus:border-[var(--primary)]"
-                                            />
-                                        </label>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left">
+                                                <thead>
+                                                    <tr className="bg-gray-50/50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                                                        <th className="px-6 py-4 sticky left-0 bg-gray-50/50">Name / DOB</th>
+                                                        <th className="px-6 py-4">Prophy</th>
+                                                        <th className="px-6 py-4">FMD</th>
+                                                        <th className="px-6 py-4">SRP</th>
+                                                        <th className="px-6 py-4">FMX</th>
+                                                        <th className="px-6 py-4">Pano</th>
+                                                        <th className="px-6 py-4">BWX</th>
+                                                        <th className="px-6 py-4">Regular Exam</th>
+                                                        <th className="px-6 py-4">Emergency</th>
+                                                        <th className="px-6 py-4 text-right">Action</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-50">
+                                                    {(insuranceData.covered_members || []).map((member, mIdx) => (
+                                                        <tr key={mIdx} className="group hover:bg-gray-50/50 transition-colors">
+                                                            <td className="px-6 py-4 sticky left-0 bg-white group-hover:bg-gray-50/50">
+                                                                <input
+                                                                    value={member.name}
+                                                                    onChange={(e) => {
+                                                                        const newMembers = [...(insuranceData.covered_members || [])];
+                                                                        newMembers[mIdx] = { ...newMembers[mIdx], name: e.target.value };
+                                                                        setInsuranceData((prev) => ({ ...prev, covered_members: newMembers }));
+                                                                    }}
+                                                                    className="text-sm font-bold text-gray-800 bg-transparent outline-none focus:border-b border-gray-200"
+                                                                />
+                                                                <input
+                                                                    type="date"
+                                                                    value={member.dob}
+                                                                    onChange={(e) => {
+                                                                        const newMembers = [...(insuranceData.covered_members || [])];
+                                                                        newMembers[mIdx] = { ...newMembers[mIdx], dob: e.target.value };
+                                                                        setInsuranceData((prev) => ({ ...prev, covered_members: newMembers }));
+                                                                    }}
+                                                                    className="text-[10px] text-gray-400 bg-transparent outline-none block"
+                                                                />
+                                                            </td>
+                                                            {[
+                                                                { key: 'prophy', val: member.prophy },
+                                                                { key: 'fmd', val: member.fmd },
+                                                                { key: 'srp', val: member.srp },
+                                                                { key: 'fmx', val: member.fmx },
+                                                                { key: 'pano', val: member.pano },
+                                                                { key: 'bwx', val: member.bwx },
+                                                                { key: 'regularExam', val: member.regularExam },
+                                                                { key: 'emergencyExam', val: member.emergencyExam },
+                                                            ].map((field) => {
+                                                                const str = field.val == null ? '' : String(field.val).trim();
+                                                                const isEmpty = str === '';
+                                                                const isNA = str === 'N/A' || str === 'n/a';
+                                                                return (
+                                                                    <td key={field.key} className="px-6 py-4">
+                                                                        <input
+                                                                            value={isEmpty ? '' : field.val}
+                                                                            placeholder="N/A"
+                                                                            onChange={(e) => {
+                                                                                const newMembers = [...(insuranceData.covered_members || [])];
+                                                                                newMembers[mIdx] = { ...newMembers[mIdx], [field.key]: e.target.value };
+                                                                                setInsuranceData((prev) => ({ ...prev, covered_members: newMembers }));
+                                                                            }}
+                                                                            className={`w-24 text-xs font-medium bg-transparent outline-none focus:border-b border-gray-200 placeholder:text-gray-300 ${isNA ? 'text-gray-300' : 'text-gray-600'}`}
+                                                                        />
+                                                                    </td>
+                                                                );
+                                                            })}
+                                                            <td className="px-6 py-4 text-right">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => deleteCoveredMember(mIdx)}
+                                                                    className="p-2 text-gray-300 hover:text-red-500 transition-colors"
+                                                                >
+                                                                    <Trash2 size={16} />
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
                                     </div>
                                 )}
-                            </div>
+
+                                {insuranceSubTab === 5 && (
+                                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                                        <InsuranceRefSectionHeader title="Verification Log" icon={ShieldCheck} />
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
+                                            <InsuranceRefInfoItem label="Verified By" value={insuranceData.verified_by} onChange={(val) => updateInsuranceField('verified_by', val)} />
+                                            <InsuranceRefInfoItem label="Date Verified" value={insuranceData.date_verified} type="date" onChange={(val) => updateInsuranceField('date_verified', val)} />
+                                            <InsuranceRefInfoItem label="Reference Number" value={insuranceData.reference_number} onChange={(val) => updateInsuranceField('reference_number', val)} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">Verification Notes</span>
+                                            <textarea
+                                                value={insuranceData.verification_notes || ''}
+                                                onChange={(e) => updateInsuranceField('verification_notes', e.target.value)}
+                                                className="w-full p-4 bg-gray-50 rounded-2xl border border-gray-100 text-sm text-gray-600 leading-relaxed outline-none focus:border-[color:var(--primary-light)] focus:bg-white transition-all min-h-[120px]"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                                </>
+                            )}
                         </motion.div>
                     )}
                 </AnimatePresence>
